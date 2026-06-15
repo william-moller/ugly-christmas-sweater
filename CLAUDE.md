@@ -123,23 +123,25 @@ Per the Score Reference card, for **completed** sweaters only:
 ## BGA Project
 
 - **Framework:** **Modern / Studio** (PHP state classes + TypeScript client).
-- **BGA project name / remote path:** TBD — set in `.vscode/sftp.json` after creating the project in the Studio Control Panel.
+- **BGA project name:** `uglychristmassweater` · **SFTP remote path:** `/uglychristmassweater/` (set in the gitignored `.vscode/sftp.json`).
 - **BGG ID:** TBD (set in `gameinfos.jsonc`). Game by H² Games.
 
 ## Current State (as of 2026-06-14)
 
-Scaffolding + full rules reference (this file). No game code yet.
+Scaffolding + full rules reference (this file) + **BGA's generated modern/Studio skeleton committed as the code baseline** (downloaded via SFTP from `/uglychristmassweater/`). Still the unmodified skeleton — no game-specific logic yet.
+
+Skeleton highlights: `modules/php/Game.php` + `modules/php/States/{PlayerTurn,NextPlayer,EndScore}.php`, `modules/js/Game.js`, TypeScript source in `src-disabled/` (rename to `src/` + `npm i` to enable the TS toolchain), JSON config (`gameinfos.jsonc`, `gameoptions.jsonc`, `gamepreferences.jsonc`, `stats.jsonc`), `dbmodel.sql`. Note: **no `Material.php` is generated** — we create it when transcribing card data. `_ide_helper.php` + `bga-framework.d.ts` are BGA-provided IDE stubs (regenerable).
 
 Open data dependencies before coding logic:
-- **Exact 52-card composition** (icon + orientation per numbered card) → `modules/php/Material.php`.
+- **Exact 52-card composition** (icon + orientation per numbered card) → `modules/php/Material.php` (to be created).
 - The **16 Secret Santa** requirements, **10 Fad** definitions, **6 Perfect Fit** numbers, **4 Trendy Yarn** colours.
 - These come from the card faces / publisher art (request via the BGA "Request Art Files" button).
 
 Next steps:
-1. Reserve/create the project in the BGA Studio Control Panel (**choose the modern/Studio template**); record the project name; request art files.
-2. Download BGA's generated skeleton via SFTP and commit it as the code baseline.
-3. Copy `.vscode/sftp.json.example` → `.vscode/sftp.json` and fill in `remotePath`.
-4. Transcribe card data into `modules/php/Material.php`; build the state classes above.
+1. Enable the TypeScript toolchain (`src-disabled/` → `src/`, `npm install`, wire up `rollup`/`tsconfig`).
+2. Replace the skeleton's placeholder state machine with the flow under "Implementation Notes"; define the `dbmodel.sql` card schema and create `modules/php/Material.php`.
+3. Transcribe the card data (once art files arrive) into `Material.php`.
+4. Configure `gameinfos.jsonc` (players 2–4, BGG ID) and `gameoptions.jsonc` (variants: player count rules, Casual/Avid, Express, bonus cards).
 
 ## File Structure
 
