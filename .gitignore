@@ -1,9 +1,20 @@
-# Local SFTP config (contains environment-specific key path) — use sftp.json.example as the template
+# ════════════════════════════════════════════════════════════════════
+#  NEVER COMMIT THESE TO GITHUB (public repo) — see ../CLAUDE.md
+# ════════════════════════════════════════════════════════════════════
+
+# (1) Licensed publisher graphics / game art — publisher IP, do NOT redistribute.
+#     Lives locally and deploys to BGA via SFTP only.
+#     (Force-add self-authored assets if ever needed: `git add -f path`)
+img/
+
+# (2) Credentials — never commit an SFTP/BGA password, token, or private key.
+#     We use SSH-key auth; the local SFTP config stays out of git.
+#     Commit only sftp.json.example (a key PATH, never a secret).
 .vscode/sftp.json
 
-# Local-only Claude settings (the rest of .claude/ IS tracked and pushed to GitHub)
+# ── Local-only Claude settings (the rest of .claude/ IS tracked → GitHub) ──
 .claude/settings.local.json
 
-# OS / editor cruft
+# ── OS / editor cruft ──
 Thumbs.db
 .DS_Store
