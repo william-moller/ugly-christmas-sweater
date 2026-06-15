@@ -32,7 +32,7 @@ A Board Game Arena adaptation of **Ugly Christmas Sweaters** by Hunter R. Hennig
 - **Icon:** Snowmen, Candy Canes, Bells, or Trees.
 - **Orientation:** Left / Right / Bottom (L/R/B) — which third of a sweater this piece is. Shown on the "Christmas light" under the number.
 
-**Deck composition (INFERRED — must confirm against the physical card faces):** 48 numbered cards = 12 values × 4 colours, plus **4 Patches** (one per colour) = 52. The exact **icon and orientation assigned to each of the 48 numbered cards** is printed on the cards and is NOT derivable from the rules — we must transcribe it (from the card art / publisher data) into `material.inc.php`. ⚠️ This is the single biggest missing data dependency.
+**Deck composition (INFERRED — must confirm against the physical card faces):** 48 numbered cards = 12 values × 4 colours, plus **4 Patches** (one per colour) = 52. The exact **icon and orientation assigned to each of the 48 numbered cards** is printed on the cards and is NOT derivable from the rules — we must transcribe it (from the card art / publisher data) into the material definitions (`modules/php/Material.php`). ⚠️ This is the single biggest missing data dependency.
 
 **Patches** = wild Sweater Cards (one per colour; **colour is fixed, value/icon/orientation are wild**):
 - *Trade Phase:* a patch copies the **value and icon of the card played immediately before it**. If a patch *leads*, the player chooses any value/icon from a card currently in the Draft Pool. A patch following only needs to match its own colour; its icon stays undetermined until played (FAQ).
@@ -107,8 +107,10 @@ Per the Score Reference card, for **completed** sweaters only:
 
 ## Implementation Notes (first pass)
 
-**Proposed game states (`states.inc.php`):**
-`gameSetup → roundSetup (deal, flip gameplay cards, secret santa) → leadTrick → followTrick (loop over non-leaders; multi-card in 2P) → resolveTrick (compute draft order, no input) → draftCard (loop in draft order: pick from pool + place/orient in knitting area; patch sub-choices) → trickCleanup (rotate pool, redraw) → [back to leadTrick OR] roundScoring → [nextRound OR gameEnd]`.
+**Framework: Modern / Studio** — PHP **state classes** (`modules/php/States/*`) with `#[PossibleAction]` methods + a `zombie(int $playerId)` per state; static card data in `modules/php/Material.php`; **TypeScript** client (HTML generated in `setup()`, promise notifications, per-state handler registration). See `../CLAUDE.md` → "Classic vs Modern framework".
+
+**Proposed state flow (one class per state under `modules/php/States/`):**
+`GameSetup → RoundSetup (deal, flip gameplay cards, secret santa) → LeadTrick → FollowTrick (loop over non-leaders; multi-card in 2P) → ResolveTrick (GAME state, compute draft order, no input) → DraftCard (loop in draft order: pick from pool + place/orient in knitting area; patch sub-choices) → TrickCleanup (rotate pool, redraw) → [back to LeadTrick OR] RoundScoring → [NextRound OR GameEnd]`.
 
 **Data model pointers (`dbmodel.sql`):**
 - A `card` table with `card_value` (1–12 / wild), `card_color`, `card_icon`, `card_orientation`, `is_patch`, plus a `card_location` enum (`deck`/`hand`/`draftpool`/`tradearea`/`knitting`/`discard`) and `card_location_arg` (owner / sweater-build id / play order). BGA's `Deck` component handles most of this.
@@ -120,24 +122,25 @@ Per the Score Reference card, for **completed** sweaters only:
 
 ## BGA Project
 
+- **Framework:** **Modern / Studio** (PHP state classes + TypeScript client).
 - **BGA project name / remote path:** TBD — set in `.vscode/sftp.json` after creating the project in the Studio Control Panel.
-- **BGG ID:** TBD (set in `gameinfos.inc.php`). Game by H² Games.
+- **BGG ID:** TBD (set in `gameinfos.jsonc`). Game by H² Games.
 
 ## Current State (as of 2026-06-14)
 
 Scaffolding + full rules reference (this file). No game code yet.
 
 Open data dependencies before coding logic:
-- **Exact 52-card composition** (icon + orientation per numbered card) → `material.inc.php`.
+- **Exact 52-card composition** (icon + orientation per numbered card) → `modules/php/Material.php`.
 - The **16 Secret Santa** requirements, **10 Fad** definitions, **6 Perfect Fit** numbers, **4 Trendy Yarn** colours.
 - These come from the card faces / publisher art (request via the BGA "Request Art Files" button).
 
 Next steps:
-1. Reserve/create the project in the BGA Studio Control Panel; record the project name; request art files.
+1. Reserve/create the project in the BGA Studio Control Panel (**choose the modern/Studio template**); record the project name; request art files.
 2. Download BGA's generated skeleton via SFTP and commit it as the code baseline.
 3. Copy `.vscode/sftp.json.example` → `.vscode/sftp.json` and fill in `remotePath`.
-4. Transcribe card data into `material.inc.php`; build the state machine above.
+4. Transcribe card data into `modules/php/Material.php`; build the state classes above.
 
 ## File Structure
 
-Standard BGA layout (see `../CLAUDE.md` → "Standard BGA File Roles"). Files will be prefixed with the BGA project name once the skeleton is downloaded.
+**Modern / Studio layout** — see the framework file-roles table in `../CLAUDE.md` → "Classic vs Modern framework". Key files appear once BGA's skeleton is downloaded: `gameinfos.jsonc`, `stats.json`, `gameoptions.json`, `dbmodel.sql`, `modules/php/Material.php`, `modules/php/States/*`, and the TypeScript client.
