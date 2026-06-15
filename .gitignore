@@ -1,0 +1,9 @@
+# Local SFTP config (contains environment-specific key path) — use sftp.json.example as the template
+.vscode/sftp.json
+
+# Local-only Claude settings (the rest of .claude/ IS tracked and pushed to GitHub)
+.claude/settings.local.json
+
+# OS / editor cruft
+Thumbs.db
+.DS_Store

@@ -1,0 +1,10 @@
+{
+  "name": "BGA Studio - Ugly Christmas Sweater",
+  "host": "1.studio.boardgamearena.com",
+  "port": 2022,
+  "username": "MoSpinach",
+  "privateKeyPath": "C:/Users/Will/.ssh/bga_studio",
+  "remotePath": "/<bga-project-name>/",
+  "uploadOnSave": true,
+  "ignore": [".git", ".claude", "CLAUDE.md", ".vscode", "docs", ".gitignore", "README.md"]
+}
