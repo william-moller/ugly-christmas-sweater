@@ -136,7 +136,12 @@ Edit **`src/`**, never the generated `modules/js/Game.js` / `uglychristmassweate
 
 ## Current State (as of 2026-06-17)
 
-Modern/Studio skeleton baseline is in place and the **TypeScript/SCSS toolchain is enabled and builds clean** (fixed a skeleton glitch where `PlayerTurn.ts` used placeholder `EmptyGame*` types). **`gameinfos.jsonc` configured** (name, BGG id 285071, players 2–4, suggest 4, tie-breaker text). **`dbmodel.sql` + `modules/php/Material.php` drafted** (structure complete; see below). Still the skeleton state machine — no game logic wired yet.
+Modern/Studio skeleton baseline is in place and the **TypeScript/SCSS toolchain is enabled and builds clean** (fixed a skeleton glitch where `PlayerTurn.ts` used placeholder `EmptyGame*` types). **`gameinfos.jsonc` configured** (name, BGG id 285071, players 2–4, suggest 4, tie-breaker text). **`dbmodel.sql` + `modules/php/Material.php` drafted** (structure complete; see below). **Setup + state machine wired** — `Game.php` deals/flips/activates and the full Trade → Resolve → Draft → Knit → round-end → scoring loop is implemented as state classes; client builds clean.
+
+**State machine (`modules/php/States/`):**
+`NewRound(5)` → `PlayCard(10)` → `NextInTrick(20)` → `ResolveTrick(30)` → `DraftCard(40)` → `NextDrafter(50)` → `EndTrickCleanup(60)` → [`PlayCard` again OR `ScoreRound(70)`] → [`NewRound` OR `EndScore(98)` → end(99)]. (Old example states `PlayerTurn`/`NextPlayer` removed.) `Game.php` `setupNewGame` creates the 3 decks, deals per player-count, sets a random leader, and starts. Client handlers: `src/ts/States/PlayCard.ts` + `DraftCard.ts` (minimal button UI for now).
+
+**Implemented vs TODO (rule internals):** the control flow, dealing, follow-rule scaffold (colour works; icon-follow needs card data), trick→draft-order resolution (value + play-order; **Perfect Fit / Trendy Yarn / Ultimate-Trump TODO**), drafting/placement (auto default build/slot; **player-chosen placement + patch wilds TODO**), round-end detection, and **scoring (only base +2/sweater so far — runs/Fad/non-fad/Secret-Santa TODO**). Search `Game.php` for `TODO`.
 
 **Data model (drafted 2026-06-17):**
 - `dbmodel.sql` — three Deck-backed tables: `card` (52 sweaters, Deck-compatible + extension columns `trick_order`/`build_no`/`slot`/`wild_value`/`wild_icon`), `gameplay_card` (Perfect Fit / Trendy Yarn / Fad piles), `secret_santa` (per-player objectives). Plus `player.player_fad_points` (tie-break #2). Decks: `$this->deckFactory->createDeck('card'|'gameplay_card'|'secret_santa')`.
@@ -148,10 +153,10 @@ Open data dependencies (all TODO in `Material.php`):
 - From the card faces / publisher art — **Request Art Files requested 2026-06-17** (pending delivery).
 
 Next steps:
-1. Wire the Decks + `Material.php` into `Game.php` `setupNewGame()` (create cards, deal per player-count, flip gameplay cards, deal Secret Santas).
-2. Build the state machine from "Implementation Notes" (Trade → Resolve → Draft → Knit), replacing the placeholder `PlayerTurn`/`NextPlayer`/`EndScore`.
-3. Configure `gameoptions.jsonc` variants (player-count rules, Casual/Avid, Express, bonus cards) and `stats.jsonc`.
-4. Fill the `TODO` card data in `Material.php` once art files arrive.
+1. **Smoke-test on BGA** — upload via SFTP, restart a table, Express Start, and walk the trick→draft loop to validate the state machine end-to-end (works with placeholder/empty gameplay-card data).
+2. Fill the `TODO` card data in `Material.php` once art files arrive (icons/orientation, Fad/Secret-Santa/Perfect-Fit/Trendy-Yarn).
+3. Complete rule internals: Perfect Fit / Trendy Yarn / Ultimate-Trump resolution, full scoring (runs/Fad/non-fad/Secret Santa), patch wilds, player-chosen placement.
+4. Configure `gameoptions.jsonc` variants (Casual/Avid, Express, bonus cards) and `stats.jsonc`; build the real board UI (draft pool, trade area, knitting areas).
 
 ## File Structure
 

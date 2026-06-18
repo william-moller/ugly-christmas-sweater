@@ -1,18 +1,19 @@
 interface UglyChristmasSweaterPlayer extends Player {
-    energy: number; // any information you add on each result['players']
+    fadPoints: number; // total Fad points scored (tie-break #2)
 }
 
 interface UglyChristmasSweaterGamedatas extends Gamedatas<UglyChristmasSweaterPlayer> {
-    // Add here variables you set up in getAllDatas
+    // TODO: type the fields returned by Game::getAllDatas (hand, draftpool, trick, knitting,
+    // activeGameplay, counts, material, roundNo, leaderId) as the UI is built out.
 }
-   
+
 /*
- * Describe here the types for your state args
+ * State arg types
  */
-interface PlayerTurnArgs {
+interface PlayCardArgs {
     playableCardsIds: number[];
 }
-   
-/*
- * Describe here the types for your notif args
- */
+
+interface DraftCardArgs {
+    draftableIds: number[];
+}
