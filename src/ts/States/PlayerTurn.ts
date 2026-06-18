@@ -6,7 +6,7 @@ import { Game } from "../Game";
  * When executing code in this state, you can access the args using this.args
  */
 export class PlayerTurn {
-    constructor(private game: Game, private bga: Bga<EmptyGamePlayer, EmptyGameGamedatas>) {
+    constructor(private game: Game, private bga: Bga<UglyChristmasSweaterPlayer, UglyChristmasSweaterGamedatas>) {
     }
 
     /**

@@ -15,6 +15,9 @@ img/
 # ── Local-only Claude settings (the rest of .claude/ IS tracked → GitHub) ──
 .claude/settings.local.json
 
+# ── Node / build tooling (package-lock.json IS tracked for reproducible builds) ──
+node_modules/
+
 # ── OS / editor cruft ──
 Thumbs.db
 .DS_Store

@@ -6,33 +6,33 @@
 */
 {
     // Name of the game in English (will serve as the basis for translation)
-    "game_name": "My Great Game",
+    "game_name": "Ugly Christmas Sweaters",
 
     // Game publisher (use empty string if there is no publisher)
-    "publisher": "My Publishing Company",
+    "publisher": "H² Games",
 
     // Url of game publisher website
-    "publisher_website": "http://www.mypublishingcompany.com/",
+    "publisher_website": "",
 
     // Board Game Geek ID of the publisher
-    "publisher_bgg_id": 1234,
+    "publisher_bgg_id": 0, // TODO: set H² Games publisher BGG id (or set via Game Metadata Manager)
 
     // Board game geek ID of the game
-    "bgg_id": 186495,
+    "bgg_id": 285071,
 
     // Players configuration that can be played (ex: 2 to 4 players)
     "players": [2, 3, 4],
 
     // Suggest players to play with this number of players. Must be null if there is no such advice, or if there is only one possible player configuration.
     // NB: the automatic lobby will try first the lowest number of players if this is not specified. So you _have to_ specify this parameter if the lowest player number is not compatible with the default options.
-    "suggest_player_number": null,
+    "suggest_player_number": 4,
 
     // Discourage players to play with these numbers of players. Must be null if there is no such advice.
     "not_recommend_player_number": null,
     // "not_recommend_player_number": [2, 3],      // <= example: this is not recommended to play this game with 2 or 3 players
 
     // Estimated game duration, in minutes (used only for the launch, afterward the real duration is computed)
-    "estimated_duration": 30,
+    "estimated_duration": 40,
 
     // Time in second add to a player when "giveExtraTime" is called (speed profile = fast)
     "fast_additional_time": 30,
@@ -49,7 +49,7 @@
     // Note: if you are NOT using any tie breaker, leave the empty string.
     //
     // Example: "tie_breaker_description": "Number of remaining cards in hand",
-    "tie_breaker_description": "",
+    "tie_breaker_description": "Fewest unbuilt sweaters; if still tied, most total Fad points",
 
     // If in the game, all losers are equal (no score to rank them or explicit in the rules that losers are not ranked between them), set this to true
     // The game end result will display "Winner" for the 1st player and "Loser" for all other players

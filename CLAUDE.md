@@ -124,24 +124,30 @@ Per the Score Reference card, for **completed** sweaters only:
 
 - **Framework:** **Modern / Studio** (PHP state classes + TypeScript client).
 - **BGA project name:** `uglychristmassweater` · **SFTP remote path:** `/uglychristmassweater/` (set in the gitignored `.vscode/sftp.json`).
-- **BGG ID:** TBD (set in `gameinfos.jsonc`). Game by H² Games.
+- **BGG ID:** `285071` (set in `gameinfos.jsonc`). Game by H² Games.
 
-## Current State (as of 2026-06-14)
+## Build / Toolchain
 
-Scaffolding + full rules reference (this file) + **BGA's generated modern/Studio skeleton committed as the code baseline** (downloaded via SFTP from `/uglychristmassweater/`). Still the unmodified skeleton — no game-specific logic yet.
+TypeScript + SCSS are **enabled**. Source lives in `src/ts/` and `src/scss/`; build with:
+- `npm run build` — one-off (`rollup` compiles `src/ts/Game.ts` → `modules/js/Game.js`; `sass` compiles `src/scss/Game.scss` → `uglychristmassweater.css`).
+- `npm run watch` — rebuild on save during development.
 
-Skeleton highlights: `modules/php/Game.php` + `modules/php/States/{PlayerTurn,NextPlayer,EndScore}.php`, `modules/js/Game.js`, TypeScript source in `src-disabled/` (rename to `src/` + `npm i` to enable the TS toolchain), JSON config (`gameinfos.jsonc`, `gameoptions.jsonc`, `gamepreferences.jsonc`, `stats.jsonc`), `dbmodel.sql`. Note: **no `Material.php` is generated** — we create it when transcribing card data. `_ide_helper.php` + `bga-framework.d.ts` are BGA-provided IDE stubs (regenerable).
+Edit **`src/`**, never the generated `modules/js/Game.js` / `uglychristmassweater.css` (overwritten on build). `node_modules/` is gitignored; `package-lock.json` is committed. State handlers go in `src/ts/States/*` and register in `src/ts/Game.ts`.
+
+## Current State (as of 2026-06-17)
+
+Modern/Studio skeleton baseline is in place and the **TypeScript/SCSS toolchain is enabled and builds clean** (fixed a skeleton glitch where `PlayerTurn.ts` used placeholder `EmptyGame*` types). **`gameinfos.jsonc` configured** (name, BGG id 285071, players 2–4, suggest 4, tie-breaker text). Still essentially the skeleton state machine — no game-specific logic yet. `Material.php` not yet created.
 
 Open data dependencies before coding logic:
 - **Exact 52-card composition** (icon + orientation per numbered card) → `modules/php/Material.php` (to be created).
 - The **16 Secret Santa** requirements, **10 Fad** definitions, **6 Perfect Fit** numbers, **4 Trendy Yarn** colours.
-- These come from the card faces / publisher art (request via the BGA "Request Art Files" button).
+- These come from the card faces / publisher art — **Request Art Files requested 2026-06-17** (pending delivery).
 
 Next steps:
-1. Enable the TypeScript toolchain (`src-disabled/` → `src/`, `npm install`, wire up `rollup`/`tsconfig`).
-2. Replace the skeleton's placeholder state machine with the flow under "Implementation Notes"; define the `dbmodel.sql` card schema and create `modules/php/Material.php`.
-3. Transcribe the card data (once art files arrive) into `Material.php`.
-4. Configure `gameinfos.jsonc` (players 2–4, BGG ID) and `gameoptions.jsonc` (variants: player count rules, Casual/Avid, Express, bonus cards).
+1. Define the `dbmodel.sql` card schema and create `modules/php/Material.php` (structure now; card values once art arrives).
+2. Build the state machine from "Implementation Notes" (Trade → Resolve → Draft → Knit), replacing the placeholder `PlayerTurn`/`NextPlayer`/`EndScore`.
+3. Configure `gameoptions.jsonc` variants (player-count rules, Casual/Avid, Express, bonus cards) and `stats.jsonc`.
+4. Transcribe the card data into `Material.php` once art files arrive.
 
 ## File Structure
 
