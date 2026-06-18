@@ -15,7 +15,7 @@
     "publisher_website": "",
 
     // Board Game Geek ID of the publisher
-    "publisher_bgg_id": 0, // TODO: set H² Games publisher BGG id (or set via Game Metadata Manager)
+    "publisher_bgg_id": 46595,
 
     // Board game geek ID of the game
     "bgg_id": 285071,
