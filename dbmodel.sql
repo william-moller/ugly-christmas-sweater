@@ -23,11 +23,9 @@
 --   card_location  = 'deck' | 'hand' | 'draftpool' | 'trick' | 'knitting' | 'discard'
 --   card_location_arg = player_id for deck/hand/trick/knitting ; slot index 0..3 for draftpool
 -- NOTE: each player has their own face-down 'deck' pile (location_arg = player_id), plus a 'hand'.
--- The columns below are EXTENSIONS the Deck component does not manage — we maintain them via game SQL.
--- IMPORTANT (modern framework): the Deck component AUTO-CREATES this `card` table with only the 5
--- standard columns, so this CREATE TABLE (with extensions) is a no-op. The extension columns are
--- actually added at runtime by Game::ensureCardExtensions() (ALTER TABLE, after createCards). This
--- definition is kept for documentation and classic-framework compatibility.
+-- IMPORTANT (modern framework): the Deck component AUTO-CREATES this table with the 5 standard columns,
+-- ignoring extra columns added here. So our dynamic per-card extras live in a SEPARATE table
+-- (card_meta, below) which dbmodel.sql creates normally. Keep this table to the standard 5 columns.
 -- =====================================================================
 CREATE TABLE IF NOT EXISTS `card` (
   `card_id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
@@ -35,25 +33,27 @@ CREATE TABLE IF NOT EXISTS `card` (
   `card_type_arg` INT NOT NULL,
   `card_location` VARCHAR(16) NOT NULL,
   `card_location_arg` INT NOT NULL DEFAULT 0,
-
-  -- Trade phase (trick): order this card was played within the current trick (1..N).
-  -- Used for resolution tie-breaks ("later player wins") and Perfect-Fit "played later" priority.
-  `trick_order` TINYINT UNSIGNED DEFAULT NULL,
-
-  -- Knit phase (tableau): which sweater build in the owner's knitting area, and which L/R/B slot.
-  -- (Owner is card_location_arg when card_location = 'knitting'.)
-  `build_no` TINYINT UNSIGNED DEFAULT NULL,
-  `slot` CHAR(1) DEFAULT NULL,                 -- 'L' | 'R' | 'B'
-
-  -- Patch wild resolution (NULL for normal cards and for unresolved patches):
-  --   trick : patch copies the value+icon of the previously played card
-  --   knit  : the drafter chooses value+icon (orientation is recorded in `slot`)
-  `wild_value` TINYINT UNSIGNED DEFAULT NULL,
-  `wild_icon` VARCHAR(12) DEFAULT NULL,        -- see Material::ICONS
-
   PRIMARY KEY (`card_id`),
   KEY `idx_location` (`card_location`, `card_location_arg`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 AUTO_INCREMENT=1;
+
+-- =====================================================================
+-- card_meta : dynamic per-card extras that the Deck component does not manage.
+-- One row per card (card_id matches `card`.card_id). Maintained via game SQL (UPSERT).
+--   trick_order : play order within the current trick (resolution tie-breaks; Perfect-Fit "later wins")
+--   build_no    : which sweater build in the owner's knitting area
+--   slot        : 'L' | 'R' | 'B' — orientation slot occupied when placed in a build
+--   wild_value / wild_icon : patch resolution (trick = copied; knit = chosen; orientation in slot)
+-- =====================================================================
+CREATE TABLE IF NOT EXISTS `card_meta` (
+  `card_id` INT UNSIGNED NOT NULL,
+  `trick_order` TINYINT UNSIGNED DEFAULT NULL,
+  `build_no` TINYINT UNSIGNED DEFAULT NULL,
+  `slot` CHAR(1) DEFAULT NULL,
+  `wild_value` TINYINT UNSIGNED DEFAULT NULL,
+  `wild_icon` VARCHAR(12) DEFAULT NULL,
+  PRIMARY KEY (`card_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 
 -- =====================================================================

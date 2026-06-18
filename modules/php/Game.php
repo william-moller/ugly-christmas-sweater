@@ -94,8 +94,6 @@ class Game extends \Bga\GameFramework\Table
 
         // --- Create all decks (once) ----------------------------------------------------------
         $this->cards->createCards(Material::sweaterDeckRows(), self::LOC_SOURCE);
-        $this->ensureCardExtensions(); // the modern Deck auto-creates `card` with only the 5 standard
-                                       // columns, so add our extension columns here (not via dbmodel.sql).
         $this->createGameplayCards();
         $this->createSecretSantas();
 
@@ -147,26 +145,27 @@ class Game extends \Bga\GameFramework\Table
         }
     }
 
-    /**
-     * Add the extension columns to the Deck-managed `card` table.
-     * The modern framework's Deck component creates the table with only the 5 standard columns
-     * (card_id/type/type_arg/location/location_arg), ignoring extra columns in dbmodel.sql. So we add
-     * trick_order / build_no / slot / wild_value / wild_icon here, once, after the table exists.
-     * Guarded by a column-existence check so it is safe to call repeatedly.
-     */
-    public function ensureCardExtensions(): void
+    /** UPSERT dynamic per-card extras into card_meta. $fields = ['col' => int|string|null, ...]. */
+    public function setCardMeta(int $cardId, array $fields): void
     {
-        $cols = $this->getCollectionFromDb("SHOW COLUMNS FROM `card`");
-        if (!array_key_exists('slot', $cols)) {
-            static::DbQuery(
-                "ALTER TABLE `card`
-                   ADD COLUMN `trick_order` TINYINT UNSIGNED DEFAULT NULL,
-                   ADD COLUMN `build_no` TINYINT UNSIGNED DEFAULT NULL,
-                   ADD COLUMN `slot` CHAR(1) DEFAULT NULL,
-                   ADD COLUMN `wild_value` TINYINT UNSIGNED DEFAULT NULL,
-                   ADD COLUMN `wild_icon` VARCHAR(12) DEFAULT NULL"
-            );
+        $cols = array_keys($fields);
+        $insertCols = array_merge(['card_id'], $cols);
+        $vals = [(string) $cardId];
+        foreach ($cols as $c) {
+            $vals[] = $this->sqlVal($fields[$c]);
         }
+        $updates = array_map(fn($c) => "`$c` = VALUES(`$c`)", $cols);
+        static::DbQuery(
+            "INSERT INTO `card_meta` (`" . implode('`,`', $insertCols) . "`) VALUES (" . implode(',', $vals) . ")"
+            . " ON DUPLICATE KEY UPDATE " . implode(',', $updates)
+        );
+    }
+
+    private function sqlVal($v): string
+    {
+        if ($v === null) return 'NULL';
+        if (is_int($v)) return (string) $v;
+        return "'" . addslashes((string) $v) . "'";
     }
 
     /**
@@ -277,12 +276,13 @@ class Game extends \Bga\GameFramework\Table
     /** Fetch cards in a location INCLUDING our extension columns (Deck only returns the 5 standard ones). */
     public function getCardsWithExtras(string $location, ?int $locationArg = null): array
     {
-        $sql = "SELECT card_id id, card_type type, card_type_arg type_arg, card_location location,
-                       card_location_arg location_arg, trick_order trickOrder, build_no buildNo,
-                       slot, wild_value wildValue, wild_icon wildIcon
-                FROM card WHERE card_location = '" . addslashes($location) . "'";
+        $sql = "SELECT c.card_id id, c.card_type type, c.card_type_arg type_arg, c.card_location location,
+                       c.card_location_arg location_arg, m.trick_order trickOrder, m.build_no buildNo,
+                       m.slot slot, m.wild_value wildValue, m.wild_icon wildIcon
+                FROM `card` c LEFT JOIN `card_meta` m ON m.card_id = c.card_id
+                WHERE c.card_location = '" . addslashes($location) . "'";
         if ($locationArg !== null) {
-            $sql .= " AND card_location_arg = " . ((int) $locationArg);
+            $sql .= " AND c.card_location_arg = " . ((int) $locationArg);
         }
         return $this->getCollectionFromDb($sql);
     }
@@ -397,7 +397,7 @@ class Game extends \Bga\GameFramework\Table
     {
         $order = $this->cards->countCardInLocation(self::LOC_TRICK) + 1;
         $this->cards->moveCard($cardId, self::LOC_TRICK, $playerId);
-        static::DbQuery("UPDATE card SET trick_order = $order WHERE card_id = $cardId");
+        $this->setCardMeta($cardId, ['trick_order' => $order]);
         // TODO: if the card is a patch, resolve wild_value/wild_icon (lead = chosen; otherwise copy the
         //       previously played card). Needs the patch UI + card icon data.
     }
@@ -418,14 +418,15 @@ class Game extends \Bga\GameFramework\Table
         $face = Material::sweaters()["{$card['type']}_{$card['type_arg']}"] ?? null;
         $slot = $face['slot'] ?? Material::SLOT_LEFT;
         $this->cards->moveCard($cardId, self::LOC_KNITTING, $playerId);
-        static::DbQuery("UPDATE card SET build_no = $build, slot = '" . addslashes((string) $slot) . "' WHERE card_id = $cardId");
+        $this->setCardMeta($cardId, ['build_no' => $build, 'slot' => $slot]);
     }
 
     /** Trade-area cards become the next trick's draft pool. */
     public function rotateTrickToPool(): void
     {
         $this->cards->moveAllCardsInLocation(self::LOC_TRICK, self::LOC_DRAFTPOOL);
-        static::DbQuery("UPDATE card SET trick_order = NULL WHERE card_location = '" . self::LOC_DRAFTPOOL . "'");
+        static::DbQuery("UPDATE `card_meta` m JOIN `card` c ON c.card_id = m.card_id
+                         SET m.trick_order = NULL WHERE c.card_location = '" . self::LOC_DRAFTPOOL . "'");
     }
 
     /** Refill every hand up to HAND_SIZE from each player's personal pile. */
