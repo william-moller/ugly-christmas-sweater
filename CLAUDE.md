@@ -136,18 +136,22 @@ Edit **`src/`**, never the generated `modules/js/Game.js` / `uglychristmassweate
 
 ## Current State (as of 2026-06-17)
 
-Modern/Studio skeleton baseline is in place and the **TypeScript/SCSS toolchain is enabled and builds clean** (fixed a skeleton glitch where `PlayerTurn.ts` used placeholder `EmptyGame*` types). **`gameinfos.jsonc` configured** (name, BGG id 285071, players 2–4, suggest 4, tie-breaker text). Still essentially the skeleton state machine — no game-specific logic yet. `Material.php` not yet created.
+Modern/Studio skeleton baseline is in place and the **TypeScript/SCSS toolchain is enabled and builds clean** (fixed a skeleton glitch where `PlayerTurn.ts` used placeholder `EmptyGame*` types). **`gameinfos.jsonc` configured** (name, BGG id 285071, players 2–4, suggest 4, tie-breaker text). **`dbmodel.sql` + `modules/php/Material.php` drafted** (structure complete; see below). Still the skeleton state machine — no game logic wired yet.
 
-Open data dependencies before coding logic:
-- **Exact 52-card composition** (icon + orientation per numbered card) → `modules/php/Material.php` (to be created).
-- The **16 Secret Santa** requirements, **10 Fad** definitions, **6 Perfect Fit** numbers, **4 Trendy Yarn** colours.
-- These come from the card faces / publisher art — **Request Art Files requested 2026-06-17** (pending delivery).
+**Data model (drafted 2026-06-17):**
+- `dbmodel.sql` — three Deck-backed tables: `card` (52 sweaters, Deck-compatible + extension columns `trick_order`/`build_no`/`slot`/`wild_value`/`wild_icon`), `gameplay_card` (Perfect Fit / Trendy Yarn / Fad piles), `secret_santa` (per-player objectives). Plus `player.player_fad_points` (tie-break #2). Decks: `$this->deckFactory->createDeck('card'|'gameplay_card'|'secret_santa')`.
+- `modules/php/Material.php` — class `Material` (PSR-4, same namespace). Colour/icon/slot/VP constants; `sweaters()` builds the 52-card list; `sweaterDeckRows()` feeds `createCards`; `fads()`/`secretSantas()`/`PERFECT_FIT`/`TRENDY_YARN` structured with rulebook examples. **Card icon/orientation and the exact Fad/Secret-Santa/Perfect-Fit values are `TODO` — search Material.php for "TODO"; they need the art files.**
+
+Open data dependencies (all TODO in `Material.php`):
+- **Exact 52-card composition** — icon + orientation per numbered card (`Material::FACES`).
+- **16 Secret Santa** requirements, **10 Fad** definitions, **6 Perfect Fit** numbers, **4 Trendy Yarn** colours.
+- From the card faces / publisher art — **Request Art Files requested 2026-06-17** (pending delivery).
 
 Next steps:
-1. Define the `dbmodel.sql` card schema and create `modules/php/Material.php` (structure now; card values once art arrives).
+1. Wire the Decks + `Material.php` into `Game.php` `setupNewGame()` (create cards, deal per player-count, flip gameplay cards, deal Secret Santas).
 2. Build the state machine from "Implementation Notes" (Trade → Resolve → Draft → Knit), replacing the placeholder `PlayerTurn`/`NextPlayer`/`EndScore`.
 3. Configure `gameoptions.jsonc` variants (player-count rules, Casual/Avid, Express, bonus cards) and `stats.jsonc`.
-4. Transcribe the card data into `Material.php` once art files arrive.
+4. Fill the `TODO` card data in `Material.php` once art files arrive.
 
 ## File Structure
 
