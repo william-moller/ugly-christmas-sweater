@@ -94,6 +94,8 @@ class Game extends \Bga\GameFramework\Table
 
         // --- Create all decks (once) ----------------------------------------------------------
         $this->cards->createCards(Material::sweaterDeckRows(), self::LOC_SOURCE);
+        $this->ensureCardExtensions(); // the modern Deck auto-creates `card` with only the 5 standard
+                                       // columns, so add our extension columns here (not via dbmodel.sql).
         $this->createGameplayCards();
         $this->createSecretSantas();
 
@@ -142,6 +144,28 @@ class Game extends \Bga\GameFramework\Table
         }
         if ($rows) {
             $this->secretSantas->createCards($rows, 'box');
+        }
+    }
+
+    /**
+     * Add the extension columns to the Deck-managed `card` table.
+     * The modern framework's Deck component creates the table with only the 5 standard columns
+     * (card_id/type/type_arg/location/location_arg), ignoring extra columns in dbmodel.sql. So we add
+     * trick_order / build_no / slot / wild_value / wild_icon here, once, after the table exists.
+     * Guarded by a column-existence check so it is safe to call repeatedly.
+     */
+    public function ensureCardExtensions(): void
+    {
+        $cols = $this->getCollectionFromDb("SHOW COLUMNS FROM `card`");
+        if (!array_key_exists('slot', $cols)) {
+            static::DbQuery(
+                "ALTER TABLE `card`
+                   ADD COLUMN `trick_order` TINYINT UNSIGNED DEFAULT NULL,
+                   ADD COLUMN `build_no` TINYINT UNSIGNED DEFAULT NULL,
+                   ADD COLUMN `slot` CHAR(1) DEFAULT NULL,
+                   ADD COLUMN `wild_value` TINYINT UNSIGNED DEFAULT NULL,
+                   ADD COLUMN `wild_icon` VARCHAR(12) DEFAULT NULL"
+            );
         }
     }
 

@@ -24,6 +24,10 @@
 --   card_location_arg = player_id for deck/hand/trick/knitting ; slot index 0..3 for draftpool
 -- NOTE: each player has their own face-down 'deck' pile (location_arg = player_id), plus a 'hand'.
 -- The columns below are EXTENSIONS the Deck component does not manage — we maintain them via game SQL.
+-- IMPORTANT (modern framework): the Deck component AUTO-CREATES this `card` table with only the 5
+-- standard columns, so this CREATE TABLE (with extensions) is a no-op. The extension columns are
+-- actually added at runtime by Game::ensureCardExtensions() (ALTER TABLE, after createCards). This
+-- definition is kept for documentation and classic-framework compatibility.
 -- =====================================================================
 CREATE TABLE IF NOT EXISTS `card` (
   `card_id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
