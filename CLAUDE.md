@@ -152,10 +152,15 @@ Open data dependencies (all TODO in `Material.php`):
 - **16 Secret Santa** requirements, **10 Fad** definitions, **6 Perfect Fit** numbers, **4 Trendy Yarn** colours.
 - From the card faces / publisher art — **Request Art Files requested 2026-06-17** (pending delivery).
 
+**Board UI built (2026-06-19, not yet table-tested on BGA).** Replaced the placeholder buttons with a rendered board: a draft pool, trade area, per-player tables (header + draft-order badge + hand/pile counts + knitting area grouped into L/R/B builds), and the current player's clickable hand. Click-to-play / click-to-draft drives the existing `actPlayCard` / `actDraftCard`. Placeholder card visuals show **colour + value** with a per-colour diagonal/orthogonal **pattern for colour-blind accessibility** (rules requirement); icon + orientation render as `?` until the art lands (the markup slot is already there). Build is clean (`npm run build`, no warnings).
+- **New/changed client files:** `src/ts/CardView.ts` (placeholder card renderer + tooltip), `src/ts/Game.ts` (zone rendering from `gamedatas`, selection API `enable/disablePlayable`/`Draftable`, `notif_*` handlers), `src/ts/States/PlayCard.ts` + `DraftCard.ts` (card selection not buttons), `src/ts/types.d.ts` (full gamedatas + card + notif types), `src/scss/Game.scss`.
+- **Server notif enrichment (needed for the UI):** `cardPlayed` / `cardDrafted` now carry the full `card` row (a played card comes from a hidden hand, so its face must travel with the notification); `trickCleanup` carries the new `pool` + public `counts`; a private `handUpdate` per player delivers the refilled hand after cleanup; `getAllDatas` `players` now includes `name`/`color`. Helpers: `Game::cardForNotif()`, `Game::publicCounts()`.
+- **Client state model:** `gamedatas` is the single source of truth; `notif_*` handlers mutate it then re-render the affected zone(s). Knitting "complete" highlight keys off L/R/B slots — which all default to L until orientation data arrives, so builds will look odd until then (expected).
+
 Next steps (engine proven; remaining work):
-1. **Board UI** (not gated on art) — render hand / draft pool / trade area / knitting areas with placeholder card visuals (colour+value known) and click-to-play/draft instead of buttons; add `notif_*` handlers for the existing notifications.
-2. Fill the `TODO` card data in `Material.php` once art files arrive (icons/orientation, Fad/Secret-Santa/Perfect-Fit/Trendy-Yarn).
-3. Complete rule internals: Perfect Fit / Trendy Yarn / Ultimate-Trump resolution, full scoring (runs need only values; Fad/non-fad/Secret Santa need icons), patch wilds, player-chosen placement.
+1. **Table-test the board UI on BGA** (Express Start, 4 players) — exercise click-to-play/draft and the notif flow end-to-end; hard-refresh after upload.
+2. Fill the `TODO` card data in `Material.php` once art files arrive (icons/orientation, Fad/Secret-Santa/Perfect-Fit/Trendy-Yarn). Icon `?` and slot `?` placeholders + `ICON_GLYPH` map in `CardView.ts` light up automatically once `Material::FACES` is populated.
+3. Complete rule internals: Perfect Fit / Trendy Yarn / Ultimate-Trump resolution, full scoring (runs need only values; Fad/non-fad/Secret Santa need icons), patch wilds, player-chosen placement (the UI currently auto-places into a new build, slot L).
 4. Configure `gameoptions.jsonc` variants (Casual/Avid, Express, bonus cards) and `stats.jsonc`.
 
 ## File Structure

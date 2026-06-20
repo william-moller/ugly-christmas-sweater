@@ -235,7 +235,8 @@ class Game extends \Bga\GameFramework\Table
         $result = [];
 
         $result["players"] = $this->getCollectionFromDb(
-            "SELECT `player_id` AS `id`, `player_score` AS `score`, `player_fad_points` AS `fadPoints` FROM `player`"
+            "SELECT `player_id` AS `id`, `player_name` AS `name`, `player_color` AS `color`,
+                    `player_score` AS `score`, `player_fad_points` AS `fadPoints` FROM `player`"
         );
 
         // Private: only the current player's hand and Secret Santa(s).
@@ -249,13 +250,7 @@ class Game extends \Bga\GameFramework\Table
         $result["activeGameplay"] = $this->gameplayCards->getCardsInLocation('active');
 
         // Counts of hidden piles (for display) — per player.
-        $result["counts"] = [];
-        foreach (array_keys($result["players"]) as $pid) {
-            $result["counts"][$pid] = [
-                "hand" => $this->cards->countCardInLocation(self::LOC_HAND, $pid),
-                "pile" => $this->cards->countCardInLocation($this->pileLoc((int) $pid)),
-            ];
-        }
+        $result["counts"] = $this->publicCounts();
 
         // Static material (for client rendering + tooltips).
         $result["material"] = [
@@ -285,6 +280,35 @@ class Game extends \Bga\GameFramework\Table
             $sql .= " AND c.card_location_arg = " . ((int) $locationArg);
         }
         return $this->getCollectionFromDb($sql);
+    }
+
+    /**
+     * A single card's public row (id/type/type_arg/location + card_meta extras) for notifications.
+     * Played cards come from a hidden hand, so the face must travel with the notification for other
+     * clients to render it.
+     */
+    public function cardForNotif(int $cardId): array
+    {
+        $card = $this->cards->getCard($cardId);
+        $arg  = is_numeric($card['location_arg']) ? (int) $card['location_arg'] : null;
+        $rows = $this->getCardsWithExtras($card['location'], $arg);
+        return $rows[$cardId] ?? [
+            'id' => $cardId, 'type' => $card['type'], 'type_arg' => $card['type_arg'],
+            'location' => $card['location'], 'location_arg' => $card['location_arg'],
+        ];
+    }
+
+    /** Public per-player pile/hand counts (counts are public info; card identities are not). */
+    public function publicCounts(): array
+    {
+        $counts = [];
+        foreach (array_keys($this->loadPlayersBasicInfos()) as $pid) {
+            $counts[$pid] = [
+                'hand' => $this->cards->countCardInLocation(self::LOC_HAND, (int) $pid),
+                'pile' => $this->cards->countCardInLocation($this->pileLoc((int) $pid)),
+            ];
+        }
+        return $counts;
     }
 
     // ===========================================================================================

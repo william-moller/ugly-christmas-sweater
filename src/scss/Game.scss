@@ -38,6 +38,231 @@
 
 /********* You can start writing your SCSS below this line: **********/
 
+// =====================================================================================
+//  Ugly Christmas Sweaters — board layout (placeholder card visuals until art arrives)
+// =====================================================================================
+
+@use "sass:list";
+
+$card-w: 64px;
+$card-h: 90px;
+
+// Per-colour palette + a distinct pattern direction for colour-blind accessibility
+// (the rules require each colour to also carry a unique pattern).
+// Keys are quoted because red/green/yellow are CSS colour keywords (unquoted they'd be parsed
+// as colour values and break the class-name interpolation below).
+$colors: (
+    "purple": (#6b3fa0, 45deg),
+    "red":    (#c0392b, -45deg),
+    "green":  (#27864a, 90deg),
+    "yellow": (#d4a017, 0deg),
+);
+
+#ucs-table {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 8px;
+}
+
+.ucs-zone {
+    background: rgba(0, 0, 0, 0.04);
+    border-radius: 8px;
+    padding: 6px 8px;
+}
+
+.ucs-zone-label {
+    font-size: 12px;
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    opacity: 0.65;
+    margin-bottom: 4px;
+}
+
+.ucs-card-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    min-height: $card-h;
+    align-items: flex-start;
+}
+
+.ucs-empty {
+    font-style: italic;
+    opacity: 0.5;
+    font-size: 12px;
+    align-self: center;
+}
+
+// ---- Card ---------------------------------------------------------------------------
+
+.ucs-card {
+    position: relative;
+    width: $card-w;
+    height: $card-h;
+    border-radius: 6px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
+    color: #fff;
+    overflow: hidden;
+    flex: 0 0 auto;
+    user-select: none;
+    background: #555;
+}
+
+.ucs-card-pattern {
+    position: absolute;
+    inset: 0;
+    opacity: 0.35;
+    pointer-events: none;
+}
+
+@each $name, $spec in $colors {
+    $hex: list.nth($spec, 1);
+    $angle: list.nth($spec, 2);
+    .ucs-color-#{$name} {
+        background: $hex;
+        .ucs-card-pattern {
+            background-image: repeating-linear-gradient(
+                $angle,
+                rgba(255, 255, 255, 0.0) 0,
+                rgba(255, 255, 255, 0.0) 6px,
+                rgba(255, 255, 255, 0.9) 6px,
+                rgba(255, 255, 255, 0.9) 9px
+            );
+        }
+    }
+}
+
+.ucs-card-value {
+    position: absolute;
+    top: 2px;
+    left: 4px;
+    font-size: 20px;
+    font-weight: 800;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
+}
+
+.ucs-card-icon {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 26px;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
+}
+
+.ucs-card-slot {
+    position: absolute;
+    bottom: 2px;
+    right: 4px;
+    font-size: 12px;
+    font-weight: bold;
+    background: rgba(0, 0, 0, 0.4);
+    border-radius: 3px;
+    padding: 0 3px;
+}
+
+.ucs-patch {
+    outline: 2px dashed rgba(255, 255, 255, 0.9);
+    outline-offset: -3px;
+}
+
+.ucs-card-back {
+    background: repeating-linear-gradient(45deg, #7a1f1f, #7a1f1f 6px, #5c1414 6px, #5c1414 12px);
+}
+
+// ---- Interaction states -------------------------------------------------------------
+
+.ucs-selectable {
+    cursor: pointer;
+    outline: 3px solid #ffd54a;
+    outline-offset: 1px;
+    transition: transform 0.08s ease;
+    &:hover {
+        transform: translateY(-6px);
+    }
+}
+
+.ucs-disabled {
+    opacity: 0.45;
+    filter: grayscale(0.4);
+}
+
+// ---- Player tables / knitting -------------------------------------------------------
+
+#ucs-players {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.ucs-player-table {
+    flex: 1 1 220px;
+    border: 2px solid var(--player-color, #888);
+    border-radius: 8px;
+    padding: 6px;
+    background: rgba(0, 0, 0, 0.03);
+}
+
+.ucs-player-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 6px;
+}
+
+.ucs-player-name {
+    font-weight: bold;
+    color: var(--player-color, inherit);
+}
+
+.ucs-player-counts {
+    margin-left: auto;
+    font-size: 12px;
+    opacity: 0.75;
+}
+
+.ucs-order-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    font-size: 12px;
+    font-weight: bold;
+    color: #fff;
+    background: transparent;
+    &.ucs-has-order {
+        background: #2c3e50;
+    }
+}
+
+.ucs-knitting {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    min-height: $card-h;
+}
+
+.ucs-build {
+    display: flex;
+    gap: 3px;
+    padding: 3px;
+    border-radius: 6px;
+    border: 1px dashed rgba(0, 0, 0, 0.25);
+}
+
+.ucs-build-complete {
+    border: 2px solid #2ecc71;
+    box-shadow: 0 0 6px rgba(46, 204, 113, 0.5);
+}
+
+.ucs-owned {
+    box-shadow: 0 0 0 2px var(--player-color, transparent), 0 1px 3px rgba(0, 0, 0, 0.35);
+}
 
 /*
     Example of CSS sprites (a black token and a white token, 20x20px each, embedded in the same "tokens.png" 40x20px image):

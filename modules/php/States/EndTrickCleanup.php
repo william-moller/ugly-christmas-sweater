@@ -24,7 +24,22 @@ class EndTrickCleanup extends GameState
         $this->game->rotateTrickToPool();
         $this->game->refillHands();
 
-        $this->notify->all('trickCleanup', clienttranslate('The trick is collected; the trade area becomes the next draft pool'), []);
+        // Public: the new draft pool (was the trade area) and resynced hand/pile counts.
+        $this->notify->all(
+            'trickCleanup',
+            clienttranslate('The trick is collected; the trade area becomes the next draft pool'),
+            [
+                'pool'   => array_values($this->game->cards->getCardsInLocation(Game::LOC_DRAFTPOOL)),
+                'counts' => $this->game->publicCounts(),
+            ]
+        );
+
+        // Private: each player's refilled hand (card identities are hidden from others).
+        foreach (array_keys($this->game->loadPlayersBasicInfos()) as $pid) {
+            $this->game->notify->player((int) $pid, 'handUpdate', '', [
+                'hand' => array_values($this->game->cards->getCardsInLocation(Game::LOC_HAND, (int) $pid)),
+            ]);
+        }
 
         if ($this->game->isRoundOver()) {
             return ScoreRound::class;

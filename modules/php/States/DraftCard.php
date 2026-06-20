@@ -43,10 +43,12 @@ class DraftCard extends GameState
 
         $this->game->placeDraftedCard($card_id, $activePlayerId);
 
+        // Includes build_no / slot set by placeDraftedCard so the client can render it into the build.
         $this->notify->all('cardDrafted', clienttranslate('${player_name} drafts a sweater card'), [
             'player_id'   => $activePlayerId,
             'player_name' => $this->game->getPlayerNameById($activePlayerId),
             'card_id'     => $card_id,
+            'card'        => $this->game->cardForNotif($card_id),
         ]);
 
         // 2-player: draft a second card before passing.

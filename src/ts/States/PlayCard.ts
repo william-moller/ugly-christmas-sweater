@@ -2,7 +2,7 @@ import { Game } from "../Game";
 
 /**
  * Client handler for the PlayCard (Trade phase) state.
- * Minimal for now: shows a button per playable card. Real card-clicking UI comes with the board layout.
+ * Highlights the legally-playable cards in the active player's hand; clicking one plays it.
  */
 export class PlayCard {
     constructor(private game: Game, private bga: Bga<UglyChristmasSweaterPlayer, UglyChristmasSweaterGamedatas>) {
@@ -12,14 +12,12 @@ export class PlayCard {
         if (!isCurrentPlayerActive) {
             return;
         }
-        (args.playableCardsIds || []).forEach(cardId =>
-            this.bga.statusBar.addActionButton(
-                _('Play card ${id}').replace('${id}', `${cardId}`),
-                () => this.bga.actions.performAction('actPlayCard', { card_id: cardId })
-            )
-        );
+        this.game.enablePlayable(args.playableCardsIds || [], (cardId: number) => {
+            this.bga.actions.performAction('actPlayCard', { card_id: cardId });
+        });
     }
 
     onLeavingState(args: PlayCardArgs, isCurrentPlayerActive: boolean) {
+        this.game.disablePlayable();
     }
 }
