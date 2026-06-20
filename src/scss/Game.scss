@@ -175,13 +175,25 @@ $colors: (
 
 // ---- Interaction states -------------------------------------------------------------
 
+@keyframes ucs-pulse {
+    0%   { box-shadow: 0 0 0 3px #ffd54a, 0 0 6px 3px rgba(255, 213, 74, 0.55); }
+    50%  { box-shadow: 0 0 0 3px #ffe487, 0 0 14px 6px rgba(255, 213, 74, 0.95); }
+    100% { box-shadow: 0 0 0 3px #ffd54a, 0 0 6px 3px rgba(255, 213, 74, 0.55); }
+}
+
 .ucs-selectable {
     cursor: pointer;
+    z-index: 1;
     outline: 3px solid #ffd54a;
-    outline-offset: 1px;
-    transition: transform 0.08s ease;
+    outline-offset: 2px;
+    filter: brightness(1.08);
+    animation: ucs-pulse 1.3s ease-in-out infinite;
+    transition: transform 0.1s ease;
     &:hover {
-        transform: translateY(-6px);
+        transform: translateY(-12px) scale(1.06);
+        filter: brightness(1.18);
+        animation: none; // settle the glow while hovering the chosen card
+        box-shadow: 0 0 0 3px #ffe487, 0 6px 16px 6px rgba(255, 213, 74, 0.95);
     }
 }
 

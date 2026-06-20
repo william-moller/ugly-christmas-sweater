@@ -428,21 +428,47 @@ class Game extends \Bga\GameFramework\Table
 
     /**
      * Place a drafted card into the active player's knitting area.
-     * Default: start a new build, slot = the card's printed orientation.
-     * TODO: let the player choose the build, slot and (for patches) value/icon/orientation; "place over".
+     *
+     * TEMP PLACEHOLDER (pending art): the real rule is that each card's orientation is *printed*
+     * (Material::FACES, not yet transcribed) and the player chooses which build to place into / over.
+     * Until that data + UI exist, we auto-fill the current build by cycling L → R → B and start a new
+     * build once one completes. This is throwaway — it exists purely so the build / round-end / scoring
+     * loop is testable before the art lands. Replace wholesale with printed-orientation + player choice.
+     * TODO(art): real placement — printed slot, player-chosen build, "place over", patch wilds.
      */
     public function placeDraftedCard(int $cardId, int $playerId): void
     {
-        $maxBuild = 0;
+        // Group existing knitting cards by build to find one that isn't a complete L+R+B yet.
+        $builds = [];
         foreach ($this->getCardsWithExtras(self::LOC_KNITTING, $playerId) as $c) {
-            $maxBuild = max($maxBuild, (int) $c['buildNo']);
+            $builds[(int) $c['buildNo']][] = $c['slot'];
         }
-        $build = $maxBuild + 1;
-        $card = $this->cards->getCard($cardId);
-        $face = Material::sweaters()["{$card['type']}_{$card['type_arg']}"] ?? null;
-        $slot = $face['slot'] ?? Material::SLOT_LEFT;
+
+        $targetBuild = null;
+        foreach ($builds as $no => $slots) {
+            if (count(array_unique($slots)) < count(Material::SLOTS)) {
+                $targetBuild = $no;
+                break;
+            }
+        }
+        if ($targetBuild === null) {
+            $targetBuild = empty($builds) ? 1 : max(array_keys($builds)) + 1;
+            $usedSlots = [];
+        } else {
+            $usedSlots = $builds[$targetBuild];
+        }
+
+        // Next missing slot in L, R, B order.
+        $slot = Material::SLOT_LEFT;
+        foreach (Material::SLOTS as $s) {
+            if (!in_array($s, $usedSlots, true)) {
+                $slot = $s;
+                break;
+            }
+        }
+
         $this->cards->moveCard($cardId, self::LOC_KNITTING, $playerId);
-        $this->setCardMeta($cardId, ['build_no' => $build, 'slot' => $slot]);
+        $this->setCardMeta($cardId, ['build_no' => $targetBuild, 'slot' => $slot]);
     }
 
     /** Trade-area cards become the next trick's draft pool. */

@@ -1,5 +1,17 @@
 {
   "permissions": {
-    "allow": []
+    "allow": [
+      "Bash(git status:*)",
+      "Bash(git diff:*)",
+      "Bash(git log:*)",
+      "Bash(git add:*)",
+      "Bash(php -l:*)",
+      "Bash(npm run build)",
+      "Bash(npm run build:*)",
+      "Bash(npm run watch)",
+      "Bash(npm run watch:*)",
+      "Bash(npm install)",
+      "Bash(npm ci)"
+    ]
   }
 }
