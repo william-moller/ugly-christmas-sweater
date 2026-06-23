@@ -12,8 +12,8 @@ export class PlayCard {
         if (!isCurrentPlayerActive) {
             return;
         }
-        this.game.enablePlayable(args.playableCardsIds || [], (cardId: number) => {
-            this.bga.actions.performAction('actPlayCard', { card_id: cardId });
+        this.game.enablePlayable(args.playableCardsIds || [], (cardId: number, copyFromCardId: number) => {
+            this.bga.actions.performAction('actPlayCard', { card_id: cardId, copy_from_card_id: copyFromCardId });
         });
     }
 

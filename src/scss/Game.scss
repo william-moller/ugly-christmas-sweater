@@ -202,6 +202,64 @@ $colors: (
     filter: grayscale(0.4);
 }
 
+// The pool card the player has picked and is now placing.
+.ucs-chosen {
+    outline: 3px solid #2ecc71 !important;
+    animation: none !important;
+    transform: translateY(-6px);
+}
+
+// ---- Placement panel (choose build / patch value+icon+orientation when drafting) ----
+
+#ucs-placement {
+    background: rgba(46, 204, 113, 0.10);
+    border: 1px solid rgba(46, 204, 113, 0.5);
+}
+
+.ucs-choice-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 5px;
+    margin: 4px 0;
+}
+
+.ucs-choice-label {
+    font-size: 12px;
+    font-weight: bold;
+    opacity: 0.7;
+    min-width: 84px;
+}
+
+.ucs-choice,
+.ucs-build-btn {
+    cursor: pointer;
+    border: 1px solid rgba(0, 0, 0, 0.3);
+    border-radius: 5px;
+    background: #fff;
+    padding: 3px 8px;
+    font-size: 13px;
+    &:hover { background: #f0f0f0; }
+    &:disabled { opacity: 0.4; cursor: default; }
+}
+
+.ucs-choice.ucs-on {
+    background: #2c3e50;
+    color: #fff;
+    border-color: #2c3e50;
+}
+
+.ucs-build-btn {
+    font-weight: bold;
+}
+
+.ucs-build-btn.ucs-cancel {
+    background: transparent;
+    border-style: dashed;
+    font-weight: normal;
+    opacity: 0.8;
+}
+
 // ---- Player tables / knitting -------------------------------------------------------
 
 #ucs-players {

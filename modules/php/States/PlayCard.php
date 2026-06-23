@@ -35,13 +35,14 @@ class PlayCard extends GameState
     }
 
     #[PossibleAction]
-    public function actPlayCard(int $card_id, int $activePlayerId, array $args)
+    public function actPlayCard(int $card_id, int $copy_from_card_id, int $activePlayerId, array $args)
     {
         if (!in_array($card_id, $args['playableCardsIds'])) {
             throw new UserException(clienttranslate('You cannot play that card'));
         }
 
-        $this->game->moveCardToTrick($card_id, $activePlayerId);
+        // copy_from_card_id only matters for a LEADING patch (the pool card it copies); 0 = not supplied.
+        $this->game->moveCardToTrick($card_id, $activePlayerId, $copy_from_card_id > 0 ? $copy_from_card_id : null);
 
         // The card came from a hidden hand, so other clients need its face to render it: send the row.
         $this->notify->all('cardPlayed', clienttranslate('${player_name} plays a card'), [
@@ -63,6 +64,7 @@ class PlayCard extends GameState
     {
         $args = $this->getArgs();
         $choice = $this->getRandomZombieChoice($args['playableCardsIds']);
-        return $this->actPlayCard($choice, $playerId, $args);
+        // copy_from = 0: a leading patch falls back to the first numbered pool card server-side.
+        return $this->actPlayCard($choice, 0, $playerId, $args);
     }
 }

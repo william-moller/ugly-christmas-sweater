@@ -1,6 +1,6 @@
 import { PlayCard } from "./States/PlayCard";
 import { DraftCard } from "./States/DraftCard";
-import { createCardElement, createCardBack, cardTooltip } from "./CardView";
+import { createCardElement, createCardBack, cardTooltip, faceOf, isPatch } from "./CardView";
 
 type CardMapT = { [cardId: number]: SweaterCard };
 
@@ -10,9 +10,16 @@ export class Game {
 
     // Selection state for the active player (set by the PlayCard / DraftCard state handlers).
     private playableIds: number[] = [];
-    private onPlay: ((cardId: number) => void) | null = null;
+    private onPlay: ((cardId: number, copyFromCardId: number) => void) | null = null;
+    private selectedPlayId: number | null = null;
+
+    // Drafting / placement selection state.
     private draftableIds: number[] = [];
-    private onDraft: ((cardId: number) => void) | null = null;
+    private onDraftComplete: ((cardId: number, placement: DraftPlacement) => void) | null = null;
+    private selectedDraftId: number | null = null;
+    private patchValue: number | null = null;
+    private patchIcon: string | null = null;
+    private patchSlot: string | null = null;
 
     // Current draft order (player ids, best-first) for the order badges.
     private draftOrder: number[] = [];
@@ -38,6 +45,7 @@ export class Game {
             <div id="ucs-table">
                 <div id="ucs-gameplay" class="ucs-zone"></div>
                 <div id="ucs-draft-pool" class="ucs-zone"></div>
+                <div id="ucs-placement" class="ucs-zone" style="display:none"></div>
                 <div id="ucs-trade-area" class="ucs-zone"></div>
                 <div id="ucs-players"></div>
                 <div id="ucs-my-hand" class="ucs-zone"></div>
@@ -109,7 +117,10 @@ export class Game {
             this.attachTooltip(el, card);
             if (this.draftableIds.includes(Number(card.id))) {
                 el.classList.add('ucs-selectable');
-                el.addEventListener('click', () => this.onDraft && this.onDraft(Number(card.id)));
+                if (Number(card.id) === this.selectedDraftId) {
+                    el.classList.add('ucs-chosen');
+                }
+                el.addEventListener('click', () => this.selectDraft(Number(card.id)));
             }
             row.appendChild(el);
         });
@@ -226,7 +237,10 @@ export class Game {
             this.attachTooltip(el, card);
             if (this.playableIds.includes(Number(card.id))) {
                 el.classList.add('ucs-selectable');
-                el.addEventListener('click', () => this.onPlay && this.onPlay(Number(card.id)));
+                if (Number(card.id) === this.selectedPlayId) {
+                    el.classList.add('ucs-chosen');
+                }
+                el.addEventListener('click', () => this.selectPlay(Number(card.id)));
             } else if (this.playableIds.length) {
                 el.classList.add('ucs-disabled'); // a play is required but this card can't follow
             }
@@ -253,28 +267,231 @@ export class Game {
     //  Selection API — called by the PlayCard / DraftCard state handlers
     // ===================================================================================
 
-    public enablePlayable(ids: number[], onPlay: (cardId: number) => void) {
+    public enablePlayable(ids: number[], onPlay: (cardId: number, copyFromCardId: number) => void) {
         this.playableIds = ids;
         this.onPlay = onPlay;
+        this.selectedPlayId = null;
         this.renderHand();
+        this.hidePanel();
     }
 
     public disablePlayable() {
         this.playableIds = [];
         this.onPlay = null;
+        this.selectedPlayId = null;
         this.renderHand();
+        this.hidePanel();
     }
 
-    public enableDraftable(ids: number[], onDraft: (cardId: number) => void) {
+    /** A hand card was clicked. A leading Patch needs a pool card to copy first; everything else plays now. */
+    private selectPlay(cardId: number) {
+        if (!this.onPlay) return;
+        const card = this.gamedatas.hand[cardId];
+        const leading = this.cardArray(this.gamedatas.trick).length === 0;
+        if (card && isPatch(card, this.material) && leading) {
+            this.selectedPlayId = cardId;
+            this.renderHand();
+            this.renderPatchCopyPanel(cardId);
+        } else {
+            this.completePlay(cardId, 0);
+        }
+    }
+
+    private completePlay(cardId: number, copyFromCardId: number) {
+        const cb = this.onPlay;
+        this.selectedPlayId = null;
+        this.hidePanel();
+        this.renderHand();
+        cb && cb(cardId, copyFromCardId);
+    }
+
+    /** Leading with a patch: choose which numbered draft-pool card it copies (value + icon). */
+    private renderPatchCopyPanel(cardId: number) {
+        const panel = document.getElementById('ucs-placement');
+        if (!panel) return;
+        panel.style.display = '';
+
+        const sources = this.cardArray(this.gamedatas.draftpool).filter((c) => !isPatch(c, this.material));
+        const btns = sources.map((c) => {
+            const f = faceOf(c, this.material);
+            const icon = f.icon ?? '?';
+            return `<button class="ucs-build-btn" data-pool="${c.id}">${f.color} ${f.value} · ${icon}</button>`;
+        }).join('');
+
+        panel.innerHTML = `
+            <div class="ucs-zone-label">Leading with a Patch — copy a draft-pool card's value &amp; icon</div>
+            <div class="ucs-choice-row">${btns || '<span class="ucs-empty">No numbered pool card to copy</span>'}</div>
+            <div class="ucs-choice-row"><button class="ucs-build-btn ucs-cancel" data-cancel="1">Cancel</button></div>
+        `;
+        panel.querySelectorAll<HTMLButtonElement>('.ucs-build-btn').forEach((btn) => {
+            btn.addEventListener('click', () => {
+                if (btn.dataset.cancel) {
+                    this.selectedPlayId = null;
+                    this.hidePanel();
+                    this.renderHand();
+                    return;
+                }
+                this.completePlay(cardId, Number(btn.dataset.pool));
+            });
+        });
+    }
+
+    /** Hide and clear the shared placement / patch-copy panel. */
+    private hidePanel() {
+        const panel = document.getElementById('ucs-placement');
+        if (panel) {
+            panel.style.display = 'none';
+            panel.innerHTML = '';
+        }
+    }
+
+    /** Enter the draft phase for the active player: pool cards become selectable. */
+    public beginDraft(ids: number[], onComplete: (cardId: number, placement: DraftPlacement) => void) {
         this.draftableIds = ids;
-        this.onDraft = onDraft;
+        this.onDraftComplete = onComplete;
+        this.clearDraftSelection();
         this.renderDraftPool();
+        this.renderPlacementPanel();
     }
 
-    public disableDraftable() {
+    public endDraft() {
         this.draftableIds = [];
-        this.onDraft = null;
+        this.onDraftComplete = null;
+        this.clearDraftSelection();
         this.renderDraftPool();
+        this.renderPlacementPanel();
+    }
+
+    private clearDraftSelection() {
+        this.selectedDraftId = null;
+        this.patchValue = null;
+        this.patchIcon = null;
+        this.patchSlot = null;
+    }
+
+    /** A pool card was clicked: select it and open the placement panel. */
+    private selectDraft(cardId: number) {
+        this.clearDraftSelection();
+        this.selectedDraftId = cardId;
+        this.renderDraftPool();
+        this.renderPlacementPanel();
+    }
+
+    /** The active player's builds: buildNo -> set of occupied slots. */
+    private buildsOf(playerId: number): { [buildNo: number]: Set<string> } {
+        const res: { [buildNo: number]: Set<string> } = {};
+        this.cardArray(this.gamedatas.knitting)
+            .filter((c) => Number(c.location_arg) === playerId)
+            .forEach((c) => {
+                const b = Number(c.buildNo ?? 0);
+                (res[b] ||= new Set<string>()).add(String(c.slot));
+            });
+        return res;
+    }
+
+    /** The slot the currently-selected card will occupy (printed for a normal card; chosen for a patch). */
+    private selectedSlot(): string | null {
+        if (this.selectedDraftId == null) return null;
+        const card = this.gamedatas.draftpool[this.selectedDraftId];
+        if (!card) return null;
+        return isPatch(card, this.material) ? this.patchSlot : (faceOf(card, this.material).slot ?? null);
+    }
+
+    /** Render the placement panel for the selected draft card (or hide it when nothing is selected). */
+    private renderPlacementPanel() {
+        const panel = document.getElementById('ucs-placement');
+        if (!panel) return;
+
+        if (this.selectedDraftId == null || !this.onDraftComplete) {
+            panel.style.display = 'none';
+            panel.innerHTML = '';
+            return;
+        }
+        panel.style.display = '';
+
+        const card = this.gamedatas.draftpool[this.selectedDraftId];
+        const patch = card ? isPatch(card, this.material) : false;
+        const slot = this.selectedSlot();
+
+        const parts: string[] = [`<div class="ucs-zone-label">Place your drafted card</div>`];
+
+        // Patch: choose value, icon, orientation.
+        if (patch) {
+            const values = Array.from({ length: 12 }, (_, i) => i + 1)
+                .map((v) => `<button class="ucs-choice ${this.patchValue === v ? 'ucs-on' : ''}" data-kind="value" data-val="${v}">${v}</button>`)
+                .join('');
+            const icons = this.material.icons
+                .map((ic) => `<button class="ucs-choice ${this.patchIcon === ic ? 'ucs-on' : ''}" data-kind="icon" data-val="${ic}">${ic}</button>`)
+                .join('');
+            const slots = ['L', 'R', 'B']
+                .map((s) => `<button class="ucs-choice ${this.patchSlot === s ? 'ucs-on' : ''}" data-kind="slot" data-val="${s}">${s}</button>`)
+                .join('');
+            parts.push(`
+                <div class="ucs-choice-row"><span class="ucs-choice-label">Value</span>${values}</div>
+                <div class="ucs-choice-row"><span class="ucs-choice-label">Icon</span>${icons}</div>
+                <div class="ucs-choice-row"><span class="ucs-choice-label">Orientation</span>${slots}</div>
+            `);
+        }
+
+        // Build targets — enabled once the slot is known (always, for a normal card).
+        const ready = slot != null && (!patch || (this.patchValue != null && this.patchIcon != null));
+        const builds = this.buildsOf(this.myId);
+        const buildBtns: string[] = [];
+        Object.keys(builds).map(Number).sort((a, b) => a - b).forEach((no) => {
+            const occupied = slot != null && builds[no].has(slot);
+            const label = occupied ? `Sweater ${no} (replace ${slot})` : `Sweater ${no} (add ${slot ?? '?'})`;
+            buildBtns.push(`<button class="ucs-build-btn" data-build="${no}" ${ready ? '' : 'disabled'}>${label}</button>`);
+        });
+        buildBtns.push(`<button class="ucs-build-btn" data-build="0" ${ready ? '' : 'disabled'}>＋ New sweater</button>`);
+        parts.push(`<div class="ucs-choice-row"><span class="ucs-choice-label">Place into</span>${buildBtns.join('')}</div>`);
+        parts.push(`<div class="ucs-choice-row"><button class="ucs-build-btn ucs-cancel" data-cancel="1">Cancel</button></div>`);
+
+        panel.innerHTML = parts.join('');
+
+        // Wire up the buttons.
+        panel.querySelectorAll<HTMLButtonElement>('.ucs-choice').forEach((btn) => {
+            btn.addEventListener('click', () => {
+                const kind = btn.dataset.kind!;
+                const val = btn.dataset.val!;
+                if (kind === 'value') this.patchValue = Number(val);
+                else if (kind === 'icon') this.patchIcon = val;
+                else if (kind === 'slot') this.patchSlot = val;
+                this.renderPlacementPanel();
+            });
+        });
+        panel.querySelectorAll<HTMLButtonElement>('.ucs-build-btn').forEach((btn) => {
+            btn.addEventListener('click', () => {
+                if (btn.dataset.cancel) {
+                    this.clearDraftSelection();
+                    this.renderDraftPool();
+                    this.renderPlacementPanel();
+                    return;
+                }
+                if (!btn.disabled) this.completeDraft(Number(btn.dataset.build));
+            });
+        });
+    }
+
+    /** Submit the draft with the chosen placement, then clear the local selection UI. */
+    private completeDraft(buildNo: number) {
+        if (this.selectedDraftId == null || !this.onDraftComplete) return;
+        const card = this.gamedatas.draftpool[this.selectedDraftId];
+        const patch = card ? isPatch(card, this.material) : false;
+        const slot = this.selectedSlot();
+        if (slot == null) return;
+
+        const placement: DraftPlacement = {
+            build_no: buildNo,
+            slot,
+            wild_value: patch ? (this.patchValue ?? 0) : 0,
+            wild_icon: patch ? (this.patchIcon ?? '') : '',
+        };
+        const id = this.selectedDraftId;
+        const cb = this.onDraftComplete;
+        this.clearDraftSelection();
+        this.renderDraftPool();
+        this.renderPlacementPanel();
+        cb(id, placement);
     }
 
     // ===================================================================================
@@ -305,12 +522,16 @@ export class Game {
         this.renderCounts(args.player_id);
     }
 
-    /** A card was drafted from the pool into a player's knitting area. */
+    /** A card was drafted from the pool into a player's knitting area (possibly placed over a piece). */
     async notif_cardDrafted(args: NotifCardDrafted) {
         const id = Number(args.card_id);
         delete this.gamedatas.draftpool[id];
+        if (args.replaced_card_id != null) {
+            delete this.gamedatas.knitting[Number(args.replaced_card_id)];
+        }
         this.gamedatas.knitting[id] = args.card;
         this.renderDraftPool();
+        this.renderPlacementPanel();
         this.renderKnitting(args.player_id);
     }
 

@@ -44,11 +44,17 @@ export function createCardElement(card: SweaterCard, material: UcsMaterial): HTM
         el.classList.add('ucs-patch');
     }
 
-    // Value: patches show a star (wild) until resolved.
-    const valueLabel = face.patch ? '★' : String(face.value);
+    // A placed patch carries its chosen value/icon on the card row (wildValue / wildIcon); a regular
+    // card uses its printed face. An unresolved patch shows a wild star / placeholder.
+    const wildValue = card.wildValue != null && card.wildValue !== '' ? Number(card.wildValue) : null;
+    const wildIcon = card.wildIcon != null && card.wildIcon !== '' ? String(card.wildIcon) : null;
 
-    // Icon: known glyph, or "?" placeholder until the art data lands.
-    const iconLabel = face.icon ? (ICON_GLYPH[face.icon] ?? face.icon) : '?';
+    // Value: chosen patch value, else printed value, else a wild star for an unresolved patch.
+    const valueLabel = wildValue != null ? String(wildValue) : (face.patch ? '★' : String(face.value));
+
+    // Icon: chosen patch icon or printed icon → glyph; "?" placeholder until art, "✶" for a wild patch.
+    const effIcon = wildIcon ?? face.icon;
+    const iconLabel = effIcon ? (ICON_GLYPH[effIcon] ?? effIcon) : (face.patch ? '✶' : '?');
 
     // Orientation: prefer the card's placed slot (knitting), else the printed slot, else placeholder.
     const slotRaw = (card.slot as string) ?? face.slot ?? null;

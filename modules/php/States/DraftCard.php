@@ -9,6 +9,7 @@ use Bga\GameFramework\States\GameState;
 use Bga\GameFramework\States\PossibleAction;
 use Bga\GameFramework\UserException;
 use Bga\Games\UglyChristmasSweater\Game;
+use Bga\Games\UglyChristmasSweater\Material;
 
 /**
  * Draft phase. In draft order, the active player takes a card from the draft pool and places it into
@@ -35,20 +36,30 @@ class DraftCard extends GameState
     }
 
     #[PossibleAction]
-    public function actDraftCard(int $card_id, int $activePlayerId, array $args)
-    {
+    public function actDraftCard(
+        int $card_id, int $build_no, string $slot, int $wild_value, string $wild_icon,
+        int $activePlayerId, array $args
+    ) {
         if (!in_array($card_id, $args['draftableIds'])) {
             throw new UserException(clienttranslate('That card is not in the draft pool'));
         }
 
-        $this->game->placeDraftedCard($card_id, $activePlayerId);
+        // Patch params are only meaningful for a patch; empty/zero means "not supplied".
+        $placement = $this->game->placeDraftedCard(
+            $card_id, $activePlayerId, $build_no,
+            $slot !== '' ? $slot : null,
+            $wild_value > 0 ? $wild_value : null,
+            $wild_icon !== '' ? $wild_icon : null,
+        );
 
-        // Includes build_no / slot set by placeDraftedCard so the client can render it into the build.
+        // The card row (incl. build_no / slot / wild value+icon) lets every client render the placement;
+        // replaced_card_id (if any) tells them to drop the piece that was placed over.
         $this->notify->all('cardDrafted', clienttranslate('${player_name} drafts a sweater card'), [
-            'player_id'   => $activePlayerId,
-            'player_name' => $this->game->getPlayerNameById($activePlayerId),
-            'card_id'     => $card_id,
-            'card'        => $this->game->cardForNotif($card_id),
+            'player_id'        => $activePlayerId,
+            'player_name'      => $this->game->getPlayerNameById($activePlayerId),
+            'card_id'          => $card_id,
+            'card'             => $this->game->cardForNotif($card_id),
+            'replaced_card_id' => $placement['replaced_card_id'],
         ]);
 
         // 2-player: draft a second card before passing.
@@ -67,6 +78,8 @@ class DraftCard extends GameState
             return NextDrafter::class;
         }
         $choice = $this->getRandomZombieChoice($args['draftableIds']);
-        return $this->actDraftCard($choice, $playerId, $args);
+        // Abandoned player: any legal placement is fine. A new sweater always is; for a patch the
+        // value/icon/slot below are valid (and ignored outright for a regular printed card).
+        return $this->actDraftCard($choice, 0, Material::SLOT_LEFT, 1, Material::ICON_SNOWMAN, $playerId, $args);
     }
 }

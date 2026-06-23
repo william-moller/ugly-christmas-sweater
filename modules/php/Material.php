@@ -56,18 +56,70 @@ class Material
 
     /**
      * Per-card face data: the printed ICON and ORIENTATION for each of the 48 numbered cards.
+     * Key = "<color>_<value>". Transcribed from the physical card faces (2026-06-22).
      *
-     * TODO: transcribe from the art files. Key = "<color>_<value>".
-     *       Format: 'red_7' => ['icon' => self::ICON_SNOWMAN, 'slot' => self::SLOT_LEFT],
-     * Anything absent from this map resolves to icon=null / slot=null in sweaters() (flags the gap).
+     * Orientation is a PRINTED property of the card (not player-chosen) — only Patches let the player
+     * pick the slot. Note the deck's regular structure (a useful integrity check):
+     *   - Orientation by value 1..12 is the same for every colour: L R B  B R L  L R B  B R L
+     *     (so each colour has exactly 4 of each slot, and 3 cards of each icon).
+     *   - Icons run in blocks of three (values 1-3, 4-6, 7-9, 10-12); the block order rotates per colour:
+     *     green = bell, snowman, candycane, tree | red = tree, bell, snowman, candycane
+     *     yellow = snowman, candycane, tree, bell | purple = candycane, tree, bell, snowman.
+     * Anything absent from this map resolves to icon=null / slot=null in sweaters() (flags a gap).
      */
     const FACES = [
-        // ----- purple_1 .. purple_12 -----
-        // 'purple_1'  => ['icon' => self::ICON_, 'slot' => self::SLOT_],
-        // ----- red_1 .. red_12 -----
-        // 'red_7'     => ['icon' => self::ICON_SNOWMAN, 'slot' => self::SLOT_LEFT],   // (example only)
         // ----- green_1 .. green_12 -----
+        'green_1'   => ['icon' => self::ICON_BELL,       'slot' => self::SLOT_LEFT],
+        'green_2'   => ['icon' => self::ICON_BELL,       'slot' => self::SLOT_RIGHT],
+        'green_3'   => ['icon' => self::ICON_BELL,       'slot' => self::SLOT_BOTTOM],
+        'green_4'   => ['icon' => self::ICON_SNOWMAN,    'slot' => self::SLOT_BOTTOM],
+        'green_5'   => ['icon' => self::ICON_SNOWMAN,    'slot' => self::SLOT_RIGHT],
+        'green_6'   => ['icon' => self::ICON_SNOWMAN,    'slot' => self::SLOT_LEFT],
+        'green_7'   => ['icon' => self::ICON_CANDY_CANE, 'slot' => self::SLOT_LEFT],
+        'green_8'   => ['icon' => self::ICON_CANDY_CANE, 'slot' => self::SLOT_RIGHT],
+        'green_9'   => ['icon' => self::ICON_CANDY_CANE, 'slot' => self::SLOT_BOTTOM],
+        'green_10'  => ['icon' => self::ICON_TREE,       'slot' => self::SLOT_BOTTOM],
+        'green_11'  => ['icon' => self::ICON_TREE,       'slot' => self::SLOT_RIGHT],
+        'green_12'  => ['icon' => self::ICON_TREE,       'slot' => self::SLOT_LEFT],
+        // ----- red_1 .. red_12 -----
+        'red_1'     => ['icon' => self::ICON_TREE,       'slot' => self::SLOT_LEFT],
+        'red_2'     => ['icon' => self::ICON_TREE,       'slot' => self::SLOT_RIGHT],
+        'red_3'     => ['icon' => self::ICON_TREE,       'slot' => self::SLOT_BOTTOM],
+        'red_4'     => ['icon' => self::ICON_BELL,       'slot' => self::SLOT_BOTTOM],
+        'red_5'     => ['icon' => self::ICON_BELL,       'slot' => self::SLOT_RIGHT],
+        'red_6'     => ['icon' => self::ICON_BELL,       'slot' => self::SLOT_LEFT],
+        'red_7'     => ['icon' => self::ICON_SNOWMAN,    'slot' => self::SLOT_LEFT],
+        'red_8'     => ['icon' => self::ICON_SNOWMAN,    'slot' => self::SLOT_RIGHT],
+        'red_9'     => ['icon' => self::ICON_SNOWMAN,    'slot' => self::SLOT_BOTTOM],
+        'red_10'    => ['icon' => self::ICON_CANDY_CANE, 'slot' => self::SLOT_BOTTOM],
+        'red_11'    => ['icon' => self::ICON_CANDY_CANE, 'slot' => self::SLOT_RIGHT],
+        'red_12'    => ['icon' => self::ICON_CANDY_CANE, 'slot' => self::SLOT_LEFT],
         // ----- yellow_1 .. yellow_12 -----
+        'yellow_1'  => ['icon' => self::ICON_SNOWMAN,    'slot' => self::SLOT_LEFT],
+        'yellow_2'  => ['icon' => self::ICON_SNOWMAN,    'slot' => self::SLOT_RIGHT],
+        'yellow_3'  => ['icon' => self::ICON_SNOWMAN,    'slot' => self::SLOT_BOTTOM],
+        'yellow_4'  => ['icon' => self::ICON_CANDY_CANE, 'slot' => self::SLOT_BOTTOM],
+        'yellow_5'  => ['icon' => self::ICON_CANDY_CANE, 'slot' => self::SLOT_RIGHT],
+        'yellow_6'  => ['icon' => self::ICON_CANDY_CANE, 'slot' => self::SLOT_LEFT],
+        'yellow_7'  => ['icon' => self::ICON_TREE,       'slot' => self::SLOT_LEFT],
+        'yellow_8'  => ['icon' => self::ICON_TREE,       'slot' => self::SLOT_RIGHT],
+        'yellow_9'  => ['icon' => self::ICON_TREE,       'slot' => self::SLOT_BOTTOM],
+        'yellow_10' => ['icon' => self::ICON_BELL,       'slot' => self::SLOT_BOTTOM],
+        'yellow_11' => ['icon' => self::ICON_BELL,       'slot' => self::SLOT_RIGHT],
+        'yellow_12' => ['icon' => self::ICON_BELL,       'slot' => self::SLOT_LEFT],
+        // ----- purple_1 .. purple_12 -----
+        'purple_1'  => ['icon' => self::ICON_CANDY_CANE, 'slot' => self::SLOT_LEFT],
+        'purple_2'  => ['icon' => self::ICON_CANDY_CANE, 'slot' => self::SLOT_RIGHT],
+        'purple_3'  => ['icon' => self::ICON_CANDY_CANE, 'slot' => self::SLOT_BOTTOM],
+        'purple_4'  => ['icon' => self::ICON_TREE,       'slot' => self::SLOT_BOTTOM],
+        'purple_5'  => ['icon' => self::ICON_TREE,       'slot' => self::SLOT_RIGHT],
+        'purple_6'  => ['icon' => self::ICON_TREE,       'slot' => self::SLOT_LEFT],
+        'purple_7'  => ['icon' => self::ICON_BELL,       'slot' => self::SLOT_LEFT],
+        'purple_8'  => ['icon' => self::ICON_BELL,       'slot' => self::SLOT_RIGHT],
+        'purple_9'  => ['icon' => self::ICON_BELL,       'slot' => self::SLOT_BOTTOM],
+        'purple_10' => ['icon' => self::ICON_SNOWMAN,    'slot' => self::SLOT_BOTTOM],
+        'purple_11' => ['icon' => self::ICON_SNOWMAN,    'slot' => self::SLOT_RIGHT],
+        'purple_12' => ['icon' => self::ICON_SNOWMAN,    'slot' => self::SLOT_LEFT],
     ];
 
     /**
@@ -89,8 +141,8 @@ class Material
                 $face = self::FACES[$key] ?? ['icon' => null, 'slot' => null];
                 $cards[$key] = [
                     'color' => $color, 'value' => $v,
-                    'icon'  => $face['icon'], // TODO (from art)
-                    'slot'  => $face['slot'], // TODO (from art)
+                    'icon'  => $face['icon'], // printed face (Material::FACES)
+                    'slot'  => $face['slot'], // printed orientation (Material::FACES)
                     'patch' => false,
                 ];
             }
