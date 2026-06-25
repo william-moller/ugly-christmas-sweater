@@ -179,6 +179,21 @@ Next steps (engine + board UI proven; remaining work):
 3. Remaining rule internals: **Perfect Fit / Trendy Yarn / Ultimate-Trump** resolution; **full scoring** (three-consecutive-numbers needs only values → doable now; Fad/non-fad/Secret-Santa need the data in #2). *(Trade-phase patch wilds done 2026-06-22.)*
 4. Configure `gameoptions.jsonc` variants (Casual/Avid, Express, bonus cards) and `stats.jsonc`.
 
+## Backlog — UX & polish (future, unordered)
+
+Captured 2026-06-24 from a planning brain-dump. **Not prioritised**; not yet started. Notes point at the relevant BGA mechanism/file where known.
+
+1. **Player panels.** Per-player summary in the standard BGA player-panel area: score, # sweaters in Knitting Area (in-progress), # completed sweaters, etc. Build the panel HTML in `setup()` and keep it live via `notif_*` (counts already exist via `Game::publicCounts()`).
+2. **Card movement animations.** Slide/deal/draft animations. **Depends on art files** — defer until faces land so we animate real cards, not placeholders.
+3. **"How to Play" rules.** Write the in-client `gamehelp`/rules text + the BGA tutorial. Source: `docs/ugly-christmas-sweater-rules.pdf`.
+4. **Automation of forced moves.** Never make a player click when there is no choice: auto-resolve/skip server-side. Candidates — only one legal card to follow; a draft where only one pool card remains for the last drafter; forced placement when a piece can only go one place. Keep it explicit in the log so players see what happened.
+5. **Undo / reset turn.** Allow undo for errant clicks / new-player mistakes, but **only before shared info is revealed and before the turn ends** (no undo once a card is public or play passes on). BGA supports turn-level undo savepoints — investigate the modern framework's undo API. Not everything needs undo; scope it to the high-regret, no-info-leak actions.
+6. **Self-tableau focus.** A player's own area (their Secret Santa, Knitting Area, hand, plus the shared zones) is the primary view; other players' public tableaus are reachable by clicking over but must not clutter the personal view. Implies a layout/IA change from the current all-players-stacked board.
+7. **Responsive design.** Must work on BGA mobile/tablet — relative units, viewport scaling, reflow. Tie to #6 (the focus model helps small screens).
+8. **Player preferences & game settings.** Two distinct buckets: pre-game **game modes/options** → `gameoptions.jsonc` (difficulty, 2P/3P/Casual-Avid/Express, bonus cards); in-game **preferences** → `gamepreferences.jsonc` (card size, active-card indicator, show game log, show tooltips, etc.).
+9. **Simultaneous decisions.** Investigate BGA `multipleactiveplayer` states where order doesn't matter. Likely limited here (trade follows turn order; drafting follows draft order) — possible candidates: initial Secret Santa peek, or non-interacting placements. May not apply; evaluate.
+10. **Tooltips.** Mandatory for release (every card/icon needs name + rules). Extend the existing `cardTooltip`; add tooltips for gameplay cards, Secret Santa, draft-order badges, zones.
+
 ## File Structure
 
 **Modern / Studio layout** — see the framework file-roles table in `../CLAUDE.md` → "Classic vs Modern framework". Key files appear once BGA's skeleton is downloaded: `gameinfos.jsonc`, `stats.json`, `gameoptions.json`, `dbmodel.sql`, `modules/php/Material.php`, `modules/php/States/*`, and the TypeScript client.
