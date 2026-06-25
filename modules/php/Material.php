@@ -227,16 +227,54 @@ class Material
      *
      * Format: ['id'=>int, 'name'=>clienttranslate('...'), 'needs'=>['<kind>:<value>', x3]]
      *   where <kind> is 'color' or 'icon'.  e.g. ['icon:candycane','icon:candycane','color:purple'].
-     * TODO: transcribe all 16 from the art. Examples below are from the rulebook.
+     *   'needs' is an unordered multiset of exactly 3 requirements (a completed sweater's 3 pieces
+     *   must cover them; each piece counts toward EITHER its colour or its icon, orientation ignored).
+     *
+     * ⚠️ PARTIAL / UNRESOLVED (2026-06-24): 15 of 16 transcribed; the colour/icon REQUIREMENTS are the
+     * trusted data. The 16th card is missing, and TITLES are deliberately NOT recorded here — they vary
+     * by game edition, so the publisher art is the source of truth for the exact names, the missing
+     * card, and any requirement corrections. 'name' below is a generated placeholder (the requirement
+     * spelled out), to be replaced once the art lands.
+     *
+     * Strong hypothesis for the missing #16 (flagged for verification, NOT yet added): the 15 known
+     * cards use 15 distinct (colour, icon) pairs out of the 16 possible — the only absent pair is
+     * **purple + candy cane**. Each colour and each icon is otherwise balanced 2×"2-of" + 2×"1-of",
+     * which is only completed if #16 is **1 Purple + 2 Candy Canes**. Confirm against the art.
      */
     public static function secretSantas(): array
     {
         return [
-            // 1 => ['id'=>1, 'name'=>clienttranslate('Auntie Jaimie'),
-            //       'needs'=>['icon:candycane','icon:candycane','color:purple']],     // 2 Candy Canes + 1 Purple
-            // 2 => ['id'=>2, 'name'=>clienttranslate('Rambunctious Sister Rain'),
-            //       'needs'=>['icon:snowman','icon:snowman','color:yellow']],          // 2 Snowmen + 1 Yellow
-            // ... TODO remaining (16 total)
+            1  => ['id'=>1,  'name'=>clienttranslate('1 Green + 2 Trees'),
+                   'needs'=>['color:green', 'icon:tree', 'icon:tree']],
+            2  => ['id'=>2,  'name'=>clienttranslate('2 Red + 1 Candy Cane'),
+                   'needs'=>['color:red', 'color:red', 'icon:candycane']],
+            3  => ['id'=>3,  'name'=>clienttranslate('1 Red + 2 Snowmen'),
+                   'needs'=>['color:red', 'icon:snowman', 'icon:snowman']],
+            4  => ['id'=>4,  'name'=>clienttranslate('1 Purple + 2 Bells'),
+                   'needs'=>['color:purple', 'icon:bell', 'icon:bell']],
+            5  => ['id'=>5,  'name'=>clienttranslate('1 Yellow + 2 Candy Canes'),
+                   'needs'=>['color:yellow', 'icon:candycane', 'icon:candycane']],
+            6  => ['id'=>6,  'name'=>clienttranslate('2 Yellow + 1 Bell'),
+                   'needs'=>['color:yellow', 'color:yellow', 'icon:bell']],
+            7  => ['id'=>7,  'name'=>clienttranslate('2 Green + 1 Candy Cane'),
+                   'needs'=>['color:green', 'color:green', 'icon:candycane']],
+            8  => ['id'=>8,  'name'=>clienttranslate('2 Purple + 1 Snowman'),
+                   'needs'=>['color:purple', 'color:purple', 'icon:snowman']],
+            9  => ['id'=>9,  'name'=>clienttranslate('1 Green + 2 Bells'),
+                   'needs'=>['color:green', 'icon:bell', 'icon:bell']],
+            10 => ['id'=>10, 'name'=>clienttranslate('2 Green + 1 Snowman'),
+                   'needs'=>['color:green', 'color:green', 'icon:snowman']],
+            11 => ['id'=>11, 'name'=>clienttranslate('1 Yellow + 2 Snowmen'),
+                   'needs'=>['color:yellow', 'icon:snowman', 'icon:snowman']],
+            12 => ['id'=>12, 'name'=>clienttranslate('1 Red + 2 Trees'),
+                   'needs'=>['color:red', 'icon:tree', 'icon:tree']],
+            13 => ['id'=>13, 'name'=>clienttranslate('2 Purple + 1 Tree'),
+                   'needs'=>['color:purple', 'color:purple', 'icon:tree']],
+            14 => ['id'=>14, 'name'=>clienttranslate('2 Red + 1 Bell'),
+                   'needs'=>['color:red', 'color:red', 'icon:bell']],
+            15 => ['id'=>15, 'name'=>clienttranslate('2 Yellow + 1 Tree'),
+                   'needs'=>['color:yellow', 'color:yellow', 'icon:tree']],
+            // 16 => MISSING — likely 1 Purple + 2 Candy Canes (see hypothesis above); add once art confirms.
         ];
     }
 
