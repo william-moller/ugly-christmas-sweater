@@ -160,7 +160,9 @@ Modern/Studio skeleton baseline is in place and the **TypeScript/SCSS toolchain 
 
 Open data dependencies (TODO in `Material.php`):
 - ~~Exact 52-card composition — icon + orientation per numbered card (`Material::FACES`).~~ **DONE 2026-06-22.**
-- **16 Secret Santa** requirements, **10 Fad** definitions, **6 Perfect Fit** numbers, **4 Trendy Yarn** colours — still pending.
+- ~~**6 Perfect Fit** numbers~~ **DONE 2026-06-24** (values 1–6). · ~~**4 Trendy Yarn** colours~~ **DONE 2026-06-24** (one per colour).
+- **10 Fad** definitions — **5 types transcribed 2026-06-24** (Clash Is In + one colour⇄icon fad per colour: red⇄candycane, green⇄tree, yellow⇄bell, purple⇄snowman). **Deck distribution still UNRESOLVED**: 10 physical cards, unconfirmed whether 2× each of these 5 or a different mix; deck currently built from the 5 unique fads. Revisit when the full 10-card list is known.
+- **16 Secret Santa** requirements — still pending.
 - Card-face *art* (`img/`) still pending (**Request Art Files requested 2026-06-17**); the placeholder renderer shows colour+value+icon-glyph+slot from `Material::FACES` in the meantime.
 
 **Knitting layout = sweater silhouette (2026-06-24).** Each build now renders L/R top-row + B centred below (`.ucs-build` CSS grid + `renderKnitting` per-piece `grid-area`); see "Card art & sweater layout" above. Confirmed the clarified knitting rules (distinct sweaters, never merged; "place over" only onto the *same* orientation) already match the engine — `placeDraftedCard` fixes each card's slot and only replaces a same-slot occupant, with no merge path. Continuous cross-card art still pending art files. Build clean (`npm run build`); not yet pushed/table-tested.
@@ -173,7 +175,7 @@ Open data dependencies (TODO in `Material.php`):
 
 Next steps (engine + board UI proven; remaining work):
 1. **Test on BGA (not yet done):** (a) the **icon-follow rule** + **real placement / patch-draft placement panel** added 2026-06-22 — verify colour-OR-icon dimming, printed orientation, build choice, "place over", and patch value/icon/orientation selection; (b) the round-end → `ScoreRound` → `NewRound` loop (completion is now intentional, so build 3 sweaters or empty hands). *(Trade→Draft→cleanup loop verified on BGA 2026-06-19.)*
-2. **Remaining `Material.php` data** (needs the publisher card lists, not the art images): **16 Secret Santa**, **10 Fad**, **6 Perfect Fit**, **4 Trendy Yarn**. (`Material::FACES` icon/orientation already done.)
+2. **Remaining `Material.php` data** (needs the publisher card lists, not the art images): **16 Secret Santa**; **Fad deck distribution** (5 fad types done; confirm whether 10 cards = 2× each or another mix). (`Material::FACES`, **6 Perfect Fit**, **4 Trendy Yarn** done 2026-06-24.)
 3. Remaining rule internals: **Perfect Fit / Trendy Yarn / Ultimate-Trump** resolution; **full scoring** (three-consecutive-numbers needs only values → doable now; Fad/non-fad/Secret-Santa need the data in #2). *(Trade-phase patch wilds done 2026-06-22.)*
 4. Configure `gameoptions.jsonc` variants (Casual/Avid, Express, bonus cards) and `stats.jsonc`.
 

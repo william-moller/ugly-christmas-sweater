@@ -170,17 +170,17 @@ class Material
 
     /**
      * PERFECT FIT (6 cards) — "super trump": a sweater card whose value matches takes the trick.
-     * TODO: confirm the 6 printed numbers from the art (values 1..12).
+     * Confirmed 2026-06-24: one card per value 1..6.
      * @var int[]
      */
-    const PERFECT_FIT = [/* TODO e.g. 4, 5, ... (6 values) */];
+    const PERFECT_FIT = [1, 2, 3, 4, 5, 6];
 
     /**
-     * TRENDY YARN (4 cards) — trump colour for the round. Almost certainly one card per colour.
-     * TODO: confirm against the art (each entry is a Material::COLOR_*).
+     * TRENDY YARN (4 cards) — trump colour for the round. One card per colour.
+     * Confirmed 2026-06-24: exactly one card for each of the four sweater colours.
      * @var string[]
      */
-    const TRENDY_YARN = self::COLORS; // assumption: one per colour — verify
+    const TRENDY_YARN = self::COLORS;
 
     /**
      * FADS (10 cards) — round bonus scoring. Each fad lists up to two objectives, each worth VP_FAD.
@@ -188,17 +188,31 @@ class Material
      * The special "Clash Is In" fad scores when all three pieces are different colours AND icons.
      *
      * Format per fad:
-     *   ['id' => int, 'objectives' => [ ['match'=>'color','value'=>COLOR_*], ['match'=>'icon','value'=>ICON_*] ]]
-     *   or ['id' => int, 'clash' => true]
-     * TODO: transcribe all 10 from the art. Examples below are from the rulebook.
+     *   ['id'=>int, 'title'=>clienttranslate('...'),
+     *    'objectives' => [ ['match'=>'color','value'=>COLOR_*], ['match'=>'icon','value'=>ICON_*] ]]
+     *   or ['id'=>int, 'title'=>clienttranslate('...'), 'clash'=>true]
+     *
+     * ⚠️ DECK DISTRIBUTION UNRESOLVED (2026-06-24): the physical Fad deck has **10** cards, but it is
+     * not yet confirmed whether that is 2 copies of each of these 5 types, or a different mix (there
+     * may be further types not yet transcribed). The 5 types below ARE confirmed; note they form a
+     * tidy complete-looking set — one colour⇄icon fad per colour (red⇄candycane, green⇄tree,
+     * yellow⇄bell, purple⇄snowman) plus Clash Is In — which hints at "2× each" but is NOT verified.
+     * Until the distribution is confirmed the deck is built from these 5 unique fads
+     * (gameplayDeckRows keys card_type_arg off 'id'); revisit when the full 10-card list is known.
      */
     public static function fads(): array
     {
         return [
-            // 1 => ['id'=>1, 'objectives'=>[['match'=>'color','value'=>self::COLOR_RED],   ['match'=>'icon','value'=>self::ICON_CANDY_CANE]]], // "All Red / All Candy Canes"
-            // 2 => ['id'=>2, 'objectives'=>[['match'=>'color','value'=>self::COLOR_GREEN], ['match'=>'icon','value'=>self::ICON_TREE]]],       // "All Green / All Trees"
-            // 3 => ['id'=>3, 'clash'=>true], // "Clash Is In"
-            // ... TODO remaining fads (10 total)
+            1 => ['id'=>1, 'title'=>clienttranslate('Clash Is In'), 'clash'=>true], // no matching colours or icons
+            2 => ['id'=>2, 'title'=>clienttranslate('All Red / All Candy Canes'),
+                  'objectives'=>[['match'=>'color','value'=>self::COLOR_RED],    ['match'=>'icon','value'=>self::ICON_CANDY_CANE]]],
+            3 => ['id'=>3, 'title'=>clienttranslate('All Green / All Trees'),
+                  'objectives'=>[['match'=>'color','value'=>self::COLOR_GREEN],  ['match'=>'icon','value'=>self::ICON_TREE]]],
+            4 => ['id'=>4, 'title'=>clienttranslate('All Yellow / All Bells'),
+                  'objectives'=>[['match'=>'color','value'=>self::COLOR_YELLOW], ['match'=>'icon','value'=>self::ICON_BELL]]],
+            5 => ['id'=>5, 'title'=>clienttranslate('All Purple / All Snowmen'),
+                  'objectives'=>[['match'=>'color','value'=>self::COLOR_PURPLE], ['match'=>'icon','value'=>self::ICON_SNOWMAN]]],
+            // TODO: remaining cards to reach 10 physical fads — distribution unresolved (see note above).
         ];
     }
 
