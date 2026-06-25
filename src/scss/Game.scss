@@ -318,7 +318,15 @@ $colors: (
 }
 
 .ucs-build {
-    display: flex;
+    // Lay the three pieces out as a sweater silhouette: L and R side-by-side on top,
+    // B centred across the bottom (matches the physical card art). Incomplete builds keep
+    // the full 2x2 grid so the missing slots read as gaps in the sweater shape.
+    display: grid;
+    grid-template-columns: repeat(2, $card-w);
+    grid-template-areas:
+        "L R"
+        "B B";
+    justify-items: center;
     gap: 3px;
     padding: 3px;
     border-radius: 6px;

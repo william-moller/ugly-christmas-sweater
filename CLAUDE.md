@@ -32,6 +32,16 @@ A Board Game Arena adaptation of **Ugly Christmas Sweaters** by Hunter R. Hennig
 - **Icon:** Snowmen, Candy Canes, Bells, or Trees.
 - **Orientation:** Left / Right / Bottom (L/R/B) — which third of a sweater this piece is. Shown on the "Christmas light" under the number.
 
+**Card art & sweater layout (spec'd 2026-06-24, from publisher card photo).** Each card depicts one third of a knitted sweater so that the three orientations assemble into one continuous garment:
+- **L** = upper-left third (left shoulder/sleeve + left of the body). **R** = upper-right third (right shoulder/sleeve + right of the body). **B** = the lower third (waist/hem band), drawn to sit centred *beneath* L and R.
+- A completed sweater therefore lays out as a silhouette — **L and R side-by-side on top, B centred across the bottom**:
+  ```
+  [L][R]
+   [ B ]
+  ```
+- Each card shows its **value in the top-left corner** with the **icon string ("Christmas light")** running just beneath the number; the rest of the card is the sweater artwork for that third.
+- **UI implementation:** the Knitting Area renders each build with this grid (`src/scss/Game.scss` → `.ucs-build` uses `grid-template-areas: "L R" / "B B"`; `Game.ts::renderKnitting` sets each piece's `grid-area` from its slot). Incomplete builds keep the full 2×2 grid so missing pieces read as gaps in the sweater shape. The continuous cross-card artwork awaits the art files; the placeholder renderer still shows colour+value+icon+slot.
+
 **Deck composition (TRANSCRIBED 2026-06-22 — `Material::FACES`):** 48 numbered cards = 12 values × 4 colours, plus **4 Patches** (one per colour) = 52. The icon + orientation of each of the 48 numbered cards is printed on the card and has now been transcribed into `Material::FACES`. The data has a regular structure (a useful integrity check): orientation by value 1..12 is identical for every colour — `L R B · B R L · L R B · B R L` (4 of each slot per colour); icons run in blocks of three (1-3,4-6,7-9,10-12) whose order rotates per colour (green=bell,snowman,candycane,tree / red=tree,bell,snowman,candycane / yellow=snowman,candycane,tree,bell / purple=candycane,tree,bell,snowman).
 
 **Patches** = wild Sweater Cards (one per colour; **colour is fixed, value/icon/orientation are wild**):
@@ -74,7 +84,8 @@ After drafting: the Trade Area cards shift over to become the new Draft Pool, cl
 ## Knit Phase (set collection / tableau building)
 
 - Your **Knitting Area** holds in-progress and completed sweaters. A **completed sweater = one Left + one Right + one Bottom** piece.
-- Build as many sweaters as you like. **Once a card is placed it cannot move to a different sweater**, but a newly drafted card **may be placed *over* an existing piece** (replacing it; the replaced card is discarded from the build).
+- Build as many sweaters as you like. **Each placed card belongs to one distinct sweater and never moves** — sweaters can **never be merged** (you can't combine two already-started sweaters, nor relocate a placed piece into another sweater).
+- A **newly drafted card** (only the card being placed this turn) may either **start a new sweater** or be **added to any already-started sweater**. Adding includes **placing it *over* a previously-played piece of the *same* L/R/B orientation** (replace L with L, R with R, B with B); the covered card is discarded from the build. You can only place a card into the slot matching its own orientation.
 - **Round-end trigger:** when **any player completes their 3rd sweater** (Express: 4th). Players drafting *after* the trigger in the current Draft Order still draft & place. (2P: keep drafting until the Draft Pool empties — you can finish a 4th sweater.) A round **also ends if all hands are exhausted**.
 - **Unfinished sweaters are wiped and do not score.**
 
@@ -151,6 +162,8 @@ Open data dependencies (TODO in `Material.php`):
 - ~~Exact 52-card composition — icon + orientation per numbered card (`Material::FACES`).~~ **DONE 2026-06-22.**
 - **16 Secret Santa** requirements, **10 Fad** definitions, **6 Perfect Fit** numbers, **4 Trendy Yarn** colours — still pending.
 - Card-face *art* (`img/`) still pending (**Request Art Files requested 2026-06-17**); the placeholder renderer shows colour+value+icon-glyph+slot from `Material::FACES` in the meantime.
+
+**Knitting layout = sweater silhouette (2026-06-24).** Each build now renders L/R top-row + B centred below (`.ucs-build` CSS grid + `renderKnitting` per-piece `grid-area`); see "Card art & sweater layout" above. Confirmed the clarified knitting rules (distinct sweaters, never merged; "place over" only onto the *same* orientation) already match the engine — `placeDraftedCard` fixes each card's slot and only replaces a same-slot occupant, with no merge path. Continuous cross-card art still pending art files. Build clean (`npm run build`); not yet pushed/table-tested.
 
 **Board UI built and table-tested on BGA (2026-06-19).** Replaced the placeholder buttons with a rendered board: a draft pool, trade area, per-player tables (header + draft-order badge + hand/pile counts + knitting area grouped into L/R/B builds), and the current player's clickable hand. Click-to-play / click-to-draft drives the existing `actPlayCard` / `actDraftCard`; selectable cards get a **pulsing gold glow** + hover lift. Placeholder card visuals show **colour + value** with a per-colour diagonal/orthogonal **pattern for colour-blind accessibility** (rules requirement); icon + orientation render as `?` until the art lands (the markup slot is already there). Build is clean (`npm run build`, no warnings). **A 4-player table ran 3 full tricks through the new UI cleanly** — render, the colour-follow dimming, hand/pile counts, drafting, trade→pool rotation, and refill (`handUpdate`) all verified correct on BGA.
 - **New/changed client files:** `src/ts/CardView.ts` (placeholder card renderer + tooltip), `src/ts/Game.ts` (zone rendering from `gamedatas`, selection API `enable/disablePlayable`/`Draftable`, `notif_*` handlers), `src/ts/States/PlayCard.ts` + `DraftCard.ts` (card selection not buttons), `src/ts/types.d.ts` (full gamedatas + card + notif types), `src/scss/Game.scss`.

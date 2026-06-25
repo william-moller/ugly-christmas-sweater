@@ -309,7 +309,10 @@
 }
 
 .ucs-build {
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(2, 64px);
+  grid-template-areas: "L R" "B B";
+  justify-items: center;
   gap: 3px;
   padding: 3px;
   border-radius: 6px;

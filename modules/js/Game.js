@@ -308,6 +308,12 @@ class Game {
                 build.classList.add('ucs-build-complete');
             builds[buildNo].forEach((card) => {
                 const el = createCardElement(card, this.material);
+                // Position each piece into the sweater silhouette: L top-left, R top-right,
+                // B centred below (grid areas defined in .ucs-build). A floating patch with no
+                // chosen orientation auto-flows.
+                const slot = card.slot ?? faceOf(card, this.material).slot ?? null;
+                if (slot)
+                    el.style.gridArea = slot;
                 this.attachTooltip(el, card);
                 build.appendChild(el);
             });
