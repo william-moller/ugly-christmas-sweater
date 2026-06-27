@@ -39,6 +39,28 @@ interface UglyChristmasSweaterPlayer extends Player {
     fadPoints: number; // total Fad points scored (tie-break #2)
 }
 
+/** One revealed gameplay card (Perfect Fit / Trendy Yarn / Fad). */
+interface GameplayCard {
+    id: number | string;
+    type: string;               // 'perfectfit' | 'trendyyarn' | 'fad'
+    type_arg: number | string;  // value / colour index / fad id
+    location: string;
+    location_arg: number | string;
+}
+
+/** A gameplay deck: the current face-up card plus how many cards remain / have been revealed. */
+interface GameplayPile {
+    active: GameplayCard | null;
+    deckCount: number;
+    seenCount: number;
+}
+
+interface GameplayState {
+    perfectfit: GameplayPile;
+    trendyyarn: GameplayPile;
+    fad: GameplayPile;
+}
+
 /** A map keyed by card id, as PHP getCollectionFromDb / Deck::getCardsInLocation return. */
 type CardMap = { [cardId: number]: SweaterCard };
 
@@ -53,7 +75,7 @@ interface UglyChristmasSweaterGamedatas extends Gamedatas<UglyChristmasSweaterPl
     draftpool: CardMap;
     trick: CardMap;                // cards played this trick
     knitting: CardMap;             // all players' knitting-area cards (location_arg = player id)
-    activeGameplay: CardMap;
+    gameplay: GameplayState;       // the three round-parameter decks (Perfect Fit / Trendy Yarn / Fad)
     counts: { [playerId: number]: PlayerCounts };
     material: UcsMaterial;
     roundNo: number;
@@ -108,4 +130,8 @@ interface NotifTrickCleanup {
 
 interface NotifHandUpdate {
     hand: SweaterCard[]; // the receiving player's refilled hand
+}
+
+interface NotifGameplayRevealed {
+    gameplay: GameplayState; // the round-parameter decks after revealing the new round's cards
 }

@@ -114,22 +114,43 @@ class Game extends \Bga\GameFramework\Table
         return PlayCard::class;
     }
 
-    /** Create the Perfect Fit / Trendy Yarn / Fad cards from Material into their piles. */
+    /** The three gameplay-card decks (each shuffled and revealed independently). */
+    const GAMEPLAY_TYPES = ['perfectfit', 'trendyyarn', 'fad'];
+
+    /** Face-down draw pile for a gameplay deck. */
+    public function gpDeckLoc(string $type): string
+    {
+        return "deck_$type";
+    }
+
+    /** Revealed stack for a gameplay deck (cards accumulate; the highest location_arg is the current one). */
+    public function gpSeenLoc(string $type): string
+    {
+        return "seen_$type";
+    }
+
+    /**
+     * Create the Perfect Fit / Trendy Yarn / Fad cards from Material, each into its own face-down draw
+     * pile, and shuffle each pile separately.
+     */
     public function createGameplayCards(): void
     {
-        $rows = [];
-        foreach (Material::PERFECT_FIT as $i => $value) {
-            $rows[] = ['type' => 'perfectfit', 'type_arg' => $value, 'nbr' => 1];
+        $byType = ['perfectfit' => [], 'trendyyarn' => [], 'fad' => []];
+        foreach (Material::PERFECT_FIT as $value) {
+            $byType['perfectfit'][] = ['type' => 'perfectfit', 'type_arg' => $value, 'nbr' => 1];
         }
-        foreach (Material::TRENDY_YARN as $i => $color) {
+        foreach (Material::TRENDY_YARN as $color) {
             // store colour as an index so type_arg stays int
-            $rows[] = ['type' => 'trendyyarn', 'type_arg' => array_search($color, Material::COLORS), 'nbr' => 1];
+            $byType['trendyyarn'][] = ['type' => 'trendyyarn', 'type_arg' => array_search($color, Material::COLORS), 'nbr' => 1];
         }
         foreach (Material::fads() as $fad) {
-            $rows[] = ['type' => 'fad', 'type_arg' => $fad['id'], 'nbr' => 1];
+            $byType['fad'][] = ['type' => 'fad', 'type_arg' => $fad['id'], 'nbr' => 1];
         }
-        if ($rows) {
-            $this->gameplayCards->createCards($rows, 'pile'); // each kind separated by card_type
+        foreach (self::GAMEPLAY_TYPES as $type) {
+            if ($byType[$type]) {
+                $this->gameplayCards->createCards($byType[$type], $this->gpDeckLoc($type));
+                $this->gameplayCards->shuffle($this->gpDeckLoc($type));
+            }
         }
     }
 
@@ -193,8 +214,8 @@ class Game extends \Bga\GameFramework\Table
             $this->cards->pickCards(self::HAND_SIZE, $this->pileLoc($pid), $pid); // pile -> hand
         }
 
-        // 4) Flip the round's gameplay cards (Perfect Fit / Trendy Yarn / Fad).
-        $this->flipGameplayCards();
+        // 4) Reveal the round's gameplay cards (Perfect Fit / Trendy Yarn / Fad).
+        $this->revealGameplayCards();
 
         // 5) Deal one Secret Santa per player (Casual). TODO: Avid variant deals 3 at game start.
         $this->dealSecretSantas();
@@ -210,14 +231,48 @@ class Game extends \Bga\GameFramework\Table
         return "pile_$playerId";
     }
 
-    /** Flip the top of each gameplay pile to 'active'. TODO: difficulty/options + Express cycling. */
-    public function flipGameplayCards(): void
+    /**
+     * Reveal one new card from the top of each gameplay deck. The revealed card goes on top of that
+     * deck's "seen" stack (its location_arg = stack index, so the highest is the current one); the
+     * previous reveal stays underneath for the rest of the game (never returned to the deck).
+     * Called once per round (round 1 in setup, later rounds in NewRound).
+     * TODO: respect a Beginner/Novice/Expert difficulty option (reveal only Fad / +Trendy Yarn / +all).
+     */
+    public function revealGameplayCards(): void
     {
-        foreach (['perfectfit', 'trendyyarn', 'fad'] as $type) {
-            // move any currently-active card of this type to discard, then flip a new one
-            // (no-op until Material data exists)
-            // TODO: respect Beginner/Novice/Expert (only flip Fad / +Trendy Yarn / +Perfect Fit).
+        foreach (self::GAMEPLAY_TYPES as $type) {
+            if ($this->gameplayCards->getCardOnTop($this->gpDeckLoc($type)) === null) {
+                continue; // deck exhausted (shouldn't happen within the 3 base rounds)
+            }
+            $nextArg = $this->gameplayCards->countCardInLocation($this->gpSeenLoc($type));
+            $this->gameplayCards->pickCardForLocation($this->gpDeckLoc($type), $this->gpSeenLoc($type), $nextArg);
         }
+    }
+
+    /** The current (most recently revealed) card of a gameplay deck, or null if none revealed yet. */
+    public function activeGameplayCard(string $type): ?array
+    {
+        $best = null;
+        foreach ($this->gameplayCards->getCardsInLocation($this->gpSeenLoc($type)) as $c) {
+            if ($best === null || (int) $c['location_arg'] > (int) $best['location_arg']) {
+                $best = $c;
+            }
+        }
+        return $best;
+    }
+
+    /** Per-deck gameplay state for the client: the current face-up card + remaining/seen counts. */
+    public function getGameplayState(): array
+    {
+        $out = [];
+        foreach (self::GAMEPLAY_TYPES as $type) {
+            $out[$type] = [
+                'active'    => $this->activeGameplayCard($type),
+                'deckCount' => $this->gameplayCards->countCardInLocation($this->gpDeckLoc($type)),
+                'seenCount' => $this->gameplayCards->countCardInLocation($this->gpSeenLoc($type)),
+            ];
+        }
+        return $out;
     }
 
     /** Deal one Secret Santa to each player for the round. */
@@ -247,7 +302,7 @@ class Game extends \Bga\GameFramework\Table
         $result["draftpool"] = $this->cards->getCardsInLocation(self::LOC_DRAFTPOOL);
         $result["trick"]     = $this->getCardsWithExtras(self::LOC_TRICK);
         $result["knitting"]  = $this->getCardsWithExtras(self::LOC_KNITTING);
-        $result["activeGameplay"] = $this->gameplayCards->getCardsInLocation('active');
+        $result["gameplay"] = $this->getGameplayState();
 
         // Counts of hidden piles (for display) — per player.
         $result["counts"] = $this->publicCounts();
@@ -653,12 +708,8 @@ class Game extends \Bga\GameFramework\Table
     /** The active Fad for the round (round-bonus parameter), or null if none is active. */
     public function activeFad(): ?array
     {
-        foreach ($this->gameplayCards->getCardsInLocation('active') as $c) {
-            if ($c['type'] === 'fad') {
-                return Material::fads()[(int) $c['type_arg']] ?? null;
-            }
-        }
-        return null;
+        $c = $this->activeGameplayCard('fad');
+        return $c ? (Material::fads()[(int) $c['type_arg']] ?? null) : null;
     }
 
     /**

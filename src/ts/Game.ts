@@ -32,6 +32,9 @@ export class Game {
     // Current draft order (player ids, best-first) for the order badges.
     private draftOrder: number[] = [];
 
+    // Monotonic counter for assigning ids to gameplay-card elements (so tooltips can attach).
+    private gpSeq = 0;
+
     constructor(bga: Bga<UglyChristmasSweaterPlayer, UglyChristmasSweaterGamedatas>) {
         console.log('uglychristmassweater constructor');
         this.bga = bga;
@@ -103,16 +106,88 @@ export class Game {
         this.renderHand();
     }
 
-    /** Active round-parameter cards (Perfect Fit / Trendy Yarn / Fad). Placeholder until art lands. */
+    /**
+     * The three round-parameter decks (Perfect Fit / Trendy Yarn / Fad), shown off to the side and
+     * public to all players. Each shows its face-down draw pile (with the count remaining) and the
+     * current face-up revealed card; previous reveals stay stacked beneath. Placeholder faces until art.
+     */
     private renderGameplay() {
         const zone = document.getElementById('ucs-gameplay')!;
-        const active = this.cardArray(this.gamedatas.activeGameplay);
-        if (!active.length) {
-            zone.innerHTML = `<div class="ucs-zone-label">Round parameters: pending card data</div>`;
-            return;
+        zone.innerHTML = `<div class="ucs-zone-label">Round Parameters</div>`;
+        const row = document.createElement('div');
+        row.className = 'ucs-gameplay-row';
+        const gp = this.gamedatas.gameplay;
+        ([
+            ['perfectfit', 'Perfect Fit'],
+            ['trendyyarn', 'Trendy Yarn'],
+            ['fad', 'Fads'],
+        ] as const).forEach(([type, label]) => {
+            row.appendChild(this.gameplayPileEl(type, label, gp?.[type]));
+        });
+        zone.appendChild(row);
+    }
+
+    /** One gameplay deck: label, the current face-up card, and the face-down draw pile + count. */
+    private gameplayPileEl(type: string, label: string, pile: GameplayPile | undefined): HTMLElement {
+        const wrap = document.createElement('div');
+        wrap.className = 'ucs-gp-pile';
+        wrap.innerHTML = `<div class="ucs-gp-label">${label}</div>`;
+
+        const cards = document.createElement('div');
+        cards.className = 'ucs-gp-cards';
+
+        // The current revealed card (with a "stacked" look when earlier reveals sit beneath it).
+        const active = document.createElement('div');
+        active.className = 'ucs-gp-active';
+        if (pile && (pile.seenCount ?? 0) > 1) active.classList.add('ucs-gp-stacked');
+        active.appendChild(this.gameplayCardEl(type, pile?.active ?? null));
+        cards.appendChild(active);
+
+        // The face-down draw pile + how many cards remain.
+        const deck = document.createElement('div');
+        deck.className = 'ucs-gp-deck';
+        const remaining = pile?.deckCount ?? 0;
+        deck.innerHTML = `<div class="ucs-card ucs-card-back ucs-gp-back ${remaining ? '' : 'ucs-gp-empty'}"></div>`
+            + `<div class="ucs-gp-count">${remaining} left</div>`;
+        cards.appendChild(deck);
+
+        wrap.appendChild(cards);
+        return wrap;
+    }
+
+    /** Placeholder face for a revealed gameplay card (colour swatch / value / fad title). */
+    private gameplayCardEl(type: string, card: GameplayCard | null): HTMLElement {
+        const el = document.createElement('div');
+        el.className = 'ucs-card ucs-gp-card';
+        if (!card) {
+            el.classList.add('ucs-gp-none');
+            el.innerHTML = `<div class="ucs-gp-face">—</div>`;
+            return el;
         }
-        zone.innerHTML = `<div class="ucs-zone-label">Round parameters</div>`;
-        // TODO: render Perfect Fit / Trendy Yarn / Fad faces once Material gameplay data is populated.
+        const arg = Number(card.type_arg);
+        if (type === 'perfectfit') {
+            el.innerHTML = `<div class="ucs-gp-kind">Perfect Fit</div><div class="ucs-gp-big">${arg}</div>`;
+            (this.bga.gameui as any).addTooltipHtml?.(this.gpId(el), `<strong>Perfect Fit ${arg}</strong><br>Cards of value ${arg} are the super-trump this round.`);
+        } else if (type === 'trendyyarn') {
+            const color = this.material.colors[arg] ?? String(arg);
+            el.classList.add(`ucs-color-${color}`);
+            el.innerHTML = `<div class="ucs-card-pattern"></div><div class="ucs-gp-kind">Trendy Yarn</div>`
+                + `<div class="ucs-gp-big">${color.charAt(0).toUpperCase()}</div>`;
+            (this.bga.gameui as any).addTooltipHtml?.(this.gpId(el), `<strong>Trendy Yarn: ${color}</strong><br>${color.charAt(0).toUpperCase() + color.slice(1)} is the trump colour this round.`);
+        } else {
+            const fad = this.material.fads[arg];
+            const title = fad?.title ?? `Fad ${arg}`;
+            el.classList.add('ucs-gp-fad');
+            el.innerHTML = `<div class="ucs-gp-kind">Fad</div><div class="ucs-gp-fad-title">${title}</div>`;
+            (this.bga.gameui as any).addTooltipHtml?.(this.gpId(el), `<strong>${title}</strong><br>Round scoring bonus (applies to all players).`);
+        }
+        return el;
+    }
+
+    /** Ensure an element has an id (so a tooltip can attach), and return it. */
+    private gpId(el: HTMLElement): string {
+        if (!el.id) el.id = `ucs-gp-${++this.gpSeq}`;
+        return el.id;
     }
 
     private renderDraftPool() {
@@ -750,5 +825,11 @@ export class Game {
         }
         this.renderHand();
         this.renderCounts(this.myId);
+    }
+
+    /** A new round revealed fresh gameplay cards — refresh the round-parameter decks. */
+    async notif_gameplayRevealed(args: NotifGameplayRevealed) {
+        this.gamedatas.gameplay = args.gameplay;
+        this.renderGameplay();
     }
 }

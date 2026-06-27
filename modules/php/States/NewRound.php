@@ -22,6 +22,12 @@ class NewRound extends GameState
     function onEnteringState()
     {
         $this->game->setupRound();
+
+        // setupRound() revealed this round's new gameplay cards — push them to the clients.
+        $this->notify->all('gameplayRevealed', clienttranslate('New round parameters revealed'), [
+            'gameplay' => $this->game->getGameplayState(),
+        ]);
+
         return PlayCard::class;
     }
 }
