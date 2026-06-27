@@ -342,6 +342,43 @@
   box-shadow: 0 0 6px rgba(46, 204, 113, 0.5);
 }
 
+.ucs-target {
+  cursor: pointer;
+}
+
+.ucs-target-replace {
+  z-index: 1;
+  outline: 3px solid #ffd54a;
+  outline-offset: -2px;
+  animation: ucs-pulse 1.3s ease-in-out infinite;
+}
+.ucs-target-replace:hover {
+  filter: brightness(1.15);
+}
+
+.ucs-ghost {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(46, 204, 113, 0.14);
+  border: 2px dashed #2ecc71;
+  box-shadow: none;
+  color: #2ecc71;
+}
+.ucs-ghost:hover {
+  background: rgba(46, 204, 113, 0.3);
+}
+
+.ucs-ghost-label {
+  font-size: 26px;
+  font-weight: 800;
+  opacity: 0.75;
+}
+
+.ucs-build-new {
+  border-style: dashed;
+}
+
 .ucs-build .ucs-slot-B {
   transform: rotate(90deg);
 }

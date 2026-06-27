@@ -24,6 +24,7 @@ export class Game {
     // Confirm/Reset gate: a pending play/draft waits for the player to confirm (or auto-confirms via
     // the action button's countdown). The abort controller cancels that countdown on Reset / leave.
     private confirmAbort: AbortController | null = null;
+    private confirming = false; // true while a play/draft is awaiting Confirm (hides draft targets)
 
     // Current draft order (player ids, best-first) for the order badges.
     private draftOrder: number[] = [];
@@ -193,7 +194,15 @@ export class Game {
         const cards = this.cardArray(this.gamedatas.knitting).filter(
             (c) => Number(c.location_arg) === playerId
         );
-        if (!cards.length) {
+
+        // While this player is mid-draft (own area), the knitting area doubles as a placement picker:
+        // the target slot(s) are highlighted on every existing sweater (click = place / replace there)
+        // plus an empty "new sweater" target. A normal card targets only its printed slot; a Patch with
+        // no orientation chosen yet shows ALL three slots — clicking one sets the patch's orientation.
+        const targetSlots = this.draftTargetSlots(playerId);
+        const hasTargets = targetSlots.length > 0;
+
+        if (!cards.length && !hasTargets) {
             zone.innerHTML = `<div class="ucs-empty">No sweaters yet</div>`;
             return;
         }
@@ -212,6 +221,7 @@ export class Game {
                 build.className = 'ucs-build';
                 const complete = this.isBuildComplete(builds[buildNo]);
                 if (complete) build.classList.add('ucs-build-complete');
+                const occupied = new Set<string>();
                 builds[buildNo].forEach((card) => {
                     const el = createCardElement(card, this.material);
                     // Position each piece into the sweater silhouette: L top-left, R top-right,
@@ -221,12 +231,78 @@ export class Game {
                     if (slot) {
                         el.style.gridArea = slot;
                         el.classList.add(`ucs-slot-${slot}`); // lets CSS rotate the B (hem) piece
+                        occupied.add(slot);
+                    }
+                    // Drafting: a piece already in a target slot is a "place over" (replace) target.
+                    if (slot && targetSlots.includes(slot)) {
+                        this.makeDraftTarget(el, buildNo, slot);
                     }
                     this.attachTooltip(el, card);
                     build.appendChild(el);
                 });
+                // Drafting: each empty target slot in this build is an "add here" target.
+                targetSlots.forEach((ts) => {
+                    if (!occupied.has(ts)) build.appendChild(this.makeGhostTarget(ts, buildNo));
+                });
                 zone.appendChild(build);
             });
+
+        // Drafting: an empty "new sweater" target showing the target slot position(s).
+        if (hasTargets) {
+            const newBuild = document.createElement('div');
+            newBuild.className = 'ucs-build ucs-build-new';
+            targetSlots.forEach((ts) => newBuild.appendChild(this.makeGhostTarget(ts, 0)));
+            zone.appendChild(newBuild);
+        }
+    }
+
+    /** The slot(s) a draft placement target should occupy in this player's area now ([] = no targets). */
+    private draftTargetSlots(playerId: number): string[] {
+        if (playerId !== this.myId || this.confirming) return [];
+        if (this.selectedDraftId == null || !this.onDraftComplete) return [];
+        const card = this.gamedatas.draftpool[this.selectedDraftId];
+        // A Patch whose orientation isn't chosen yet offers all three slots (the clicked one becomes
+        // the orientation). Otherwise the single resolved slot (printed, or the patch's chosen one).
+        if (card && isPatch(card, this.material) && this.patchSlot == null) {
+            return ['L', 'R', 'B'];
+        }
+        const slot = this.selectedSlot();
+        return slot ? [slot] : [];
+    }
+
+    /** Make an existing knitting piece a clickable "place over" target (an alternative to the buttons). */
+    private makeDraftTarget(el: HTMLElement, buildNo: number, slot: string) {
+        el.classList.add('ucs-target', 'ucs-target-replace');
+        el.addEventListener('click', () => this.placeDraftTarget(buildNo, slot));
+    }
+
+    /** A dashed ghost cell at `slot` that targets `buildNo` (0 = new sweater) when clicked. */
+    private makeGhostTarget(slot: string, buildNo: number): HTMLElement {
+        const ghost = document.createElement('div');
+        ghost.className = `ucs-card ucs-ghost ucs-target ucs-slot-${slot}`;
+        ghost.style.gridArea = slot;
+        ghost.innerHTML = `<div class="ucs-ghost-label">${slot}</div>`;
+        ghost.addEventListener('click', () => this.placeDraftTarget(buildNo, slot));
+        return ghost;
+    }
+
+    /**
+     * A knitting placement target was clicked. For a Patch whose orientation isn't chosen yet, the
+     * clicked position sets the orientation (as if its L/R/B button was clicked). If the placement is
+     * then fully determined (a normal card, or a Patch whose value + icon are already chosen) it goes
+     * to Confirm; otherwise we just record the orientation and let the player finish in the action bar.
+     */
+    private placeDraftTarget(buildNo: number, slot: string) {
+        const card = this.selectedDraftId != null ? this.gamedatas.draftpool[this.selectedDraftId] : null;
+        const patch = card ? isPatch(card, this.material) : false;
+        if (patch && this.patchSlot == null) {
+            this.patchSlot = slot;
+            if (this.patchValue == null || this.patchIcon == null) {
+                this.renderPlacementPanel(); // orientation set; still need value/icon before placing
+                return;
+            }
+        }
+        this.completeDraft(buildNo);
     }
 
     private isBuildComplete(build: SweaterCard[]): boolean {
@@ -340,16 +416,19 @@ export class Game {
     private confirmAction(submit: () => void, reset: () => void) {
         const sb = this.bga.statusBar;
         this.cancelConfirm();
+        this.confirming = true;
+        this.renderKnitting(this.myId); // drop the draft targets while confirming
         sb.removeActionButtons();
         sb.setTitle(_('${you} must confirm your action'));
         this.confirmAbort = new AbortController();
-        sb.addActionButton(_('Confirm'), () => { this.confirmAbort = null; submit(); },
+        sb.addActionButton(_('Confirm'), () => { this.confirmAbort = null; this.confirming = false; submit(); },
             { color: 'primary', autoclick: { abortSignal: this.confirmAbort.signal } });
         sb.addActionButton(_('Reset turn'), () => { this.cancelConfirm(); reset(); }, { color: 'secondary' });
     }
 
     /** Cancel any pending Confirm countdown (so it can't auto-fire after a Reset or state change). */
     private cancelConfirm() {
+        this.confirming = false;
         if (this.confirmAbort) {
             this.confirmAbort.abort();
             this.confirmAbort = null;
@@ -452,6 +531,10 @@ export class Game {
     private renderPlacementPanel() {
         const sb = this.bga.statusBar;
         sb.removeActionButtons();
+
+        // Keep the in-area placement targets in sync with the current selection (they highlight the
+        // target slot in my knitting area as a click-to-place alternative to the action-bar buttons).
+        this.renderKnitting(this.myId);
 
         // The drafting flow no longer uses the in-board panel; keep it hidden.
         const panel = document.getElementById('ucs-placement');

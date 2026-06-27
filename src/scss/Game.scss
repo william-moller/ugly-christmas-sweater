@@ -358,6 +358,39 @@ $colors: (
     box-shadow: 0 0 6px rgba(46, 204, 113, 0.5);
 }
 
+// ---- Draft placement targets (shown in the player's own knitting area while drafting) ----------
+// The target slot is highlighted on every sweater as a click-to-place alternative to the buttons.
+.ucs-target {
+    cursor: pointer;
+}
+// An occupied target slot — clicking places the new piece over it (the old one is discarded).
+.ucs-target-replace {
+    z-index: 1;
+    outline: 3px solid #ffd54a;
+    outline-offset: -2px;
+    animation: ucs-pulse 1.3s ease-in-out infinite;
+    &:hover { filter: brightness(1.15); }
+}
+// An empty target slot — a dashed placeholder for "add here" / start a new sweater.
+.ucs-ghost {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(46, 204, 113, 0.14);
+    border: 2px dashed #2ecc71;
+    box-shadow: none;
+    color: #2ecc71;
+    &:hover { background: rgba(46, 204, 113, 0.30); }
+}
+.ucs-ghost-label {
+    font-size: 26px;
+    font-weight: 800;
+    opacity: 0.75;
+}
+.ucs-build-new {
+    border-style: dashed;
+}
+
 // The B (bottom / hem) piece is rotated 90° so its printed sweater art lines up with the L and R
 // pieces above it. Only applied in the knitting area (an assembled sweater) — pool/hand/trade show
 // cards upright.
