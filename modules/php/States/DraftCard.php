@@ -54,11 +54,12 @@ class DraftCard extends GameState
 
         // The card row (incl. build_no / slot / wild value+icon) lets every client render the placement;
         // replaced_card_id (if any) tells them to drop the piece that was placed over.
-        $this->notify->all('cardDrafted', clienttranslate('${player_name} drafts a sweater card'), [
+        $this->notify->all('cardDrafted', clienttranslate('${player_name} drafts ${card_label}'), [
             'player_id'        => $activePlayerId,
             'player_name'      => $this->game->getPlayerNameById($activePlayerId),
             'card_id'          => $card_id,
             'card'             => $this->game->cardForNotif($card_id),
+            'card_label'       => $this->game->cardLabel($card_id),
             'replaced_card_id' => $placement['replaced_card_id'],
         ]);
 

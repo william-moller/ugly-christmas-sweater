@@ -1,6 +1,6 @@
 import { PlayCard } from "./States/PlayCard";
 import { DraftCard } from "./States/DraftCard";
-import { createCardElement, createCardBack, cardTooltip, faceOf, isPatch } from "./CardView";
+import { createCardElement, createCardBack, cardTooltip, cardLogChip, faceOf, isPatch } from "./CardView";
 
 type CardMapT = { [cardId: number]: SweaterCard };
 
@@ -20,6 +20,10 @@ export class Game {
     private patchValue: number | null = null;
     private patchIcon: string | null = null;
     private patchSlot: string | null = null;
+
+    // Confirm/Reset gate: a pending play/draft waits for the player to confirm (or auto-confirms via
+    // the action button's countdown). The abort controller cancels that countdown on Reset / leave.
+    private confirmAbort: AbortController | null = null;
 
     // Current draft order (player ids, best-first) for the order badges.
     private draftOrder: number[] = [];
@@ -284,6 +288,7 @@ export class Game {
     }
 
     public disablePlayable() {
+        this.cancelConfirm();
         this.playableIds = [];
         this.onPlay = null;
         this.selectedPlayId = null;
@@ -305,12 +310,50 @@ export class Game {
         }
     }
 
+    /** A card (and, for a leading patch, its copy source) has been chosen — gate it behind Confirm/Reset. */
     private completePlay(cardId: number, copyFromCardId: number) {
-        const cb = this.onPlay;
-        this.selectedPlayId = null;
-        this.hidePanel();
+        this.selectedPlayId = cardId; // keep the pending card highlighted while confirming
         this.renderHand();
-        cb && cb(cardId, copyFromCardId);
+        this.confirmAction(
+            () => {
+                const cb = this.onPlay;
+                this.selectedPlayId = null;
+                this.hidePanel();
+                this.renderHand();
+                cb && cb(cardId, copyFromCardId);
+            },
+            () => {
+                // Reset: back to choosing a card from hand.
+                this.selectedPlayId = null;
+                this.hidePanel();
+                this.renderHand();
+                this.bga.statusBar.setTitle(_('${you} must play a card'));
+            },
+        );
+    }
+
+    /**
+     * Show a Confirm / Reset turn step in the top action bar before an action is actually sent to the
+     * server. Confirm auto-fires after the action button's countdown (BGA's native autoclick); Reset
+     * undoes the whole pending selection. The abort controller cancels the countdown on Reset / leave.
+     */
+    private confirmAction(submit: () => void, reset: () => void) {
+        const sb = this.bga.statusBar;
+        this.cancelConfirm();
+        sb.removeActionButtons();
+        sb.setTitle(_('${you} must confirm your action'));
+        this.confirmAbort = new AbortController();
+        sb.addActionButton(_('Confirm'), () => { this.confirmAbort = null; submit(); },
+            { color: 'primary', autoclick: { abortSignal: this.confirmAbort.signal } });
+        sb.addActionButton(_('Reset turn'), () => { this.cancelConfirm(); reset(); }, { color: 'secondary' });
+    }
+
+    /** Cancel any pending Confirm countdown (so it can't auto-fire after a Reset or state change). */
+    private cancelConfirm() {
+        if (this.confirmAbort) {
+            this.confirmAbort.abort();
+            this.confirmAbort = null;
+        }
     }
 
     /**
@@ -358,6 +401,7 @@ export class Game {
     }
 
     public endDraft() {
+        this.cancelConfirm();
         this.draftableIds = [];
         this.onDraftComplete = null;
         this.clearDraftSelection();
@@ -490,15 +534,46 @@ export class Game {
         };
         const id = this.selectedDraftId;
         const cb = this.onDraftComplete;
-        this.clearDraftSelection();
-        this.renderDraftPool();
-        this.renderPlacementPanel();
-        cb(id, placement);
+        // Gate the draft behind Confirm/Reset. The pool card stays selected (and the chosen placement
+        // pending) while confirming; Reset undoes the whole draft (pool card + placement + patch wilds).
+        this.confirmAction(
+            () => {
+                this.clearDraftSelection();
+                this.renderDraftPool();
+                this.bga.statusBar.removeActionButtons();
+                cb(id, placement);
+            },
+            () => {
+                this.clearDraftSelection();
+                this.renderDraftPool();
+                this.renderPlacementPanel();
+            },
+        );
     }
 
     // ===================================================================================
     //  Notifications
     // ===================================================================================
+
+    /**
+     * Replay-safe client-side log injection: the framework calls this for every log line. We swap the
+     * `card_label` argument for an inline colour-coded card chip built from the `card` row carried in
+     * the notification (cardPlayed / cardDrafted). Per BGA guidance we only mutate `args` — never the
+     * `${...}` keys in the log string — so translations and historical logs keep working.
+     */
+    public bgaFormatText(log: string, args: any): { log: string; args: any } {
+        try {
+            if (log && args && !args.processed) {
+                args.processed = true;
+                if (args.card_label && args.card) {
+                    args.card_label = cardLogChip(args.card, this.material);
+                }
+            }
+        } catch (e) {
+            console.error('bgaFormatText', log, args, e);
+        }
+        return { log, args };
+    }
 
     setupNotifications() {
         console.log('notifications subscriptions setup');

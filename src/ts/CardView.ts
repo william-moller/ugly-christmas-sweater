@@ -69,6 +69,20 @@ export function createCardElement(card: SweaterCard, material: UcsMaterial): HTM
     return el;
 }
 
+/**
+ * A compact inline card "chip" for the game log: a colour-coded box showing the card's value
+ * (colour + value is enough to identify the exact card in play). Built client-side from the card
+ * row carried in the notification, so historical logs / replays stay valid. A resolved patch shows
+ * its chosen value; an unresolved one shows a wild star.
+ */
+export function cardLogChip(card: SweaterCard, material: UcsMaterial): string {
+    const face = faceOf(card, material);
+    const color = face?.color ?? String(card.type);
+    const wildValue = card.wildValue != null && card.wildValue !== '' ? Number(card.wildValue) : null;
+    const valueLabel = wildValue != null ? String(wildValue) : (face?.patch ? '★' : String(face?.value ?? '?'));
+    return `<span class="ucs-log-card ucs-color-${color}">${valueLabel}</span>`;
+}
+
 /** A face-down placeholder (e.g. opponents' hand backs). */
 export function createCardBack(): HTMLElement {
     const el = document.createElement('div');
