@@ -359,33 +359,60 @@ $colors: (
 }
 
 // ---- Draft placement targets (shown in the player's own knitting area while drafting) ----------
-// The target slot is highlighted on every sweater as a click-to-place alternative to the buttons.
+// Candidate positions show as dashed-yellow OPTIONS; the one the player picks turns solid GREEN and
+// stays highlighted (the others drop away) so the selection clearly registered.
 .ucs-target {
     cursor: pointer;
 }
-// An occupied target slot — clicking places the new piece over it (the old one is discarded).
-.ucs-target-replace {
+// An unpicked option: dashed yellow outline.
+.ucs-target-option {
     z-index: 1;
-    outline: 3px solid #ffd54a;
+    outline: 3px dashed #ffd54a;
     outline-offset: -2px;
-    animation: ucs-pulse 1.3s ease-in-out infinite;
-    &:hover { filter: brightness(1.15); }
+    &:hover { filter: brightness(1.12); }
 }
-// An empty target slot — a dashed placeholder for "add here" / start a new sweater.
+// A still-clickable option once another position has been picked: faint yellow (brightens on hover).
+.ucs-target-faint {
+    z-index: 1;
+    outline: 2px dashed rgba(255, 213, 74, 0.5);
+    outline-offset: -2px;
+    opacity: 0.8;
+    &:hover { outline: 3px dashed #ffd54a; opacity: 1; filter: brightness(1.12); }
+}
+// The picked position: solid green, kept visible to confirm the choice.
+.ucs-target-selected {
+    z-index: 1;
+    outline: 3px solid #2ecc71;
+    outline-offset: -2px;
+    box-shadow: 0 0 9px rgba(46, 204, 113, 0.75);
+}
+// An empty target slot placeholder (the outline colour comes from the option/selected class above).
 .ucs-ghost {
     display: flex;
     align-items: center;
     justify-content: center;
-    background: rgba(46, 204, 113, 0.14);
-    border: 2px dashed #2ecc71;
+    background: rgba(0, 0, 0, 0.06);
     box-shadow: none;
-    color: #2ecc71;
-    &:hover { background: rgba(46, 204, 113, 0.30); }
+    color: rgba(0, 0, 0, 0.45);
+    &.ucs-target-option {
+        background: rgba(255, 213, 74, 0.16);
+        color: #9a7d12;
+        &:hover { background: rgba(255, 213, 74, 0.30); }
+    }
+    &.ucs-target-faint {
+        background: rgba(255, 213, 74, 0.07);
+        color: rgba(154, 125, 18, 0.7);
+        &:hover { background: rgba(255, 213, 74, 0.22); color: #9a7d12; }
+    }
+    &.ucs-target-selected {
+        background: rgba(46, 204, 113, 0.20);
+        color: #1e8449;
+    }
 }
 .ucs-ghost-label {
     font-size: 26px;
     font-weight: 800;
-    opacity: 0.75;
+    opacity: 0.8;
 }
 .ucs-build-new {
     border-style: dashed;

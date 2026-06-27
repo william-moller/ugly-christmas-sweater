@@ -20,6 +20,9 @@ export class Game {
     private patchValue: number | null = null;
     private patchIcon: string | null = null;
     private patchSlot: string | null = null;
+    // The exact knitting cell (build no; 0 = new sweater) the player clicked to place into. Held —
+    // shown highlighted in green — while a Patch still needs its value/icon before it can be placed.
+    private pendingBuildNo: number | null = null;
 
     // Confirm/Reset gate: a pending play/draft waits for the player to confirm (or auto-confirms via
     // the action button's countdown). The abort controller cancels that countdown on Reset / leave.
@@ -195,14 +198,22 @@ export class Game {
             (c) => Number(c.location_arg) === playerId
         );
 
-        // While this player is mid-draft (own area), the knitting area doubles as a placement picker:
-        // the target slot(s) are highlighted on every existing sweater (click = place / replace there)
-        // plus an empty "new sweater" target. A normal card targets only its printed slot; a Patch with
-        // no orientation chosen yet shows ALL three slots — clicking one sets the patch's orientation.
-        const targetSlots = this.draftTargetSlots(playerId);
-        const hasTargets = targetSlots.length > 0;
+        // While this player is mid-draft (their own area), the knitting area doubles as a placement
+        // picker. Candidate slots show as dashed-yellow OPTIONS (a normal card offers its printed slot;
+        // a Patch offers all three — clicking one sets its orientation). Clicking a position picks that
+        // exact cell: it turns solid GREEN while the other options stay clickable but dim to faint
+        // yellow, so the choice is clear yet still changeable. (Once value+icon are known for a Patch
+        // the held pick advances to Confirm.)
+        const drafting = playerId === this.myId && !this.confirming
+            && this.selectedDraftId != null && this.onDraftComplete != null;
+        const optionSlots = drafting ? this.draftTargetSlots(playerId) : [];
+        const pickedBuild = this.pendingBuildNo;          // the exact cell chosen (held, awaiting value/icon)
+        const pickedSlot = drafting ? this.selectedSlot() : null;
+        const hasPick = drafting && pickedBuild != null;
+        const targetMode = (buildNo: number, slot: string): 'option' | 'faint' | 'selected' =>
+            (hasPick && buildNo === pickedBuild && slot === pickedSlot) ? 'selected' : hasPick ? 'faint' : 'option';
 
-        if (!cards.length && !hasTargets) {
+        if (!cards.length && !drafting) {
             zone.innerHTML = `<div class="ucs-empty">No sweaters yet</div>`;
             return;
         }
@@ -219,67 +230,70 @@ export class Game {
             .forEach((buildNo) => {
                 const build = document.createElement('div');
                 build.className = 'ucs-build';
-                const complete = this.isBuildComplete(builds[buildNo]);
-                if (complete) build.classList.add('ucs-build-complete');
+                if (this.isBuildComplete(builds[buildNo])) build.classList.add('ucs-build-complete');
                 const occupied = new Set<string>();
                 builds[buildNo].forEach((card) => {
                     const el = createCardElement(card, this.material);
                     // Position each piece into the sweater silhouette: L top-left, R top-right,
-                    // B centred below (grid areas defined in .ucs-build). A floating patch with no
-                    // chosen orientation auto-flows.
+                    // B centred below (grid areas defined in .ucs-build).
                     const slot = (card.slot as string) ?? faceOf(card, this.material).slot ?? null;
                     if (slot) {
                         el.style.gridArea = slot;
                         el.classList.add(`ucs-slot-${slot}`); // lets CSS rotate the B (hem) piece
                         occupied.add(slot);
                     }
-                    // Drafting: a piece already in a target slot is a "place over" (replace) target.
-                    if (slot && targetSlots.includes(slot)) {
-                        this.makeDraftTarget(el, buildNo, slot);
+                    // A "place over" target on an occupied slot (green if picked, else option/faint).
+                    if (slot && optionSlots.includes(slot)) {
+                        this.markTarget(el, buildNo, slot, targetMode(buildNo, slot));
                     }
                     this.attachTooltip(el, card);
                     build.appendChild(el);
                 });
-                // Drafting: each empty target slot in this build is an "add here" target.
-                targetSlots.forEach((ts) => {
-                    if (!occupied.has(ts)) build.appendChild(this.makeGhostTarget(ts, buildNo));
+                // An empty target slot is an "add here" target (green if picked, else option/faint).
+                optionSlots.forEach((ts) => {
+                    if (!occupied.has(ts)) build.appendChild(this.makeGhostTarget(ts, buildNo, targetMode(buildNo, ts)));
                 });
                 zone.appendChild(build);
             });
 
-        // Drafting: an empty "new sweater" target showing the target slot position(s).
-        if (hasTargets) {
+        // The "new sweater" target — the chosen slot position(s), same option/faint/selected styling.
+        if (optionSlots.length) {
             const newBuild = document.createElement('div');
             newBuild.className = 'ucs-build ucs-build-new';
-            targetSlots.forEach((ts) => newBuild.appendChild(this.makeGhostTarget(ts, 0)));
+            optionSlots.forEach((ts) => newBuild.appendChild(this.makeGhostTarget(ts, 0, targetMode(0, ts))));
             zone.appendChild(newBuild);
         }
     }
 
-    /** The slot(s) a draft placement target should occupy in this player's area now ([] = no targets). */
+    /** The slot(s) a draft placement OPTION should occupy in this player's area now ([] = none). */
     private draftTargetSlots(playerId: number): string[] {
         if (playerId !== this.myId || this.confirming) return [];
         if (this.selectedDraftId == null || !this.onDraftComplete) return [];
         const card = this.gamedatas.draftpool[this.selectedDraftId];
-        // A Patch whose orientation isn't chosen yet offers all three slots (the clicked one becomes
-        // the orientation). Otherwise the single resolved slot (printed, or the patch's chosen one).
-        if (card && isPatch(card, this.material) && this.patchSlot == null) {
+        // A Patch keeps all three slots clickable throughout (clicking one (re)sets its orientation);
+        // a normal card only ever targets its single printed slot.
+        if (card && isPatch(card, this.material)) {
             return ['L', 'R', 'B'];
         }
         const slot = this.selectedSlot();
         return slot ? [slot] : [];
     }
 
-    /** Make an existing knitting piece a clickable "place over" target (an alternative to the buttons). */
-    private makeDraftTarget(el: HTMLElement, buildNo: number, slot: string) {
-        el.classList.add('ucs-target', 'ucs-target-replace');
+    /** CSS class for a placement-target visual state. */
+    private targetClass(mode: 'option' | 'faint' | 'selected'): string {
+        return mode === 'selected' ? 'ucs-target-selected' : mode === 'faint' ? 'ucs-target-faint' : 'ucs-target-option';
+    }
+
+    /** Mark an existing knitting piece as a clickable placement target. */
+    private markTarget(el: HTMLElement, buildNo: number, slot: string, mode: 'option' | 'faint' | 'selected') {
+        el.classList.add('ucs-target', this.targetClass(mode));
         el.addEventListener('click', () => this.placeDraftTarget(buildNo, slot));
     }
 
-    /** A dashed ghost cell at `slot` that targets `buildNo` (0 = new sweater) when clicked. */
-    private makeGhostTarget(slot: string, buildNo: number): HTMLElement {
+    /** A ghost cell at `slot` that targets `buildNo` (0 = new sweater) when clicked. */
+    private makeGhostTarget(slot: string, buildNo: number, mode: 'option' | 'faint' | 'selected'): HTMLElement {
         const ghost = document.createElement('div');
-        ghost.className = `ucs-card ucs-ghost ucs-target ucs-slot-${slot}`;
+        ghost.className = `ucs-card ucs-ghost ucs-target ucs-slot-${slot} ${this.targetClass(mode)}`;
         ghost.style.gridArea = slot;
         ghost.innerHTML = `<div class="ucs-ghost-label">${slot}</div>`;
         ghost.addEventListener('click', () => this.placeDraftTarget(buildNo, slot));
@@ -287,22 +301,23 @@ export class Game {
     }
 
     /**
-     * A knitting placement target was clicked. For a Patch whose orientation isn't chosen yet, the
-     * clicked position sets the orientation (as if its L/R/B button was clicked). If the placement is
-     * then fully determined (a normal card, or a Patch whose value + icon are already chosen) it goes
-     * to Confirm; otherwise we just record the orientation and let the player finish in the action bar.
+     * A knitting placement target was clicked: pick that exact position. For a Patch the clicked slot
+     * (re)sets the orientation (as if its L/R/B button was clicked). The picked cell stays highlighted
+     * green while the others remain clickable (faint). If the placement is fully determined (a normal
+     * card, or a Patch whose value + icon are chosen) it advances to Confirm; otherwise the pick is
+     * held and the player finishes value/icon in the action bar (then it advances automatically).
      */
     private placeDraftTarget(buildNo: number, slot: string) {
         const card = this.selectedDraftId != null ? this.gamedatas.draftpool[this.selectedDraftId] : null;
         const patch = card ? isPatch(card, this.material) : false;
-        if (patch && this.patchSlot == null) {
-            this.patchSlot = slot;
-            if (this.patchValue == null || this.patchIcon == null) {
-                this.renderPlacementPanel(); // orientation set; still need value/icon before placing
-                return;
-            }
+        if (patch) this.patchSlot = slot; // clicking a position (re)picks the orientation
+        this.pendingBuildNo = buildNo;
+        const ready = this.selectedSlot() != null && (!patch || (this.patchValue != null && this.patchIcon != null));
+        if (ready) {
+            this.completeDraft(buildNo);
+        } else {
+            this.renderPlacementPanel(); // hold the pick (green) and wait for value/icon
         }
-        this.completeDraft(buildNo);
     }
 
     private isBuildComplete(build: SweaterCard[]): boolean {
@@ -493,6 +508,7 @@ export class Game {
         this.patchValue = null;
         this.patchIcon = null;
         this.patchSlot = null;
+        this.pendingBuildNo = null;
     }
 
     /** A pool card was clicked: select it and open the placement panel. */
@@ -574,6 +590,14 @@ export class Game {
         // Build targets — actionable once the slot is known (always, for a normal card).
         const slot = this.selectedSlot();
         const ready = slot != null && (!patch || (this.patchValue != null && this.patchIcon != null));
+
+        // A position already picked in the knitting area is held (shown green) until the placement is
+        // fully determined; once it is (e.g. the Patch's value + icon are now chosen) advance to Confirm.
+        if (this.pendingBuildNo != null && ready) {
+            this.completeDraft(this.pendingBuildNo);
+            return;
+        }
+
         const builds = this.buildsOf(this.myId);
         const buildNos = Object.keys(builds).map(Number).sort((a, b) => a - b);
 
