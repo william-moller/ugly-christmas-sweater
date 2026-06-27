@@ -62,6 +62,10 @@ class DraftCard extends GameState
             'replaced_card_id' => $placement['replaced_card_id'],
         ]);
 
+        // Update the player's live public score (a newly completed sweater is worth public points
+        // immediately; a "place over" may also change/break an already-scored sweater).
+        $this->game->refreshPublicScore($activePlayerId);
+
         // 2-player: draft a second card before passing.
         $plays = ((int) $this->game->globals->get('drafterPlays')) + 1;
         $this->game->globals->set('drafterPlays', $plays);

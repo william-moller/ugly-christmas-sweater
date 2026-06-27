@@ -338,6 +338,13 @@ $colors: (
     box-shadow: 0 0 6px rgba(46, 204, 113, 0.5);
 }
 
+// The B (bottom / hem) piece is rotated 90° so its printed sweater art lines up with the L and R
+// pieces above it. Only applied in the knitting area (an assembled sweater) — pool/hand/trade show
+// cards upright.
+.ucs-build .ucs-slot-B {
+    transform: rotate(90deg);
+}
+
 .ucs-owned {
     box-shadow: 0 0 0 2px var(--player-color, transparent), 0 1px 3px rgba(0, 0, 0, 0.35);
 }

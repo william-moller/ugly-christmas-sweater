@@ -312,8 +312,10 @@ class Game {
                 // B centred below (grid areas defined in .ucs-build). A floating patch with no
                 // chosen orientation auto-flows.
                 const slot = card.slot ?? faceOf(card, this.material).slot ?? null;
-                if (slot)
+                if (slot) {
                     el.style.gridArea = slot;
+                    el.classList.add(`ucs-slot-${slot}`); // lets CSS rotate the B (hem) piece
+                }
                 this.attachTooltip(el, card);
                 build.appendChild(el);
             });
@@ -403,37 +405,31 @@ class Game {
         this.renderHand();
         cb && cb(cardId, copyFromCardId);
     }
-    /** Leading with a patch: choose which numbered draft-pool card it copies (value + icon). */
+    /**
+     * Leading with a patch: choose which numbered draft-pool card it copies (value + icon).
+     * Rendered as compact buttons in the top action bar (one per copyable pool card), to match
+     * the draft-placement controls.
+     */
     renderPatchCopyPanel(cardId) {
-        const panel = document.getElementById('ucs-placement');
-        if (!panel)
-            return;
-        panel.style.display = '';
+        const sb = this.bga.statusBar;
+        sb.removeActionButtons();
         const sources = this.cardArray(this.gamedatas.draftpool).filter((c) => !isPatch(c, this.material));
-        const btns = sources.map((c) => {
+        sb.setTitle(_('Leading with a Patch — copy a draft-pool card\'s value & icon'));
+        sources.forEach((c) => {
             const f = faceOf(c, this.material);
             const icon = f.icon ?? '?';
-            return `<button class="ucs-build-btn" data-pool="${c.id}">${f.color} ${f.value} · ${icon}</button>`;
-        }).join('');
-        panel.innerHTML = `
-            <div class="ucs-zone-label">Leading with a Patch — copy a draft-pool card's value &amp; icon</div>
-            <div class="ucs-choice-row">${btns || '<span class="ucs-empty">No numbered pool card to copy</span>'}</div>
-            <div class="ucs-choice-row"><button class="ucs-build-btn ucs-cancel" data-cancel="1">Cancel</button></div>
-        `;
-        panel.querySelectorAll('.ucs-build-btn').forEach((btn) => {
-            btn.addEventListener('click', () => {
-                if (btn.dataset.cancel) {
-                    this.selectedPlayId = null;
-                    this.hidePanel();
-                    this.renderHand();
-                    return;
-                }
-                this.completePlay(cardId, Number(btn.dataset.pool));
-            });
+            sb.addActionButton(`${f.color} ${f.value} · ${icon}`, () => this.completePlay(cardId, Number(c.id)), { color: 'primary' });
         });
+        sb.addActionButton(_('Cancel'), () => {
+            this.selectedPlayId = null;
+            sb.removeActionButtons();
+            sb.setTitle(_('${you} must play a card'));
+            this.renderHand();
+        }, { color: 'alert' });
     }
-    /** Hide and clear the shared placement / patch-copy panel. */
+    /** Hide and clear the shared placement / patch-copy panel and any status-bar action buttons. */
     hidePanel() {
+        this.bga.statusBar.removeActionButtons();
         const panel = document.getElementById('ucs-placement');
         if (panel) {
             panel.style.display = 'none';
@@ -488,77 +484,70 @@ class Game {
             return null;
         return isPatch(card, this.material) ? this.patchSlot : (faceOf(card, this.material).slot ?? null);
     }
-    /** Render the placement panel for the selected draft card (or hide it when nothing is selected). */
+    /**
+     * Render the placement controls for the selected draft card as compact buttons in the top
+     * action bar (the status bar). For a Patch this is value / icon / orientation; once the slot
+     * is known it's the target-sweater choice. Nothing selected → restore the default draft prompt.
+     */
     renderPlacementPanel() {
+        const sb = this.bga.statusBar;
+        sb.removeActionButtons();
+        // The drafting flow no longer uses the in-board panel; keep it hidden.
         const panel = document.getElementById('ucs-placement');
-        if (!panel)
-            return;
-        if (this.selectedDraftId == null || !this.onDraftComplete) {
+        if (panel) {
             panel.style.display = 'none';
             panel.innerHTML = '';
+        }
+        if (this.selectedDraftId == null || !this.onDraftComplete) {
+            sb.setTitle(_('${you} must draft a sweater card'));
             return;
         }
-        panel.style.display = '';
         const card = this.gamedatas.draftpool[this.selectedDraftId];
         const patch = card ? isPatch(card, this.material) : false;
-        const slot = this.selectedSlot();
-        const parts = [`<div class="ucs-zone-label">Place your drafted card</div>`];
-        // Patch: choose value, icon, orientation.
+        // Patch: pick value / icon / orientation. Shown together; the chosen one is highlighted
+        // (primary), so a player can change any of the three before placing.
         if (patch) {
-            const values = Array.from({ length: 12 }, (_, i) => i + 1)
-                .map((v) => `<button class="ucs-choice ${this.patchValue === v ? 'ucs-on' : ''}" data-kind="value" data-val="${v}">${v}</button>`)
-                .join('');
-            const icons = this.material.icons
-                .map((ic) => `<button class="ucs-choice ${this.patchIcon === ic ? 'ucs-on' : ''}" data-kind="icon" data-val="${ic}">${ic}</button>`)
-                .join('');
-            const slots = ['L', 'R', 'B']
-                .map((s) => `<button class="ucs-choice ${this.patchSlot === s ? 'ucs-on' : ''}" data-kind="slot" data-val="${s}">${s}</button>`)
-                .join('');
-            parts.push(`
-                <div class="ucs-choice-row"><span class="ucs-choice-label">Value</span>${values}</div>
-                <div class="ucs-choice-row"><span class="ucs-choice-label">Icon</span>${icons}</div>
-                <div class="ucs-choice-row"><span class="ucs-choice-label">Orientation</span>${slots}</div>
-            `);
+            sb.setTitle(_('Wild card — choose its value, icon and orientation'));
+            for (let v = 1; v <= 12; v++) {
+                sb.addActionButton(String(v), () => { this.patchValue = v; this.renderPlacementPanel(); }, { color: this.patchValue === v ? 'primary' : 'secondary' });
+            }
+            this.material.icons.forEach((ic) => {
+                sb.addActionButton(ic, () => { this.patchIcon = ic; this.renderPlacementPanel(); }, { color: this.patchIcon === ic ? 'primary' : 'secondary' });
+            });
+            ['L', 'R', 'B'].forEach((s) => {
+                sb.addActionButton(s, () => { this.patchSlot = s; this.renderPlacementPanel(); }, { color: this.patchSlot === s ? 'primary' : 'secondary' });
+            });
         }
-        // Build targets — enabled once the slot is known (always, for a normal card).
+        else {
+            sb.setTitle(_('Place your drafted card'));
+        }
+        // Build targets — actionable once the slot is known (always, for a normal card).
+        const slot = this.selectedSlot();
         const ready = slot != null && (!patch || (this.patchValue != null && this.patchIcon != null));
         const builds = this.buildsOf(this.myId);
-        const buildBtns = [];
-        Object.keys(builds).map(Number).sort((a, b) => a - b).forEach((no) => {
-            const occupied = slot != null && builds[no].has(slot);
-            const label = occupied ? `Sweater ${no} (replace ${slot})` : `Sweater ${no} (add ${slot ?? '?'})`;
-            buildBtns.push(`<button class="ucs-build-btn" data-build="${no}" ${ready ? '' : 'disabled'}>${label}</button>`);
-        });
-        buildBtns.push(`<button class="ucs-build-btn" data-build="0" ${ready ? '' : 'disabled'}>＋ New sweater</button>`);
-        parts.push(`<div class="ucs-choice-row"><span class="ucs-choice-label">Place into</span>${buildBtns.join('')}</div>`);
-        parts.push(`<div class="ucs-choice-row"><button class="ucs-build-btn ucs-cancel" data-cancel="1">Cancel</button></div>`);
-        panel.innerHTML = parts.join('');
-        // Wire up the buttons.
-        panel.querySelectorAll('.ucs-choice').forEach((btn) => {
-            btn.addEventListener('click', () => {
-                const kind = btn.dataset.kind;
-                const val = btn.dataset.val;
-                if (kind === 'value')
-                    this.patchValue = Number(val);
-                else if (kind === 'icon')
-                    this.patchIcon = val;
-                else if (kind === 'slot')
-                    this.patchSlot = val;
-                this.renderPlacementPanel();
+        const buildNos = Object.keys(builds).map(Number).sort((a, b) => a - b);
+        // With no started sweaters, "New sweater" is the only possible target — don't make the
+        // player choose. Auto-place into a new sweater as soon as the placement is fully
+        // determined (immediately for a normal card; after value/icon/orientation for a Patch).
+        if (buildNos.length === 0) {
+            if (ready) {
+                this.completeDraft(0);
+                return;
+            }
+        }
+        else {
+            buildNos.forEach((no) => {
+                const occupied = slot != null && builds[no].has(slot);
+                const label = occupied ? `Sweater ${no}: replace ${slot}` : `Sweater ${no}: add ${slot ?? '?'}`;
+                sb.addActionButton(label, () => this.completeDraft(no), { color: 'primary', disabled: !ready });
             });
-        });
-        panel.querySelectorAll('.ucs-build-btn').forEach((btn) => {
-            btn.addEventListener('click', () => {
-                if (btn.dataset.cancel) {
-                    this.clearDraftSelection();
-                    this.renderDraftPool();
-                    this.renderPlacementPanel();
-                    return;
-                }
-                if (!btn.disabled)
-                    this.completeDraft(Number(btn.dataset.build));
-            });
-        });
+            sb.addActionButton(_('+ New sweater'), () => this.completeDraft(0), { color: 'primary', disabled: !ready });
+        }
+        sb.addActionButton(_('Cancel'), () => {
+            this.clearDraftSelection();
+            this.renderDraftPool();
+            this.renderPlacementPanel();
+        }, { color: 'alert' });
     }
     /** Submit the draft with the chosen placement, then clear the local selection UI. */
     completeDraft(buildNo) {

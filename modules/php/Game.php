@@ -298,6 +298,20 @@ class Game extends \Bga\GameFramework\Table
         ];
     }
 
+    /**
+     * Short public label identifying a card by colour + value, e.g. "Purple 9" — enough to identify
+     * the exact card in play (icon + orientation can be inferred). A resolved patch shows its copied
+     * value; an unresolved one falls back to "<Colour> Patch".
+     * TODO: colour word is not translated here (alpha); revisit for i18n if needed.
+     */
+    public function cardLabel(int $cardId): string
+    {
+        $row   = $this->cardForNotif($cardId);
+        $color = ucfirst((string) $row['type']);
+        $value = $this->effectiveValue($row);
+        return $value > 0 ? "$color $value" : "$color Patch";
+    }
+
     /** Public per-player pile/hand counts (counts are public info; card identities are not). */
     public function publicCounts(): array
     {
@@ -636,20 +650,122 @@ class Game extends \Bga\GameFramework\Table
         return false;
     }
 
+    /** The active Fad for the round (round-bonus parameter), or null if none is active. */
+    public function activeFad(): ?array
+    {
+        foreach ($this->gameplayCards->getCardsInLocation('active') as $c) {
+            if ($c['type'] === 'fad') {
+                return Material::fads()[(int) $c['type_arg']] ?? null;
+            }
+        }
+        return null;
+    }
+
     /**
-     * Score the round into player_score.
-     * TODO: full scoring — sweater build (+2), three consecutive numbers (+2), Fad (+3 per objective),
-     *       non-Fad colour/icon match (+1), Secret Santa (+3). Needs card icon data + active Fad.
-     *       For now only the completed-sweater base points are awarded.
+     * Public (non-Secret-Santa) VP of ONE completed sweater, given its pieces keyed by slot and the
+     * active Fad (or null). Covers everything visible to all players: the +2 build, +2 three-
+     * consecutive-numbers, Fad objectives (+3 each), and the +1 all-matching-non-Fad bonus.
+     * Secret Santa is hidden and is NOT scored here. Returns 0 for an incomplete build.
+     */
+    public function publicSweaterScore(array $bySlot, ?array $fad): int
+    {
+        if (!isset($bySlot[Material::SLOT_LEFT], $bySlot[Material::SLOT_RIGHT], $bySlot[Material::SLOT_BOTTOM])) {
+            return 0;
+        }
+        $cards  = [$bySlot[Material::SLOT_LEFT], $bySlot[Material::SLOT_RIGHT], $bySlot[Material::SLOT_BOTTOM]];
+        $values = array_map(fn($c) => $this->effectiveValue($c), $cards);
+        $colors = array_map(fn($c) => $c['type'], $cards);
+        $icons  = array_map(fn($c) => $this->effectiveIcon($c), $cards);
+
+        $vp = Material::VP_SWEATER; // +2: every completed L+R+B sweater
+
+        // +2: three consecutive numbers (no wrap, e.g. 11-12-1 does not count).
+        sort($values);
+        if ($values[1] === $values[0] + 1 && $values[2] === $values[1] + 1) {
+            $vp += Material::VP_RUN;
+        }
+
+        $allSameColor = count(array_unique($colors)) === 1;
+        $allSameIcon  = !in_array(null, $icons, true) && count(array_unique($icons)) === 1;
+
+        if ($fad !== null && !empty($fad['clash'])) {
+            // "Clash Is In": +3 when all three pieces differ in BOTH colour and icon. Under Clash every
+            // all-one-colour/icon sweater counts as a non-Fad match (+1).
+            $allDiffColor = count(array_unique($colors)) === 3;
+            $allDiffIcon  = !in_array(null, $icons, true) && count(array_unique($icons)) === 3;
+            if ($allDiffColor && $allDiffIcon) {
+                $vp += Material::VP_FAD;
+            }
+            if ($allSameColor || $allSameIcon) {
+                $vp += Material::VP_NONFAD_MATCH;
+            }
+        } else {
+            $fadColor = null;
+            $fadIcon  = null;
+            foreach ($fad['objectives'] ?? [] as $obj) {
+                if ($obj['match'] === 'color') $fadColor = $obj['value'];
+                if ($obj['match'] === 'icon')  $fadIcon  = $obj['value'];
+            }
+            // Fad objectives: +3 each; a single sweater can satisfy both colour and icon.
+            if ($fadColor !== null && $allSameColor && $colors[0] === $fadColor) $vp += Material::VP_FAD;
+            if ($fadIcon  !== null && $allSameIcon  && $icons[0]  === $fadIcon)  $vp += Material::VP_FAD;
+            // +1: all one colour OR one icon that is NOT the active Fad (awarded once).
+            if (($allSameColor && $colors[0] !== $fadColor) || ($allSameIcon && $icons[0] !== $fadIcon)) {
+                $vp += Material::VP_NONFAD_MATCH;
+            }
+        }
+
+        return $vp;
+    }
+
+    /** Total public (non-Secret-Santa) VP a player has earned from their completed sweaters so far. */
+    public function livePublicScore(int $playerId): int
+    {
+        $fad    = $this->activeFad();
+        $builds = [];
+        foreach ($this->getCardsWithExtras(self::LOC_KNITTING, $playerId) as $c) {
+            if ($c['slot'] !== null) {
+                $builds[(int) $c['buildNo']][$c['slot']] = $c;
+            }
+        }
+        $total = 0;
+        foreach ($builds as $bySlot) {
+            $total += $this->publicSweaterScore($bySlot, $fad);
+        }
+        return $total;
+    }
+
+    /**
+     * Recompute a player's public score for the current round and apply the change to their total.
+     * Called after every placement so the panel reflects completed sweaters' public value live (and
+     * correctly drops it again if a "place over" later breaks/changes a scored sweater). We track the
+     * amount already applied this round so the cross-round cumulative total stays correct; Secret
+     * Santa is added separately at round end (see scoreRound) and is never part of this.
+     */
+    public function refreshPublicScore(int $playerId): void
+    {
+        // Stored as a JSON string (globals elsewhere only hold scalars) keyed by player id.
+        $applied = json_decode($this->globals->get('appliedPublic') ?? '[]', true);
+        $old     = (int) ($applied[$playerId] ?? 0);
+        $new     = $this->livePublicScore($playerId);
+        if ($new !== $old) {
+            $this->bga->playerScore->inc($playerId, $new - $old);
+            $applied[$playerId] = $new;
+            $this->globals->set('appliedPublic', json_encode($applied));
+        }
+    }
+
+    /**
+     * End-of-round scoring. Public (non-Secret-Santa) points are already reflected live as sweaters
+     * complete (see refreshPublicScore), so here we only add the hidden Secret Santa bonus, then clear
+     * the live tracker so the next round starts fresh (its knitting area is wiped in NewRound).
+     * TODO: Secret Santa scoring (+3 per satisfied objective) once Material::secretSantas() data and
+     *       dealing are wired up — currently no Secret Santas are dealt, so this adds nothing.
      */
     public function scoreRound(): void
     {
-        foreach (array_keys($this->loadPlayersBasicInfos()) as $pid) {
-            $vp = $this->countCompletedSweaters((int) $pid) * Material::VP_SWEATER;
-            if ($vp > 0) {
-                $this->bga->playerScore->inc((int) $pid, $vp);
-            }
-        }
+        // TODO: foreach player, add VP_SECRET_SANTA per completed sweater satisfying their Secret Santa.
+        $this->globals->set('appliedPublic', '[]');
     }
 
     public function getGameProgression()

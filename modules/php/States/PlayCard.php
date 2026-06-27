@@ -45,11 +45,12 @@ class PlayCard extends GameState
         $this->game->moveCardToTrick($card_id, $activePlayerId, $copy_from_card_id > 0 ? $copy_from_card_id : null);
 
         // The card came from a hidden hand, so other clients need its face to render it: send the row.
-        $this->notify->all('cardPlayed', clienttranslate('${player_name} plays a card'), [
+        $this->notify->all('cardPlayed', clienttranslate('${player_name} plays ${card_label}'), [
             'player_id'   => $activePlayerId,
             'player_name' => $this->game->getPlayerNameById($activePlayerId),
             'card_id'     => $card_id,
             'card'        => $this->game->cardForNotif($card_id),
+            'card_label'  => $this->game->cardLabel($card_id),
         ]);
 
         // In a 2-player game the player plays a second card before the turn passes.
