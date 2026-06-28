@@ -80,6 +80,7 @@ interface UglyChristmasSweaterGamedatas extends Gamedatas<UglyChristmasSweaterPl
     material: UcsMaterial;
     roundNo: number;
     leaderId: number;
+    isStudio: boolean;             // true only on the Studio environment (gates the DEBUG button)
 }
 
 /*

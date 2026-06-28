@@ -1,23 +1,33 @@
 {
   // option ids should be between 100 and 199
   // See https://en.doc.boardgamearena.com/Options_and_preferences:_gameoptions.json,_gamepreferences.json for more details
-  /*
-  EXAMPLE:
 
-  "101": {
-    "name": "Draft variant",
+  // Difficulty controls which round-parameter decks are revealed each round (read in
+  // Game::revealableGameplayTypes). Beginner = Fads only; Novice adds Trendy Yarn (trump colour);
+  // Expert adds Perfect Fit (super-trump) = the full base game.
+  "100": {
+    "name": "Difficulty",
     "values": {
       "0": {
-        "name": "No draft"
+        "name": "Beginner",
+        "description": "Fads only — no trump colour or super-trump.",
+        "tmdisplay": "Beginner"
       },
       "1": {
-        "name": "Draft",
-        "description": "Add a draft at the beginning of the game"
-        "tmdisplay": "Draft",
-        "nobeginner": true
+        "name": "Novice",
+        "description": "Fads + Trendy Yarn (trump colour).",
+        "tmdisplay": "Novice"
+      },
+      "2": {
+        "name": "Expert",
+        "description": "Fads + Trendy Yarn + Perfect Fit (the full game).",
+        "tmdisplay": "Expert"
       }
     },
-    "default": 0
+    "default": 2
   }
-  */
+
+  // NOTE: the player-count variants (2P/3P, Casual/Avid, Express) will go here too once their engine
+  // support lands. Those that require an exact player count should use a "startcondition" block
+  // (minplayers/maxplayers) — see the "collect" reference game's 2v2 option for the pattern.
 }

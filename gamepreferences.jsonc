@@ -1,26 +1,24 @@
 {
   // user preferences ids should be between 100 and 199
   // See https://en.doc.boardgamearena.com/Options_and_preferences:_gameoptions.json,_gamepreferences.json for more details
-  /*
-  EXAMPLE:
 
+  // How the Confirm/Reset gate behaves before a play/draft is sent to the server (read in
+  // Game.ts::confirmAction). "Auto" uses BGA's native countdown auto-click; "Manual" leaves the
+  // Confirm button for the player to click; "Off" skips the gate entirely (act immediately).
+  // (Inspired by the "collect" reference game's confirm-button preference.)
   "100": {
-    "name": "Colorblind Support",
+    "name": "Confirm before acting",
     "values": {
       "0": {
-        "name": "None",
-        "cssPref": "colorblind_off"
+        "name": "Off (act immediately)"
       },
       "1": {
-        "name": "Numbers",
-        "cssPref": "colorblind_on"
+        "name": "On, auto-confirm after a moment"
       },
       "2": {
-        "name": "Shapes",
-        "cssPref": "colorblind_shapes"
+        "name": "On, manual confirm (no timer)"
       }
     },
-    "default": 0
+    "default": 1
   }
-  */
 }

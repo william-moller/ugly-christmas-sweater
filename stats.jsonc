@@ -1,28 +1,36 @@
-{    
+{
     // Statistics for the table
-    "table": {},
-    
+    "table": {
+        "rounds": {
+            "id": 10,
+            "name": "Rounds played",
+            "type": "int"
+        }
+    },
+
     // Statistics for each player
     "player": {
-      /* 
-      EXAMPLE:
-
-      "turns_number": {
-        "id": 10,
-        "name": "Number of turns",
-        "type": "int"
-      },
-      "player_teststat1": {
-        "id": 11,
-        "name": "player test stat 1",
-        "type": "int"
-      },
-      "player_teststat2": {
-        "id": 12,
-        "name": "player test stat 2",
-        "type": "float"
-      }
-      */
-
+        "sweaters_built": {
+            "id": 10,
+            "name": "Sweaters completed",
+            "type": "int"
+        },
+        "runs_scored": {
+            "id": 11,
+            "name": "Sweaters with three consecutive numbers",
+            "type": "int"
+        },
+        // TODO: incremented once Fad scoring is finalised in scoreRound().
+        "fad_objectives": {
+            "id": 12,
+            "name": "Fad objectives scored",
+            "type": "int"
+        },
+        // TODO: incremented once Secret Santa dealing/scoring lands.
+        "secret_santas": {
+            "id": 13,
+            "name": "Secret Santas fulfilled",
+            "type": "int"
+        }
     }
 }

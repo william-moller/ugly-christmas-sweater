@@ -33,6 +33,10 @@ class EndScore extends \Bga\GameFramework\States\GameState
         // TODO: track unbuilt-sweater counts across rounds and set player_score_aux here.
         //   e.g. UPDATE player SET player_score_aux = -(total unbuilt sweaters)
 
+        // On Studio, stop instead of ending so the finished table stays open for inspection.
+        if ($this->game->preventEndGame) {
+            return GameStopped::class;
+        }
         return ST_END_GAME;
     }
 }

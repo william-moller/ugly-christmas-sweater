@@ -202,7 +202,29 @@ class Game {
         });
         this.renderAll();
         this.setupNotifications();
+        this.maybeAddDebugButton();
         console.log("Ending game setup");
+    }
+    /**
+     * Studio-only inspector button. Pure client side — dumps current state to the console (handy for
+     * eyeballing the render/scoring batch) and reminds which server-side debug_* helpers exist. Those
+     * helpers (debug_forceRoundOver / debug_addScore / debug_goToState) are invoked from the Studio
+     * debug console, not from here. (Pattern borrowed from the "collect" reference game.)
+     */
+    maybeAddDebugButton() {
+        if (!this.gamedatas.isStudio)
+            return;
+        const area = this.bga.gameArea.getElement();
+        area.insertAdjacentHTML('beforeend', `<a id="ucs-debug" class="bgabutton bgabutton_blue" href="#" style="margin:8px">DEBUG: dump state</a>`);
+        document.getElementById('ucs-debug').addEventListener('click', (e) => {
+            e.preventDefault();
+            console.log('[UCS DEBUG] gamedatas', this.gamedatas);
+            console.log('[UCS DEBUG] my knitting builds', this.buildsOf(this.myId));
+            console.log('[UCS DEBUG] scores', Object.values(this.gamedatas.players)
+                .map((p) => ({ name: p.name, score: p.score })));
+            console.log('[UCS DEBUG] Studio server helpers: debug_forceRoundOver(), '
+                + 'debug_addScore(playerId, delta), debug_goToState(id)');
+        });
     }
     // ===================================================================================
     //  Rendering (gamedatas is the single source of truth; mutate then re-render a zone)
@@ -591,12 +613,26 @@ class Game {
             this.bga.statusBar.setTitle(_('${you} must play a card'));
         });
     }
+    /** Confirm-gate behaviour, from the "Confirm before acting" game preference (gamepreferences 100). */
+    confirmMode() {
+        const raw = Number(this.bga.userPreferences?.get?.(100));
+        return (raw === 0 || raw === 2) ? raw : 1; // default: auto-confirm
+    }
     /**
      * Show a Confirm / Reset turn step in the top action bar before an action is actually sent to the
-     * server. Confirm auto-fires after the action button's countdown (BGA's native autoclick); Reset
-     * undoes the whole pending selection. The abort controller cancels the countdown on Reset / leave.
+     * server. Reset undoes the whole pending selection (the action hasn't been sent yet, so nothing is
+     * public — this IS the game's "undo"). The "Confirm before acting" preference controls the gate:
+     *   0 Off    — skip it, send immediately;
+     *   1 Auto   — Confirm auto-fires after BGA's native autoclick countdown (default);
+     *   2 Manual — Confirm waits for an explicit click (no timer).
      */
     confirmAction(submit, reset) {
+        const mode = this.confirmMode();
+        if (mode === 0) {
+            this.cancelConfirm();
+            submit();
+            return;
+        }
         const sb = this.bga.statusBar;
         this.cancelConfirm();
         this.confirming = true;
@@ -604,7 +640,8 @@ class Game {
         sb.removeActionButtons();
         sb.setTitle(_('${you} must confirm your action'));
         this.confirmAbort = new AbortController();
-        sb.addActionButton(_('Confirm'), () => { this.confirmAbort = null; this.confirming = false; submit(); }, { color: 'primary', autoclick: { abortSignal: this.confirmAbort.signal } });
+        const autoclick = mode === 1 ? { abortSignal: this.confirmAbort.signal } : false;
+        sb.addActionButton(_('Confirm'), () => { this.confirmAbort = null; this.confirming = false; submit(); }, { color: 'primary', autoclick });
         sb.addActionButton(_('Reset turn'), () => { this.cancelConfirm(); reset(); }, { color: 'secondary' });
     }
     /** Cancel any pending Confirm countdown (so it can't auto-fire after a Reset or state change). */

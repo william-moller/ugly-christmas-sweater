@@ -31,6 +31,19 @@ class Game extends \Bga\GameFramework\Table
     /** @var \Bga\GameFramework\Components\Deck\Deck Secret Santa objectives. */
     public $secretSantas;
 
+    /**
+     * When true, the game routes to the GameStopped dead-end instead of actually ending, so a finished
+     * table stays open for inspection. Forced on in the Studio environment (see __construct); always
+     * false in production. (Pattern borrowed from the "collect" reference game.)
+     */
+    public bool $preventEndGame = false;
+
+    /** Difficulty game option (gameoptions.jsonc id 100): which round-parameter decks are revealed. */
+    const OPT_DIFFICULTY = 100;
+    const DIFF_BEGINNER  = 0; // Fads only
+    const DIFF_NOVICE    = 1; // Fads + Trendy Yarn
+    const DIFF_EXPERT    = 2; // all three (Fads + Trendy Yarn + Perfect Fit) — base game
+
     // Card locations (see dbmodel.sql).
     const LOC_SOURCE    = 'deck';      // transient shuffle source during dealing
     const LOC_HAND      = 'hand';      // arg = player_id
@@ -49,6 +62,11 @@ class Game extends \Bga\GameFramework\Table
         $this->cards         = $this->deckFactory->createDeck('card');
         $this->gameplayCards = $this->deckFactory->createDeck('gameplay_card');
         $this->secretSantas  = $this->deckFactory->createDeck('secret_santa');
+
+        // On Studio, never truly end a table — keep it open to inspect final scoring/tableaus.
+        if ($this->getBgaEnvironment() === 'studio') {
+            $this->preventEndGame = true;
+        }
     }
 
     // ===========================================================================================
@@ -106,7 +124,13 @@ class Game extends \Bga\GameFramework\Table
         $this->globals->set('draftIndex', 0);
 
         // --- Stats (defined in stats.jsonc) ---------------------------------------------------
-        // TODO: $this->initStats(...) once stats.jsonc is defined.
+        $this->initStat('table', 'rounds', 0);
+        foreach (array_keys($players) as $pid) {
+            $this->initStat('player', 'sweaters_built', 0, (int) $pid);
+            $this->initStat('player', 'runs_scored', 0, (int) $pid);
+            $this->initStat('player', 'fad_objectives', 0, (int) $pid); // TODO: increment once Fad scoring is finalised
+            $this->initStat('player', 'secret_santas', 0, (int) $pid);  // TODO: increment once Secret Santa is dealt/scored
+        }
 
         // --- Deal the first round and start ---------------------------------------------------
         $this->setupRound();
@@ -236,17 +260,32 @@ class Game extends \Bga\GameFramework\Table
      * deck's "seen" stack (its location_arg = stack index, so the highest is the current one); the
      * previous reveal stays underneath for the rest of the game (never returned to the deck).
      * Called once per round (round 1 in setup, later rounds in NewRound).
-     * TODO: respect a Beginner/Novice/Expert difficulty option (reveal only Fad / +Trendy Yarn / +all).
+     * The Beginner/Novice/Expert difficulty option gates which decks reveal (Fad only / +Trendy Yarn /
+     * +Perfect Fit). A deck that isn't revealed this round simply has no active card.
      */
     public function revealGameplayCards(): void
     {
+        $allowed = $this->revealableGameplayTypes();
         foreach (self::GAMEPLAY_TYPES as $type) {
+            if (!in_array($type, $allowed, true)) {
+                continue; // suppressed by the difficulty option
+            }
             if ($this->gameplayCards->getCardOnTop($this->gpDeckLoc($type)) === null) {
                 continue; // deck exhausted (shouldn't happen within the 3 base rounds)
             }
             $nextArg = $this->gameplayCards->countCardInLocation($this->gpSeenLoc($type));
             $this->gameplayCards->pickCardForLocation($this->gpDeckLoc($type), $this->gpSeenLoc($type), $nextArg);
         }
+    }
+
+    /** Which gameplay decks are revealed this game, per the Difficulty option (Fad is always on). */
+    public function revealableGameplayTypes(): array
+    {
+        $difficulty = (int) $this->tableOptions->get(self::OPT_DIFFICULTY);
+        $types = ['fad'];                                   // Beginner: Fads only
+        if ($difficulty >= self::DIFF_NOVICE) $types[] = 'trendyyarn'; // Novice: + Trendy Yarn
+        if ($difficulty >= self::DIFF_EXPERT) $types[] = 'perfectfit'; // Expert:  + Perfect Fit
+        return $types;
     }
 
     /** The current (most recently revealed) card of a gameplay deck, or null if none revealed yet. */
@@ -319,6 +358,9 @@ class Game extends \Bga\GameFramework\Table
         // Round info.
         $result["roundNo"]  = (int) $this->globals->get('roundNo');
         $result["leaderId"] = (int) $this->globals->get('leaderId');
+
+        // Studio-only client affordances (DEBUG button). Always false in production.
+        $result["isStudio"] = $this->getBgaEnvironment() === 'studio';
 
         return $result;
     }
@@ -815,8 +857,45 @@ class Game extends \Bga\GameFramework\Table
      */
     public function scoreRound(): void
     {
-        // TODO: foreach player, add VP_SECRET_SANTA per completed sweater satisfying their Secret Santa.
+        // Statistics: count this round's completed sweaters (and runs among them) per player. The
+        // knitting area still holds the round's builds at this point (NewRound wipes it next).
+        $this->tableStats->inc('rounds', 1);
+        foreach (array_keys($this->loadPlayersBasicInfos()) as $pid) {
+            $s = $this->roundSweaterStats((int) $pid);
+            if ($s['sweaters'] > 0) $this->playerStats->inc('sweaters_built', $s['sweaters'], (int) $pid);
+            if ($s['runs'] > 0)     $this->playerStats->inc('runs_scored',  $s['runs'],     (int) $pid);
+        }
+
+        // TODO: foreach player, add VP_SECRET_SANTA per completed sweater satisfying their Secret Santa
+        //       (and inc the 'secret_santas' / 'fad_objectives' stats once that scoring is finalised).
         $this->globals->set('appliedPublic', '[]');
+    }
+
+    /** Completed-sweater stats for a player's current knitting area: count of sweaters and of runs. */
+    public function roundSweaterStats(int $playerId): array
+    {
+        $builds = [];
+        foreach ($this->getCardsWithExtras(self::LOC_KNITTING, $playerId) as $c) {
+            if ($c['slot'] !== null) {
+                $builds[(int) $c['buildNo']][$c['slot']] = $c;
+            }
+        }
+        $sweaters = 0;
+        $runs = 0;
+        foreach ($builds as $bySlot) {
+            if (!isset($bySlot[Material::SLOT_LEFT], $bySlot[Material::SLOT_RIGHT], $bySlot[Material::SLOT_BOTTOM])) {
+                continue;
+            }
+            $sweaters++;
+            $values = array_map(fn($c) => $this->effectiveValue($c), [
+                $bySlot[Material::SLOT_LEFT], $bySlot[Material::SLOT_RIGHT], $bySlot[Material::SLOT_BOTTOM],
+            ]);
+            sort($values);
+            if ($values[1] === $values[0] + 1 && $values[2] === $values[1] + 1) {
+                $runs++;
+            }
+        }
+        return ['sweaters' => $sweaters, 'runs' => $runs];
     }
 
     public function getGameProgression()
@@ -834,5 +913,17 @@ class Game extends \Bga\GameFramework\Table
     public function debug_goToState(int $state = 10)
     {
         $this->gamestate->jumpToState($state);
+    }
+
+    /** Studio debug: jump straight to round scoring (handy for exercising the scoring/round-end UI). */
+    public function debug_forceRoundOver()
+    {
+        $this->jumpToState(70); // ScoreRound
+    }
+
+    /** Studio debug: nudge a player's score (e.g. to reach the end-game path without playing it out). */
+    public function debug_addScore(int $playerId, int $delta)
+    {
+        $this->bga->playerScore->inc($playerId, $delta);
     }
 }
