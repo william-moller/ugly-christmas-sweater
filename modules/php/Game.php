@@ -281,7 +281,7 @@ class Game extends \Bga\GameFramework\Table
     /** Which gameplay decks are revealed this game, per the Difficulty option (Fad is always on). */
     public function revealableGameplayTypes(): array
     {
-        $difficulty = (int) $this->tableOptions->get(self::OPT_DIFFICULTY);
+        $difficulty = (int) $this->bga->tableOptions->get(self::OPT_DIFFICULTY);
         $types = ['fad'];                                   // Beginner: Fads only
         if ($difficulty >= self::DIFF_NOVICE) $types[] = 'trendyyarn'; // Novice: + Trendy Yarn
         if ($difficulty >= self::DIFF_EXPERT) $types[] = 'perfectfit'; // Expert:  + Perfect Fit

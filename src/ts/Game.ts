@@ -161,20 +161,21 @@ export class Game {
         const cards = document.createElement('div');
         cards.className = 'ucs-gp-cards';
 
-        // The current revealed card (with a "stacked" look when earlier reveals sit beneath it).
-        const active = document.createElement('div');
-        active.className = 'ucs-gp-active';
-        if (pile && (pile.seenCount ?? 0) > 1) active.classList.add('ucs-gp-stacked');
-        active.appendChild(this.gameplayCardEl(type, pile?.active ?? null));
-        cards.appendChild(active);
-
-        // The face-down draw pile + how many cards remain.
+        // The face-down draw pile + how many cards remain — shown on the LEFT.
         const deck = document.createElement('div');
         deck.className = 'ucs-gp-deck';
         const remaining = pile?.deckCount ?? 0;
         deck.innerHTML = `<div class="ucs-card ucs-card-back ucs-gp-back ${remaining ? '' : 'ucs-gp-empty'}"></div>`
             + `<div class="ucs-gp-count">${remaining} left</div>`;
         cards.appendChild(deck);
+
+        // The current revealed card to the RIGHT of its draw pile (with a "stacked" look when earlier
+        // reveals sit beneath it).
+        const active = document.createElement('div');
+        active.className = 'ucs-gp-active';
+        if (pile && (pile.seenCount ?? 0) > 1) active.classList.add('ucs-gp-stacked');
+        active.appendChild(this.gameplayCardEl(type, pile?.active ?? null));
+        cards.appendChild(active);
 
         wrap.appendChild(cards);
         return wrap;
