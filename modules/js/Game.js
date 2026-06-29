@@ -638,8 +638,16 @@ class Game {
     }
     /** Confirm-gate behaviour, from the "Confirm before acting" game preference (gamepreferences 100). */
     confirmMode() {
-        const raw = Number(this.bga.userPreferences?.get?.(100));
-        return (raw === 0 || raw === 2) ? raw : 1; // default: auto-confirm
+        try {
+            const raw = Number(this.bga.userPreferences?.get?.(100));
+            return (raw === 0 || raw === 2) ? raw : 1; // default: auto-confirm
+        }
+        catch (e) {
+            // Reading the preference can throw if it isn't loaded for this table; don't let that
+            // strand the action — fall back to the auto-confirm default.
+            console.warn('UCS: could not read the confirm preference; defaulting to auto-confirm', e);
+            return 1;
+        }
     }
     /**
      * Show a Confirm / Reset turn step in the top action bar before an action is actually sent to the
@@ -656,16 +664,26 @@ class Game {
             submit();
             return;
         }
-        const sb = this.bga.statusBar;
-        this.cancelConfirm();
-        this.confirming = true;
-        this.renderKnitting(this.myId); // drop the draft targets while confirming
-        sb.removeActionButtons();
-        sb.setTitle(_('${you} must confirm your action'));
-        this.confirmAbort = new AbortController();
-        const autoclick = mode === 1 ? { abortSignal: this.confirmAbort.signal } : false;
-        sb.addActionButton(_('Confirm'), () => { this.confirmAbort = null; this.confirming = false; submit(); }, { color: 'primary', autoclick });
-        sb.addActionButton(_('Reset turn'), () => { this.cancelConfirm(); reset(); }, { color: 'secondary' });
+        try {
+            const sb = this.bga.statusBar;
+            this.cancelConfirm();
+            this.confirming = true;
+            this.renderKnitting(this.myId); // drop the draft targets while confirming
+            sb.removeActionButtons();
+            sb.setTitle(_('${you} must confirm your action'));
+            this.confirmAbort = new AbortController();
+            const autoclick = mode === 1 ? { abortSignal: this.confirmAbort.signal } : false;
+            sb.addActionButton(_('Confirm'), () => { this.confirmAbort = null; this.confirming = false; submit(); }, { color: 'primary', autoclick });
+            sb.addActionButton(_('Reset turn'), () => { this.cancelConfirm(); reset(); }, { color: 'secondary' });
+        }
+        catch (e) {
+            // The gate failed to render (a status-bar / preference quirk on this table). Never strand a
+            // play/draft behind a broken gate: log the cause and just perform the action immediately.
+            console.error('UCS: confirm gate failed to render; acting immediately', e);
+            this.cancelConfirm();
+            this.confirming = false;
+            submit();
+        }
     }
     /** Cancel any pending Confirm countdown (so it can't auto-fire after a Reset or state change). */
     cancelConfirm() {
