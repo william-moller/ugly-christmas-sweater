@@ -39,8 +39,7 @@ class DraftCard {
                 card_id: cardId,
                 build_no: placement.build_no,
                 slot: placement.slot,
-                wild_value: placement.wild_value,
-                wild_icon: placement.wild_icon,
+                floating_patch_slot: placement.floating_patch_slot,
             });
         });
     }
@@ -67,6 +66,31 @@ class RoundReview {
     }
     onLeavingState() {
         this.game.endRoundReview();
+    }
+}
+
+/**
+ * Client handler for the AssignPatches (round-end) state. Each player with patch(es) in a completed
+ * sweater assigns a value + icon to each, simultaneously. The value/icon pickers live in the action bar
+ * (the patch being assigned is highlighted in the player's knitting area); each assignment is sent via
+ * actAssignPatch. Non-active players (none to assign) just wait.
+ */
+class AssignPatches {
+    constructor(game, bga) {
+        this.game = game;
+        this.bga = bga;
+    }
+    onEnteringState(args, isCurrentPlayerActive) {
+        if (!isCurrentPlayerActive) {
+            return;
+        }
+        const mine = (args.assignable && args.assignable[this.bga.gameui.player_id]) || [];
+        this.game.beginAssignPatches(mine, (cardId, value, icon) => {
+            this.bga.actions.performAction('actAssignPatch', { card_id: cardId, value, icon });
+        });
+    }
+    onLeavingState() {
+        this.game.endAssignPatches();
     }
 }
 
@@ -154,7 +178,8 @@ function cardTooltip(card, material) {
     const face = faceOf(card, material);
     const colour = face.color.charAt(0).toUpperCase() + face.color.slice(1);
     if (face.patch) {
-        return `<strong>${colour} Patch</strong><br>Wild — value, icon and orientation are chosen when played/placed.`;
+        return `<strong>${colour} Patch</strong><br>Wild. Starting a new sweater it "floats" (no orientation) `
+            + `until a second card joins; its value &amp; icon are chosen at round-end scoring.`;
     }
     const icon = face.icon ?? '? (pending art)';
     const slot = face.slot ?? '? (pending art)';
@@ -171,12 +196,18 @@ class Game {
         this.draftableIds = [];
         this.onDraftComplete = null;
         this.selectedDraftId = null;
-        this.patchValue = null;
-        this.patchIcon = null;
-        this.patchSlot = null;
-        // The exact knitting cell (build no; 0 = new sweater) the player clicked to place into. Held —
-        // shown highlighted in green — while a Patch still needs its value/icon before it can be placed.
+        // The build chosen to place into (0 = new sweater), plus the orientation choices a patch placement
+        // may still need: the drafted patch's own slot (only when added to an existing sweater) and the
+        // orientation to give a floating patch already sitting in the target sweater. null = not yet chosen.
         this.pendingBuildNo = null;
+        this.patchSlot = null;
+        this.floatingPatchSlot = null;
+        // Round-end patch assignment (AssignPatches state): a queue of my patch card ids still to assign,
+        // and the value/icon being chosen for the head of the queue.
+        this.onAssignPatch = null;
+        this.assignQueue = [];
+        this.assignValue = null;
+        this.assignIcon = null;
         // Confirm/Reset gate: a pending play/draft waits for the player to confirm (or auto-confirms via
         // the action button's countdown). The abort controller cancels that countdown on Reset / leave.
         this.confirmAbort = null;
@@ -191,6 +222,7 @@ class Game {
         this.bga.states.register('PlayCard', new PlayCard(this, bga));
         this.bga.states.register('DraftCard', new DraftCard(this, bga));
         this.bga.states.register('RoundReview', new RoundReview(this, bga));
+        this.bga.states.register('AssignPatches', new AssignPatches(this, bga));
     }
     /*
         setup: build the game UI from current game state ("gamedatas" = the result of Game::getAllDatas).
@@ -241,7 +273,7 @@ class Game {
         document.getElementById('ucs-debug').addEventListener('click', (e) => {
             e.preventDefault();
             console.log('[UCS DEBUG] gamedatas', this.gamedatas);
-            console.log('[UCS DEBUG] my knitting builds', this.buildsOf(this.myId));
+            console.log('[UCS DEBUG] my knitting builds', this.myBuilds());
             console.log('[UCS DEBUG] scores', Object.values(this.gamedatas.players)
                 .map((p) => ({ name: p.name, score: p.score })));
             console.log('[UCS DEBUG] Studio server helpers: debug_forceRoundOver(), '
@@ -417,27 +449,19 @@ class Game {
             el.classList.remove('ucs-has-order');
         }
     }
-    /** Group a player's knitting cards by build number and lay them out as L/R/B slots. */
+    /**
+     * Render a player's knitting area: builds laid out in the sweater silhouette (L top-left, R
+     * top-right, B centred below). A floating Patch (orientation not yet chosen) renders centred with a
+     * "floating" treatment. During round-end assignment the patch currently being assigned is highlighted.
+     * Placement is driven from the action bar (renderPlacementPanel), so this is display-only.
+     */
     renderKnitting(playerId) {
         const zone = document.getElementById(`ucs-knitting-${playerId}`);
         if (!zone)
             return;
         zone.innerHTML = '';
         const cards = this.cardArray(this.gamedatas.knitting).filter((c) => Number(c.location_arg) === playerId);
-        // While this player is mid-draft (their own area), the knitting area doubles as a placement
-        // picker. Candidate slots show as dashed-yellow OPTIONS (a normal card offers its printed slot;
-        // a Patch offers all three — clicking one sets its orientation). Clicking a position picks that
-        // exact cell: it turns solid GREEN while the other options stay clickable but dim to faint
-        // yellow, so the choice is clear yet still changeable. (Once value+icon are known for a Patch
-        // the held pick advances to Confirm.)
-        const drafting = playerId === this.myId && !this.confirming
-            && this.selectedDraftId != null && this.onDraftComplete != null;
-        const optionSlots = drafting ? this.draftTargetSlots(playerId) : [];
-        const pickedBuild = this.pendingBuildNo; // the exact cell chosen (held, awaiting value/icon)
-        const pickedSlot = drafting ? this.selectedSlot() : null;
-        const hasPick = drafting && pickedBuild != null;
-        const targetMode = (buildNo, slot) => (hasPick && buildNo === pickedBuild && slot === pickedSlot) ? 'selected' : hasPick ? 'faint' : 'option';
-        if (!cards.length && !drafting) {
+        if (!cards.length) {
             zone.innerHTML = `<div class="ucs-empty">No sweaters yet</div>`;
             return;
         }
@@ -454,92 +478,24 @@ class Game {
             build.className = 'ucs-build';
             if (this.isBuildComplete(builds[buildNo]))
                 build.classList.add('ucs-build-complete');
-            const occupied = new Set();
             builds[buildNo].forEach((card) => {
                 const el = createCardElement(card, this.material);
-                // Position each piece into the sweater silhouette: L top-left, R top-right,
-                // B centred below (grid areas defined in .ucs-build).
                 const slot = card.slot ?? faceOf(card, this.material).slot ?? null;
                 if (slot) {
                     el.style.gridArea = slot;
                     el.classList.add(`ucs-slot-${slot}`); // lets CSS rotate the B (hem) piece
-                    occupied.add(slot);
                 }
-                // A "place over" target on an occupied slot (green if picked, else option/faint).
-                if (slot && optionSlots.includes(slot)) {
-                    this.markTarget(el, buildNo, slot, targetMode(buildNo, slot));
+                else {
+                    el.classList.add('ucs-floating'); // a floating patch — orientation not set yet
+                }
+                if (Number(card.id) === this.assignQueue[0]) {
+                    el.classList.add('ucs-assigning'); // the patch being assigned right now
                 }
                 this.attachTooltip(el, card);
                 build.appendChild(el);
             });
-            // An empty target slot is an "add here" target (green if picked, else option/faint).
-            optionSlots.forEach((ts) => {
-                if (!occupied.has(ts))
-                    build.appendChild(this.makeGhostTarget(ts, buildNo, targetMode(buildNo, ts)));
-            });
             zone.appendChild(build);
         });
-        // The "new sweater" target — the chosen slot position(s), same option/faint/selected styling.
-        if (optionSlots.length) {
-            const newBuild = document.createElement('div');
-            newBuild.className = 'ucs-build ucs-build-new';
-            optionSlots.forEach((ts) => newBuild.appendChild(this.makeGhostTarget(ts, 0, targetMode(0, ts))));
-            zone.appendChild(newBuild);
-        }
-    }
-    /** The slot(s) a draft placement OPTION should occupy in this player's area now ([] = none). */
-    draftTargetSlots(playerId) {
-        if (playerId !== this.myId || this.confirming)
-            return [];
-        if (this.selectedDraftId == null || !this.onDraftComplete)
-            return [];
-        const card = this.gamedatas.draftpool[this.selectedDraftId];
-        // A Patch keeps all three slots clickable throughout (clicking one (re)sets its orientation);
-        // a normal card only ever targets its single printed slot.
-        if (card && isPatch(card, this.material)) {
-            return ['L', 'R', 'B'];
-        }
-        const slot = this.selectedSlot();
-        return slot ? [slot] : [];
-    }
-    /** CSS class for a placement-target visual state. */
-    targetClass(mode) {
-        return mode === 'selected' ? 'ucs-target-selected' : mode === 'faint' ? 'ucs-target-faint' : 'ucs-target-option';
-    }
-    /** Mark an existing knitting piece as a clickable placement target. */
-    markTarget(el, buildNo, slot, mode) {
-        el.classList.add('ucs-target', this.targetClass(mode));
-        el.addEventListener('click', () => this.placeDraftTarget(buildNo, slot));
-    }
-    /** A ghost cell at `slot` that targets `buildNo` (0 = new sweater) when clicked. */
-    makeGhostTarget(slot, buildNo, mode) {
-        const ghost = document.createElement('div');
-        ghost.className = `ucs-card ucs-ghost ucs-target ucs-slot-${slot} ${this.targetClass(mode)}`;
-        ghost.style.gridArea = slot;
-        ghost.innerHTML = `<div class="ucs-ghost-label">${slot}</div>`;
-        ghost.addEventListener('click', () => this.placeDraftTarget(buildNo, slot));
-        return ghost;
-    }
-    /**
-     * A knitting placement target was clicked: pick that exact position. For a Patch the clicked slot
-     * (re)sets the orientation (as if its L/R/B button was clicked). The picked cell stays highlighted
-     * green while the others remain clickable (faint). If the placement is fully determined (a normal
-     * card, or a Patch whose value + icon are chosen) it advances to Confirm; otherwise the pick is
-     * held and the player finishes value/icon in the action bar (then it advances automatically).
-     */
-    placeDraftTarget(buildNo, slot) {
-        const card = this.selectedDraftId != null ? this.gamedatas.draftpool[this.selectedDraftId] : null;
-        const patch = card ? isPatch(card, this.material) : false;
-        if (patch)
-            this.patchSlot = slot; // clicking a position (re)picks the orientation
-        this.pendingBuildNo = buildNo;
-        const ready = this.selectedSlot() != null && (!patch || (this.patchValue != null && this.patchIcon != null));
-        if (ready) {
-            this.completeDraft(buildNo);
-        }
-        else {
-            this.renderPlacementPanel(); // hold the pick (green) and wait for value/icon
-        }
     }
     isBuildComplete(build) {
         const slots = new Set(build.map((c) => c.slot));
@@ -742,10 +698,9 @@ class Game {
     }
     clearDraftSelection() {
         this.selectedDraftId = null;
-        this.patchValue = null;
-        this.patchIcon = null;
-        this.patchSlot = null;
         this.pendingBuildNo = null;
+        this.patchSlot = null;
+        this.floatingPatchSlot = null;
     }
     /** A pool card was clicked: select it and open the placement panel. */
     selectDraft(cardId) {
@@ -754,93 +709,114 @@ class Game {
         this.renderDraftPool();
         this.renderPlacementPanel();
     }
-    /** The active player's builds: buildNo -> set of occupied slots. */
-    buildsOf(playerId) {
-        const res = {};
+    /** My knitting grouped into builds: oriented slots per build, plus any floating-patch card id per build. */
+    myBuilds() {
+        const builds = {};
+        const floating = {};
         this.cardArray(this.gamedatas.knitting)
-            .filter((c) => Number(c.location_arg) === playerId)
+            .filter((c) => Number(c.location_arg) === this.myId)
             .forEach((c) => {
             const b = Number(c.buildNo ?? 0);
-            (res[b] || (res[b] = new Set())).add(String(c.slot));
+            (builds[b] || (builds[b] = new Set()));
+            const slot = c.slot ? String(c.slot) : null;
+            if (slot)
+                builds[b].add(slot);
+            else
+                floating[b] = Number(c.id); // a floating patch (orientation not yet assigned)
         });
-        return res;
-    }
-    /** The slot the currently-selected card will occupy (printed for a normal card; chosen for a patch). */
-    selectedSlot() {
-        if (this.selectedDraftId == null)
-            return null;
-        const card = this.gamedatas.draftpool[this.selectedDraftId];
-        if (!card)
-            return null;
-        return isPatch(card, this.material) ? this.patchSlot : (faceOf(card, this.material).slot ?? null);
+        return { builds, floating, buildNos: Object.keys(builds).map(Number).sort((a, b) => a - b) };
     }
     /**
-     * Render the placement controls for the selected draft card as compact buttons in the top
-     * action bar (the status bar). For a Patch this is value / icon / orientation; once the slot
-     * is known it's the target-sweater choice. Nothing selected → restore the default draft prompt.
+     * Drive the draft placement from the action bar. A patch no longer picks value/icon here (those are
+     * assigned at round-end). Steps: (1) choose the target sweater (skipped when "new" is the only
+     * option); (2) for a patch added to an EXISTING sweater, choose its orientation; (3) if the target
+     * already holds a floating patch, choose that floating patch's orientation too; then the placement
+     * gates behind Confirm. A patch starting a NEW sweater simply floats — no orientation needed.
      */
     renderPlacementPanel() {
         const sb = this.bga.statusBar;
         sb.removeActionButtons();
-        // Keep the in-area placement targets in sync with the current selection (they highlight the
-        // target slot in my knitting area as a click-to-place alternative to the action-bar buttons).
         this.renderKnitting(this.myId);
-        // The drafting flow no longer uses the in-board panel; keep it hidden.
-        const panel = document.getElementById('ucs-placement');
-        if (panel) {
-            panel.style.display = 'none';
-            panel.innerHTML = '';
-        }
         if (this.selectedDraftId == null || !this.onDraftComplete) {
             sb.setTitle(_('${you} must draft a sweater card'));
             return;
         }
         const card = this.gamedatas.draftpool[this.selectedDraftId];
         const patch = card ? isPatch(card, this.material) : false;
-        // Patch: pick value / icon / orientation. Shown together; the chosen one is highlighted
-        // (primary), so a player can change any of the three before placing.
-        if (patch) {
-            sb.setTitle(_('Wild card — choose its value, icon and orientation'));
-            for (let v = 1; v <= 12; v++) {
-                sb.addActionButton(String(v), () => { this.patchValue = v; this.renderPlacementPanel(); }, { color: this.patchValue === v ? 'primary' : 'secondary' });
+        const { builds, floating, buildNos } = this.myBuilds();
+        // Step 1 — choose the target sweater (auto when a new sweater is the only option).
+        if (this.pendingBuildNo == null) {
+            if (buildNos.length === 0) {
+                this.pendingBuildNo = 0; // only option: start a new sweater
             }
-            this.material.icons.forEach((ic) => {
-                sb.addActionButton(ic, () => { this.patchIcon = ic; this.renderPlacementPanel(); }, { color: this.patchIcon === ic ? 'primary' : 'secondary' });
-            });
-            ['L', 'R', 'B'].forEach((s) => {
-                sb.addActionButton(s, () => { this.patchSlot = s; this.renderPlacementPanel(); }, { color: this.patchSlot === s ? 'primary' : 'secondary' });
-            });
-        }
-        else {
-            sb.setTitle(_('Place your drafted card'));
-        }
-        // Build targets — actionable once the slot is known (always, for a normal card).
-        const slot = this.selectedSlot();
-        const ready = slot != null && (!patch || (this.patchValue != null && this.patchIcon != null));
-        // A position already picked in the knitting area is held (shown green) until the placement is
-        // fully determined; once it is (e.g. the Patch's value + icon are now chosen) advance to Confirm.
-        if (this.pendingBuildNo != null && ready) {
-            this.completeDraft(this.pendingBuildNo);
-            return;
-        }
-        const builds = this.buildsOf(this.myId);
-        const buildNos = Object.keys(builds).map(Number).sort((a, b) => a - b);
-        // With no started sweaters, "New sweater" is the only possible target — don't make the
-        // player choose. Auto-place into a new sweater as soon as the placement is fully
-        // determined (immediately for a normal card; after value/icon/orientation for a Patch).
-        if (buildNos.length === 0) {
-            if (ready) {
-                this.completeDraft(0);
+            else {
+                sb.setTitle(_('Place your drafted card — choose a sweater'));
+                buildNos.forEach((no) => sb.addActionButton(`${_('Sweater')} ${no}`, () => {
+                    this.pendingBuildNo = no;
+                    this.patchSlot = null;
+                    this.floatingPatchSlot = null;
+                    this.renderPlacementPanel();
+                }, { color: 'primary' }));
+                sb.addActionButton(_('+ New sweater'), () => {
+                    this.pendingBuildNo = 0;
+                    this.patchSlot = null;
+                    this.floatingPatchSlot = null;
+                    this.renderPlacementPanel();
+                }, { color: 'primary' });
+                sb.addActionButton(_('Cancel'), () => {
+                    this.clearDraftSelection();
+                    this.renderDraftPool();
+                    this.renderPlacementPanel();
+                }, { color: 'alert' });
                 return;
             }
         }
-        else {
-            buildNos.forEach((no) => {
-                const occupied = slot != null && builds[no].has(slot);
-                const label = occupied ? `Sweater ${no}: replace ${slot}` : `Sweater ${no}: add ${slot ?? '?'}`;
-                sb.addActionButton(label, () => this.completeDraft(no), { color: 'primary', disabled: !ready });
-            });
-            sb.addActionButton(_('+ New sweater'), () => this.completeDraft(0), { color: 'primary', disabled: !ready });
+        // Step 2 — the target is chosen; work out which orientation choices remain.
+        const buildNo = this.pendingBuildNo;
+        const isNewBuild = buildNo === 0 || !(buildNo in builds);
+        const occupied = isNewBuild ? new Set() : builds[buildNo];
+        const floatId = isNewBuild ? undefined : floating[buildNo];
+        // The drafted card's own slot: printed for a regular card, chosen for a patch on an existing
+        // sweater, or null (floating) for a patch starting a new sweater.
+        const cardSlot = !patch ? (faceOf(card, this.material).slot ?? null)
+            : (isNewBuild ? null : this.patchSlot);
+        // (a) A patch added to an existing sweater must pick an open orientation.
+        if (patch && !isNewBuild) {
+            const openForCard = ['L', 'R', 'B'].filter((s) => !occupied.has(s));
+            sb.setTitle(_('Choose an orientation for your patch'));
+            openForCard.forEach((s) => sb.addActionButton(s, () => {
+                this.patchSlot = s;
+                if (this.floatingPatchSlot === s)
+                    this.floatingPatchSlot = null;
+                this.renderPlacementPanel();
+            }, { color: this.patchSlot === s ? 'primary' : 'secondary' }));
+        }
+        // (b) Adding a second card to a sweater that holds a floating patch orients that patch now.
+        if (floatId !== undefined) {
+            const openForFloat = ['L', 'R', 'B'].filter((s) => !occupied.has(s) && s !== cardSlot);
+            sb.setTitle(_('Orient the floating patch already in this sweater'));
+            openForFloat.forEach((s) => sb.addActionButton(`${_('Patch')} ${s}`, () => {
+                this.floatingPatchSlot = s;
+                this.renderPlacementPanel();
+            }, { color: this.floatingPatchSlot === s ? 'primary' : 'secondary' }));
+        }
+        if (!patch && floatId === undefined) {
+            sb.setTitle(_('Place your drafted card'));
+        }
+        const cardSlotReady = !patch || isNewBuild || this.patchSlot != null;
+        const floatReady = floatId === undefined || this.floatingPatchSlot != null;
+        if (cardSlotReady && floatReady) {
+            this.completeDraft(buildNo);
+            return;
+        }
+        // Still choosing — let the player back out to the sweater choice or cancel entirely.
+        if (buildNos.length > 0) {
+            sb.addActionButton(_('Change sweater'), () => {
+                this.pendingBuildNo = null;
+                this.patchSlot = null;
+                this.floatingPatchSlot = null;
+                this.renderPlacementPanel();
+            }, { color: 'secondary' });
         }
         sb.addActionButton(_('Cancel'), () => {
             this.clearDraftSelection();
@@ -848,25 +824,20 @@ class Game {
             this.renderPlacementPanel();
         }, { color: 'alert' });
     }
-    /** Submit the draft with the chosen placement, then clear the local selection UI. */
+    /** Submit the draft with the chosen placement (gated behind Confirm/Reset), then clear the UI. */
     completeDraft(buildNo) {
         if (this.selectedDraftId == null || !this.onDraftComplete)
             return;
         const card = this.gamedatas.draftpool[this.selectedDraftId];
         const patch = card ? isPatch(card, this.material) : false;
-        const slot = this.selectedSlot();
-        if (slot == null)
-            return;
         const placement = {
             build_no: buildNo,
-            slot,
-            wild_value: patch ? (this.patchValue ?? 0) : 0,
-            wild_icon: patch ? (this.patchIcon ?? '') : '',
+            // slot only matters for a patch added to an existing sweater (regular = printed, patch-new = float).
+            slot: (patch && this.patchSlot) ? this.patchSlot : '',
+            floating_patch_slot: this.floatingPatchSlot ?? '',
         };
         const id = this.selectedDraftId;
         const cb = this.onDraftComplete;
-        // Gate the draft behind Confirm/Reset. The pool card stays selected (and the chosen placement
-        // pending) while confirming; Reset undoes the whole draft (pool card + placement + patch wilds).
         this.confirmAction(() => {
             this.clearDraftSelection();
             this.renderDraftPool();
@@ -877,6 +848,53 @@ class Game {
             this.renderDraftPool();
             this.renderPlacementPanel();
         });
+    }
+    // ===================================================================================
+    //  Round-end patch assignment — called by the AssignPatches state handler
+    // ===================================================================================
+    /** Begin assigning value+icon to my patches that sit in completed sweaters (round-end). */
+    beginAssignPatches(cardIds, onAssign) {
+        this.onAssignPatch = onAssign;
+        this.assignQueue = [...cardIds];
+        this.assignValue = null;
+        this.assignIcon = null;
+        this.renderAssignPanel();
+    }
+    endAssignPatches() {
+        this.onAssignPatch = null;
+        this.assignQueue = [];
+        this.assignValue = null;
+        this.assignIcon = null;
+        this.bga.statusBar.removeActionButtons();
+        this.renderKnitting(this.myId);
+    }
+    /** Value/icon pickers for the patch at the head of my assignment queue (highlighted in my area). */
+    renderAssignPanel() {
+        const sb = this.bga.statusBar;
+        sb.removeActionButtons();
+        this.renderKnitting(this.myId); // highlights assignQueue[0]
+        if (!this.onAssignPatch || this.assignQueue.length === 0) {
+            sb.setTitle(_('Waiting for other players…'));
+            return;
+        }
+        const cardId = this.assignQueue[0];
+        sb.setTitle(_('Assign a value and icon to your patch (highlighted)'));
+        for (let v = 1; v <= 12; v++) {
+            sb.addActionButton(String(v), () => { this.assignValue = v; this.renderAssignPanel(); }, { color: this.assignValue === v ? 'primary' : 'secondary' });
+        }
+        this.material.icons.forEach((ic) => {
+            sb.addActionButton(ic, () => { this.assignIcon = ic; this.renderAssignPanel(); }, { color: this.assignIcon === ic ? 'primary' : 'secondary' });
+        });
+        if (this.assignValue != null && this.assignIcon != null) {
+            const v = this.assignValue, ic = this.assignIcon, cb = this.onAssignPatch;
+            sb.addActionButton(_('Confirm'), () => {
+                this.assignQueue.shift();
+                this.assignValue = null;
+                this.assignIcon = null;
+                cb(cardId, v, ic);
+                this.renderAssignPanel();
+            }, { color: 'primary' });
+        }
     }
     // ===================================================================================
     //  Round review (between-round pause) — called by the RoundReview state handler
@@ -968,8 +986,17 @@ class Game {
             delete this.gamedatas.knitting[Number(args.replaced_card_id)];
         }
         this.gamedatas.knitting[id] = args.card;
+        // A floating patch already in the target sweater may have just been oriented by this placement.
+        if (args.floating_patch) {
+            this.gamedatas.knitting[Number(args.floating_patch.id)] = args.floating_patch;
+        }
         this.renderDraftPool();
-        this.renderPlacementPanel();
+        this.renderKnitting(args.player_id);
+    }
+    /** Round-end: a player set a patch's value + icon — re-render it with its chosen face. */
+    async notif_patchAssigned(args) {
+        const id = Number(args.card_id);
+        this.gamedatas.knitting[id] = args.card;
         this.renderKnitting(args.player_id);
     }
     /** The trick resolved into a draft order; show the order badges. */

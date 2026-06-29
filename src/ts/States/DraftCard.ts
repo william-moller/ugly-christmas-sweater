@@ -18,8 +18,7 @@ export class DraftCard {
                 card_id: cardId,
                 build_no: placement.build_no,
                 slot: placement.slot,
-                wild_value: placement.wild_value,
-                wild_icon: placement.wild_icon,
+                floating_patch_slot: placement.floating_patch_slot,
             });
         });
     }

@@ -95,7 +95,8 @@ export function cardTooltip(card: SweaterCard, material: UcsMaterial): string {
     const face = faceOf(card, material);
     const colour = face.color.charAt(0).toUpperCase() + face.color.slice(1);
     if (face.patch) {
-        return `<strong>${colour} Patch</strong><br>Wild — value, icon and orientation are chosen when played/placed.`;
+        return `<strong>${colour} Patch</strong><br>Wild. Starting a new sweater it "floats" (no orientation) `
+            + `until a second card joins; its value &amp; icon are chosen at round-end scoring.`;
     }
     const icon = face.icon ?? '? (pending art)';
     const slot = face.slot ?? '? (pending art)';

@@ -9,7 +9,6 @@ use Bga\GameFramework\States\GameState;
 use Bga\GameFramework\States\PossibleAction;
 use Bga\GameFramework\UserException;
 use Bga\Games\UglyChristmasSweater\Game;
-use Bga\Games\UglyChristmasSweater\Material;
 
 /**
  * Draft phase. In draft order, the active player takes a card from the draft pool and places it into
@@ -35,8 +34,8 @@ class DraftCard extends GameState
         // notification still fires, so everyone sees what was drafted in the log + board.
         $forcedCardId = $this->game->forcedDraft($activePlayerId);
         if ($forcedCardId !== null) {
-            // build_no 0 = new sweater; slot/value/icon are ignored for a regular printed card.
-            return $this->actDraftCard($forcedCardId, 0, '', 0, '', $activePlayerId, $args);
+            // build_no 0 = new sweater; a regular card uses its printed slot, a patch simply floats.
+            return $this->actDraftCard($forcedCardId, 0, '', '', $activePlayerId, $args);
         }
 
         // Reset the active player's clock each turn (standard BGA courtesy; pattern from crybaby).
@@ -56,23 +55,24 @@ class DraftCard extends GameState
 
     #[PossibleAction]
     public function actDraftCard(
-        int $card_id, int $build_no, string $slot, int $wild_value, string $wild_icon,
+        int $card_id, int $build_no, string $slot, string $floating_patch_slot,
         int $activePlayerId, array $args
     ) {
         if (!in_array($card_id, $args['draftableIds'])) {
             throw new UserException(clienttranslate('That card is not in the draft pool'));
         }
 
-        // Patch params are only meaningful for a patch; empty/zero means "not supplied".
+        // $slot = the drafted card's orientation (only used for a patch added to an existing sweater);
+        // $floating_patch_slot = the orientation to give a floating patch already in the target sweater.
+        // Empty string means "not supplied". A patch never picks value/icon here (deferred to scoring).
         $placement = $this->game->placeDraftedCard(
             $card_id, $activePlayerId, $build_no,
             $slot !== '' ? $slot : null,
-            $wild_value > 0 ? $wild_value : null,
-            $wild_icon !== '' ? $wild_icon : null,
+            $floating_patch_slot !== '' ? $floating_patch_slot : null,
         );
 
-        // The card row (incl. build_no / slot / wild value+icon) lets every client render the placement;
-        // replaced_card_id (if any) tells them to drop the piece that was placed over.
+        // The card row lets every client render the placement; replaced_card_id tells them to drop a
+        // placed-over piece; floating_patch (if any) is the now-oriented patch row to re-render.
         $this->notify->all('cardDrafted', clienttranslate('${player_name} drafts ${card_label}'), [
             'player_id'        => $activePlayerId,
             'player_name'      => $this->game->getPlayerNameById($activePlayerId),
@@ -80,6 +80,8 @@ class DraftCard extends GameState
             'card'             => $this->game->cardForNotif($card_id),
             'card_label'       => $this->game->cardLabel($card_id),
             'replaced_card_id' => $placement['replaced_card_id'],
+            'floating_patch'   => $placement['floating_patch_id'] !== null
+                ? $this->game->cardForNotif($placement['floating_patch_id']) : null,
         ]);
 
         // Update the player's live public score (a newly completed sweater is worth public points
@@ -102,8 +104,8 @@ class DraftCard extends GameState
             return NextDrafter::class;
         }
         $choice = $this->getRandomZombieChoice($args['draftableIds']);
-        // Abandoned player: any legal placement is fine. A new sweater always is; for a patch the
-        // value/icon/slot below are valid (and ignored outright for a regular printed card).
-        return $this->actDraftCard($choice, 0, Material::SLOT_LEFT, 1, Material::ICON_SNOWMAN, $playerId, $args);
+        // Abandoned player: starting a new sweater (build_no 0) is always legal — a regular card lands
+        // at its printed slot, a patch floats; no floating-patch orientation is needed for a new build.
+        return $this->actDraftCard($choice, 0, '', '', $playerId, $args);
     }
 }

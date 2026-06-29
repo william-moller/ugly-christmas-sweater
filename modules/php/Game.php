@@ -639,10 +639,11 @@ class Game extends \Bga\GameFramework\Table
 
     /**
      * If the active drafter has no real choice this turn, return the card id to auto-draft; otherwise
-     * null (prompt the player). "No choice" = exactly one card left in the pool, it's a regular
-     * (printed-orientation) card, AND the player has no started sweater — so the only legal move is to
-     * start a new sweater at the card's printed slot. A Patch is never auto-drafted (it always needs a
-     * value/icon/orientation choice), and any existing build makes "new vs add/place-over" a real choice.
+     * null (prompt the player). "No choice" = exactly one card left in the pool AND the player has no
+     * started sweater, so the only legal move is to begin a new sweater with it — a regular card at its
+     * printed slot, or a Patch that simply floats (its value/icon/orientation are all deferred, so there
+     * is nothing to choose). Any existing build (oriented or a floating patch) makes "new vs add /
+     * place-over / orient" a real choice, so we prompt.
      */
     public function forcedDraft(int $playerId): ?int
     {
@@ -650,71 +651,83 @@ class Game extends \Bga\GameFramework\Table
         if (count($pool) !== 1) {
             return null;
         }
-        $card = $pool[0];
-        if (((int) $card['type_arg']) === Material::PATCH_VALUE) {
-            return null; // a patch always needs the player to choose value/icon/orientation
+        if ($this->cards->countCardInLocation(self::LOC_KNITTING, $playerId) > 0) {
+            return null; // already has a started sweater → a real placement choice exists
         }
-        foreach ($this->getCardsWithExtras(self::LOC_KNITTING, $playerId) as $c) {
-            if ($c['slot'] !== null) {
-                return null; // a started sweater exists → adding/placing-over vs new is a real choice
-            }
-        }
-        return (int) $card['id'];
+        return (int) $pool[0]['id'];
     }
 
     /**
-     * Place a drafted card into the active player's knitting area, honouring its PRINTED orientation
-     * (Material::FACES) — or, for a Patch, the player's chosen value / icon / orientation (the colour is
-     * fixed and cannot change). The player also chooses which build (sweater) to place into; placing a
-     * card into a slot a build already holds REPLACES the occupant (which is discarded — "place over").
-     * $buildNo <= 0, or an unknown build number, starts a brand-new sweater.
+     * Place a drafted card into the active player's knitting area. A regular card uses its PRINTED
+     * orientation (Material::FACES). A **Patch** never picks its value/icon here — those stay wild until
+     * round-end scoring (see the AssignPatches state). A Patch's orientation:
+     *   - starting a NEW sweater → it "floats" (slot = null); orientation is deferred until a second
+     *     card is added to that sweater;
+     *   - added to an EXISTING sweater → the player picks an open orientation ($slot) now.
+     * Whenever the placement adds a card to a sweater that already holds a floating patch, that floating
+     * patch is oriented now to $floatingPatchSlot (which must differ from the placed card's slot).
+     * The player also chooses which build to place into; filling a slot a build already holds REPLACES
+     * the occupant (discarded — "place over"). $buildNo <= 0 / unknown starts a brand-new sweater.
      *
-     * Patch wilds chosen at trade time do NOT persist: a drafted patch is fully re-chosen here.
-     *
-     * @return array{build_no:int,slot:string,wild_value:?int,wild_icon:?string,replaced_card_id:?int}
+     * @return array{build_no:int,slot:?string,replaced_card_id:?int,floating_patch_id:?int,floating_patch_slot:?string}
      */
     public function placeDraftedCard(
         int $cardId, int $playerId, int $buildNo = 0,
-        ?string $slot = null, ?int $wildValue = null, ?string $wildIcon = null
+        ?string $slot = null, ?string $floatingPatchSlot = null
     ): array {
         $card    = $this->cards->getCard($cardId);
         $isPatch = ((int) $card['type_arg']) === Material::PATCH_VALUE;
 
-        // Resolve the card's slot and (for a patch) its wild value/icon.
-        if ($isPatch) {
-            if (!in_array($slot, Material::SLOTS, true)) {
-                throw new \Bga\GameFramework\UserException(clienttranslate('Choose an orientation (L, R or B) for the patch'));
-            }
-            if ($wildValue === null || $wildValue < Material::VALUE_MIN || $wildValue > Material::VALUE_MAX) {
-                throw new \Bga\GameFramework\UserException(clienttranslate('Choose a value (1-12) for the patch'));
-            }
-            if (!in_array($wildIcon, Material::ICONS, true)) {
-                throw new \Bga\GameFramework\UserException(clienttranslate('Choose an icon for the patch'));
-            }
-            $resolvedSlot = $slot;
-        } else {
-            // A regular card's orientation is printed — the player cannot change it.
-            $face         = Material::sweater($card['type'], (int) $card['type_arg']);
-            $resolvedSlot = $face['slot'];
-            $wildValue    = null;
-            $wildIcon     = null;
-        }
-
-        // Group this player's existing builds: buildNo => [slot => cardId].
-        $builds = [];
+        // Group this player's knitting: oriented pieces per build, and any floating patch per build.
+        $builds = [];          // buildNo => [slot => cardId]
+        $floatingByBuild = []; // buildNo => floating patch cardId (slot = null)
         foreach ($this->getCardsWithExtras(self::LOC_KNITTING, $playerId) as $c) {
+            $b = (int) $c['buildNo'];
             if ($c['slot'] !== null) {
-                $builds[(int) $c['buildNo']][$c['slot']] = (int) $c['id'];
+                $builds[$b][$c['slot']] = (int) $c['id'];
+            } else {
+                $floatingByBuild[$b] = (int) $c['id'];
             }
         }
+        $allBuildNos = array_unique(array_merge(array_keys($builds), array_keys($floatingByBuild)));
 
         // Target an existing build, or open a new one.
-        $targetBuild = ($buildNo > 0 && isset($builds[$buildNo]))
-            ? $buildNo
-            : (empty($builds) ? 1 : max(array_keys($builds)) + 1);
+        $knownBuild  = $buildNo > 0 && in_array($buildNo, $allBuildNos, true);
+        $targetBuild = $knownBuild ? $buildNo : (empty($allBuildNos) ? 1 : max($allBuildNos) + 1);
 
-        // "Place over": if that slot is already filled in the target build, discard the occupant.
-        $replacedId = $builds[$targetBuild][$resolvedSlot] ?? null;
+        // Resolve the drafted card's slot (value/icon are always deferred to scoring now).
+        if ($isPatch) {
+            if (!$knownBuild) {
+                $resolvedSlot = null; // floating: orientation deferred until a 2nd card joins
+            } else {
+                if (!in_array($slot, Material::SLOTS, true)) {
+                    throw new \Bga\GameFramework\UserException(clienttranslate('Choose an orientation (L, R or B) for the patch'));
+                }
+                $resolvedSlot = $slot;
+            }
+        } else {
+            $face         = Material::sweater($card['type'], (int) $card['type_arg']);
+            $resolvedSlot = $face['slot'];
+        }
+
+        // If the target build holds a floating patch, this placement is the second card that orients it.
+        $floatingId       = $floatingByBuild[$targetBuild] ?? null;
+        $floatingResolved = null;
+        if ($floatingId !== null) {
+            if (!in_array($floatingPatchSlot, Material::SLOTS, true)) {
+                throw new \Bga\GameFramework\UserException(clienttranslate('Choose an orientation for your floating patch'));
+            }
+            if ($resolvedSlot !== null && $floatingPatchSlot === $resolvedSlot) {
+                throw new \Bga\GameFramework\UserException(clienttranslate('The floating patch needs a different orientation from the card you are adding'));
+            }
+            if (isset($builds[$targetBuild][$floatingPatchSlot])) {
+                throw new \Bga\GameFramework\UserException(clienttranslate('That orientation is already filled'));
+            }
+            $floatingResolved = $floatingPatchSlot;
+        }
+
+        // "Place over": if the drafted card has a concrete slot already filled in the build, discard it.
+        $replacedId = $resolvedSlot !== null ? ($builds[$targetBuild][$resolvedSlot] ?? null) : null;
         if ($replacedId !== null) {
             $this->cards->moveCard($replacedId, self::LOC_DISCARD, 0);
             $this->setCardMeta($replacedId, [
@@ -722,18 +735,25 @@ class Game extends \Bga\GameFramework\Table
             ]);
         }
 
+        // Orient the floating patch (if any) now that a second card joins its sweater.
+        if ($floatingId !== null) {
+            $this->setCardMeta($floatingId, ['slot' => $floatingResolved]);
+        }
+
         $this->cards->moveCard($cardId, self::LOC_KNITTING, $playerId);
         $this->setCardMeta($cardId, [
             'build_no'   => $targetBuild,
             'slot'       => $resolvedSlot,
-            'wild_value' => $wildValue,
-            'wild_icon'  => $wildIcon,
+            'wild_value' => null, // a patch's value/icon are assigned at round-end scoring, not here
+            'wild_icon'  => null,
         ]);
 
         return [
-            'build_no' => $targetBuild, 'slot' => $resolvedSlot,
-            'wild_value' => $wildValue, 'wild_icon' => $wildIcon,
-            'replaced_card_id' => $replacedId,
+            'build_no'            => $targetBuild,
+            'slot'                => $resolvedSlot,
+            'replaced_card_id'    => $replacedId,
+            'floating_patch_id'   => $floatingId,
+            'floating_patch_slot' => $floatingResolved,
         ];
     }
 
@@ -803,6 +823,62 @@ class Game extends \Bga\GameFramework\Table
         return $c ? (Material::fads()[(int) $c['type_arg']] ?? null) : null;
     }
 
+    // ===========================================================================================
+    //  Patch assignment (round-end): a Patch's value + icon are chosen at scoring, not at placement
+    // ===========================================================================================
+
+    /** Card ids of this player's Patches that sit in a COMPLETED sweater but have no value/icon yet. */
+    public function unassignedPatchesInCompletedSweaters(int $playerId): array
+    {
+        $builds = [];
+        foreach ($this->getCardsWithExtras(self::LOC_KNITTING, $playerId) as $c) {
+            if ($c['slot'] !== null) {
+                $builds[(int) $c['buildNo']][$c['slot']] = $c;
+            }
+        }
+        $ids = [];
+        foreach ($builds as $bySlot) {
+            if (!isset($bySlot[Material::SLOT_LEFT], $bySlot[Material::SLOT_RIGHT], $bySlot[Material::SLOT_BOTTOM])) {
+                continue; // incomplete sweater → never scored, so its patch is never assigned
+            }
+            foreach ($bySlot as $c) {
+                if (((int) $c['type_arg']) === Material::PATCH_VALUE
+                    && ($c['wildValue'] === null || $c['wildValue'] === '' || $c['wildIcon'] === null || $c['wildIcon'] === '')) {
+                    $ids[] = (int) $c['id'];
+                }
+            }
+        }
+        return $ids;
+    }
+
+    /** playerId => unassigned-patch card ids, for the players who have any (drives the AssignPatches state). */
+    public function playersWithUnassignedPatches(): array
+    {
+        $out = [];
+        foreach (array_keys($this->loadPlayersBasicInfos()) as $pid) {
+            $ids = $this->unassignedPatchesInCompletedSweaters((int) $pid);
+            if (!empty($ids)) {
+                $out[(int) $pid] = $ids;
+            }
+        }
+        return $out;
+    }
+
+    /** Assign a Patch's chosen value + icon at round-end (validates ownership + completed-sweater membership). */
+    public function assignPatch(int $cardId, int $playerId, int $value, string $icon): void
+    {
+        if (!in_array($cardId, $this->unassignedPatchesInCompletedSweaters($playerId), true)) {
+            throw new \Bga\GameFramework\UserException(clienttranslate('That patch cannot be assigned'));
+        }
+        if ($value < Material::VALUE_MIN || $value > Material::VALUE_MAX) {
+            throw new \Bga\GameFramework\UserException(clienttranslate('Choose a value (1-12) for the patch'));
+        }
+        if (!in_array($icon, Material::ICONS, true)) {
+            throw new \Bga\GameFramework\UserException(clienttranslate('Choose an icon for the patch'));
+        }
+        $this->setCardMeta($cardId, ['wild_value' => $value, 'wild_icon' => $icon]);
+    }
+
     /**
      * Public (non-Secret-Santa) VP of ONE completed sweater, given its pieces keyed by slot and the
      * active Fad (or null). Covers everything visible to all players: the +2 build, +2 three-
@@ -815,6 +891,17 @@ class Game extends \Bga\GameFramework\Table
             return 0;
         }
         $cards  = [$bySlot[Material::SLOT_LEFT], $bySlot[Material::SLOT_RIGHT], $bySlot[Material::SLOT_BOTTOM]];
+
+        // A completed sweater containing a Patch whose value/icon aren't chosen yet (that happens at
+        // round-end, see the AssignPatches state) can only be credited the +2 build for now — its run /
+        // Fad / icon bonuses depend on the patch and are added once it's assigned (scoreRound re-scores).
+        foreach ($cards as $c) {
+            if (((int) $c['type_arg']) === Material::PATCH_VALUE
+                && ($c['wildValue'] === null || $c['wildValue'] === '' || $c['wildIcon'] === null || $c['wildIcon'] === '')) {
+                return Material::VP_SWEATER;
+            }
+        }
+
         $values = array_map(fn($c) => $this->effectiveValue($c), $cards);
         $colors = array_map(fn($c) => $c['type'], $cards);
         $icons  = array_map(fn($c) => $this->effectiveIcon($c), $cards);
@@ -906,6 +993,13 @@ class Game extends \Bga\GameFramework\Table
      */
     public function scoreRound(): void
     {
+        // Patches in completed sweaters have now been assigned (see AssignPatches), so re-score every
+        // player's public total: livePublicScore now returns the full value (run / Fad / icon bonuses)
+        // for patch sweaters that were only credited +2 live, and refreshPublicScore applies the delta.
+        foreach (array_keys($this->loadPlayersBasicInfos()) as $pid) {
+            $this->refreshPublicScore((int) $pid);
+        }
+
         // Statistics: count this round's completed sweaters (and runs among them) per player. The
         // knitting area still holds the round's builds at this point (NewRound wipes it next).
         $this->tableStats->inc('rounds', 1);

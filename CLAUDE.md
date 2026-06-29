@@ -46,7 +46,7 @@ A Board Game Arena adaptation of **Ugly Christmas Sweaters** by Hunter R. Hennig
 
 **Patches** = wild Sweater Cards (one per colour; **colour is fixed, value/icon/orientation are wild**):
 - *Trade Phase:* a patch copies the **value and icon of the card played immediately before it**. If a patch *leads*, the player chooses any value/icon from a card currently in the Draft Pool. A patch following only needs to match its own colour; its icon stays undetermined until played (FAQ).
-- *Knit Phase:* the drafter freely chooses value, icon, and orientation; once placed it follows normal placement rules (can't move). A patch may start a new "floating" sweater whose orientation is decided only when a real card attaches. Number/icon stay wild until scoring.
+- *Knit Phase (corrected 2026-06-28):* a placed patch's **value and icon stay wild until round-end scoring** — they are NOT chosen at placement. **Orientation:** a patch **added to an existing sweater** takes an open orientation (L/R/B) immediately; a patch that **starts a new sweater "floats"** (no orientation at all) until a second card is later added to that sweater, at which point the player assigns the patch's orientation (an open slot, distinct from the card being added). Once placed, a patch can't move to another sweater (only added to). At **round-end scoring**, every player with patch(es) in **completed** sweaters assigns each one a value (1–12) + icon (4) **simultaneously** (order doesn't matter — they're filling in their own cards); patches in *incomplete* sweaters are never assigned (those don't score). Colour is always fixed.
 
 ## Round Setup
 
@@ -146,6 +146,16 @@ TypeScript + SCSS are **enabled**. Source lives in `src/ts/` and `src/scss/`; bu
 Edit **`src/`**, never the generated `modules/js/Game.js` / `uglychristmassweater.css` (overwritten on build). `node_modules/` is gitignored; `package-lock.json` is committed. State handlers go in `src/ts/States/*` and register in `src/ts/Game.ts`.
 
 ## Current State (as of 2026-06-28)
+
+**Session 2026-06-28 (patch rules rewrite) — corrected when a Patch's value/icon/orientation are assigned. Client builds clean; PHP NOT lint/table-tested locally; NOT yet SFTP-synced or pushed when this entry was written.**
+
+The earlier model (patch picks value+icon+orientation at draft) was wrong. Corrected rules + implementation:
+- **Placement (`Game::placeDraftedCard`, rewritten):** a drafted patch no longer picks value/icon (deferred to scoring). A patch starting a **new** sweater **floats** (`slot = null`); a patch added to an **existing** sweater picks an open orientation now. Adding any second card to a sweater that holds a floating patch **orients that floating patch** (new `floating_patch_slot` param). `actDraftCard` signature changed (dropped `wild_value`/`wild_icon`, added `floating_patch_slot`); `forcedDraft` now also auto-floats a lone patch with no started sweater (zero choices).
+- **Round-end assignment — new `AssignPatches` state (id 65, MULTIPLE_ACTIVE_PLAYER)** between `EndTrickCleanup` and `ScoreRound`: players with patch(es) in **completed** sweaters simultaneously assign value+icon (`actAssignPatch`); skips straight to `ScoreRound` if none; zombie auto-assigns `(1, first icon)`. Helpers: `Game::unassignedPatchesInCompletedSweaters` / `playersWithUnassignedPatches` / `assignPatch`.
+- **Scoring:** `publicSweaterScore` credits only **+2** for a completed sweater whose patch isn't assigned yet (live), and the full run/Fad/icon bonuses once it is; `scoreRound` re-runs `refreshPublicScore` for everyone after assignment so the deferred bonuses land. (Live-panel behaviour per the design decision: base +2 live, bonuses deferred.)
+- **Client (`Game.ts`):** drafting placement is now **action-bar driven** (the old in-knitting-area click targets were removed) — choose sweater → (patch-on-existing) orientation → (floating-patch present) its orientation → Confirm. New `AssignPatches.ts` handler + a value/icon assignment UI (the patch being assigned is highlighted, `.ucs-assigning`). Floating patches render with a dashed `.ucs-floating` treatment. New `patchAssigned` notif; `cardDrafted` carries the oriented `floating_patch`. `DraftPlacement` type changed.
+- **Unchanged:** the **Trade-phase** patch mechanic (a played patch copies the prior card's value+icon for trick resolution, `Game::moveCardToTrick`) — this rules change was only about patches in the Knitting Area.
+- **Verify on Studio:** patch floats when starting a new sweater (no prompts); orienting a floating patch when a 2nd card joins; patch added to an existing sweater prompts orientation only; round-end AssignPatches (single & multiple patches, multiple players simultaneous, zombie); the live +2 → full bonus jump at round-end; and a forced lone-patch auto-float.
 
 **Session 2026-06-28 (later) — applied two patterns from the new `crybaby` trick-taker reference (`bga-studio/_reference/crybaby/`). Client builds clean; PHP NOT lint/table-tested locally (no runtime); NOT yet SFTP-synced or pushed.**
 

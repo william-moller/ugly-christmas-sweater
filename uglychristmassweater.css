@@ -527,6 +527,31 @@
         background-repeat: none;
     }
 */
+/* A floating patch (orientation not yet chosen) — sits across the build with a dashed "wild" look. */
+.ucs-build .ucs-floating {
+  grid-area: unset;
+  grid-column: 1/-1;
+  justify-self: center;
+  border-style: dashed;
+  border-width: 2px;
+  opacity: 0.9;
+}
+
+/* The patch currently being assigned a value/icon at round-end. */
+.ucs-card.ucs-assigning {
+  outline: 3px solid gold;
+  outline-offset: 1px;
+  animation: ucs-pulse 1s ease-in-out infinite;
+}
+
+@keyframes ucs-pulse {
+  0%, 100% {
+    box-shadow: 0 0 4px 1px rgba(255, 215, 0, 0.6);
+  }
+  50% {
+    box-shadow: 0 0 10px 3px rgba(255, 215, 0, 0.9);
+  }
+}
 /* Between-round review screen (RoundReview state). */
 #ucs-round-result {
   margin-top: 8px;

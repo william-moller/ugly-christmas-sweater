@@ -109,12 +109,15 @@ interface RoundReviewArgs {
     breakdown: RoundResultRow[];
 }
 
-/** Placement choices submitted alongside a draft (slot/value/icon only meaningful for a patch). */
+/** Placement choices submitted alongside a draft. A patch's value/icon are NOT chosen here. */
 interface DraftPlacement {
-    build_no: number;   // 0 = start a new sweater; otherwise an existing build number
-    slot: string;       // L / R / B — the patch's chosen orientation (ignored server-side for printed cards)
-    wild_value: number; // patch's chosen value (0 when not a patch)
-    wild_icon: string;  // patch's chosen icon ('' when not a patch)
+    build_no: number;            // 0 = start a new sweater; otherwise an existing build number
+    slot: string;                // patch added to an existing sweater: its chosen orientation; else ''
+    floating_patch_slot: string; // orientation for a floating patch already in the target sweater, else ''
+}
+
+interface AssignPatchesArgs {
+    assignable: { [playerId: number]: number[] }; // unassigned-patch card ids per player (round-end)
 }
 
 /*
@@ -132,7 +135,14 @@ interface NotifCardDrafted {
     player_name: string;
     card_id: number;
     card: SweaterCard;
-    replaced_card_id: number | null; // a "placed over" piece that was discarded, if any
+    replaced_card_id: number | null;     // a "placed over" piece that was discarded, if any
+    floating_patch: SweaterCard | null;  // a floating patch this placement just oriented, if any
+}
+
+interface NotifPatchAssigned {
+    player_id: number;
+    card_id: number;
+    card: SweaterCard; // the patch row now carrying its chosen wildValue / wildIcon
 }
 
 interface NotifDraftOrder {

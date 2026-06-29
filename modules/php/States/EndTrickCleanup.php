@@ -42,7 +42,9 @@ class EndTrickCleanup extends GameState
         }
 
         if ($this->game->isRoundOver()) {
-            return ScoreRound::class;
+            // Patches in completed sweaters get their value/icon assigned (AssignPatches) before scoring;
+            // that state skips straight to ScoreRound when there are none.
+            return AssignPatches::class;
         }
 
         // The "1" Draft card holder leads the next trick.
