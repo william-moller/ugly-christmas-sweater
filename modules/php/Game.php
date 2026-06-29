@@ -614,6 +614,31 @@ class Game extends \Bga\GameFramework\Table
     }
 
     /**
+     * If the active drafter has no real choice this turn, return the card id to auto-draft; otherwise
+     * null (prompt the player). "No choice" = exactly one card left in the pool, it's a regular
+     * (printed-orientation) card, AND the player has no started sweater — so the only legal move is to
+     * start a new sweater at the card's printed slot. A Patch is never auto-drafted (it always needs a
+     * value/icon/orientation choice), and any existing build makes "new vs add/place-over" a real choice.
+     */
+    public function forcedDraft(int $playerId): ?int
+    {
+        $pool = array_values($this->cards->getCardsInLocation(self::LOC_DRAFTPOOL));
+        if (count($pool) !== 1) {
+            return null;
+        }
+        $card = $pool[0];
+        if (((int) $card['type_arg']) === Material::PATCH_VALUE) {
+            return null; // a patch always needs the player to choose value/icon/orientation
+        }
+        foreach ($this->getCardsWithExtras(self::LOC_KNITTING, $playerId) as $c) {
+            if ($c['slot'] !== null) {
+                return null; // a started sweater exists → adding/placing-over vs new is a real choice
+            }
+        }
+        return (int) $card['id'];
+    }
+
+    /**
      * Place a drafted card into the active player's knitting area, honouring its PRINTED orientation
      * (Material::FACES) — or, for a Patch, the player's chosen value / icon / orientation (the colour is
      * fixed and cannot change). The player also chooses which build (sweater) to place into; placing a

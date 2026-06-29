@@ -27,17 +27,30 @@ class DraftCard extends GameState
         );
     }
 
-    function onEnteringState(int $activePlayerId)
+    function onEnteringState(int $activePlayerId, array $args)
     {
+        // Auto-resolve a fully-forced draft: if there's only one regular card left in the pool and the
+        // player has no started sweater, the only legal move is to start a new sweater with it — so do
+        // it for them and flow straight on, rather than prompting for a non-choice. The cardDrafted
+        // notification still fires, so everyone sees what was drafted in the log + board.
+        $forcedCardId = $this->game->forcedDraft($activePlayerId);
+        if ($forcedCardId !== null) {
+            // build_no 0 = new sweater; slot/value/icon are ignored for a regular printed card.
+            return $this->actDraftCard($forcedCardId, 0, '', 0, '', $activePlayerId, $args);
+        }
+
         // Reset the active player's clock each turn (standard BGA courtesy; pattern from crybaby).
         $this->game->giveExtraTime($activePlayerId);
     }
 
     public function getArgs(): array
     {
+        $activePlayerId = (int) $this->game->getActivePlayerId();
         $pool = $this->game->cards->getCardsInLocation(Game::LOC_DRAFTPOOL);
         return [
             'draftableIds' => array_map(fn($c) => (int) $c['id'], array_values($pool)),
+            // Skip the front-end "you must draft" prep/blink for a draft we auto-resolve on entering.
+            '_no_notify' => $this->game->forcedDraft($activePlayerId) !== null,
         ];
     }
 
