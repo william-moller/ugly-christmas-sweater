@@ -527,3 +527,29 @@
         background-repeat: none;
     }
 */
+/* Between-round review screen (RoundReview state). */
+#ucs-round-result {
+  margin-top: 8px;
+}
+
+.ucs-result-table {
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.ucs-result-table th, .ucs-result-table td {
+  padding: 3px 10px;
+  text-align: center;
+}
+.ucs-result-table th {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  opacity: 0.6;
+}
+.ucs-result-table .ucs-rr-name {
+  text-align: left;
+  font-weight: bold;
+}
+.ucs-result-table .ucs-rr-score {
+  font-weight: bold;
+}

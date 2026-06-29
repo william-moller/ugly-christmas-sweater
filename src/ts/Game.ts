@@ -1,5 +1,6 @@
 import { PlayCard } from "./States/PlayCard";
 import { DraftCard } from "./States/DraftCard";
+import { RoundReview } from "./States/RoundReview";
 import { createCardElement, createCardBack, cardTooltip, cardLogChip, faceOf, isPatch } from "./CardView";
 
 type CardMapT = { [cardId: number]: SweaterCard };
@@ -42,6 +43,7 @@ export class Game {
         // Register the state handlers (one per active-player PHP state).
         this.bga.states.register('PlayCard', new PlayCard(this, bga));
         this.bga.states.register('DraftCard', new DraftCard(this, bga));
+        this.bga.states.register('RoundReview', new RoundReview(this, bga));
     }
 
     /*
@@ -773,6 +775,51 @@ export class Game {
     }
 
     // ===================================================================================
+    //  Round review (between-round pause) — called by the RoundReview state handler
+    // ===================================================================================
+
+    /**
+     * Show the round's scoring summary and, for an active player, a Continue button. Rendered from the
+     * state args so it survives a page refresh. Clicking Continue acknowledges and waits for the others.
+     */
+    public showRoundReview(args: RoundReviewArgs, isCurrentPlayerActive: boolean, onContinue: () => void) {
+        this.renderRoundResult(args);
+        const sb = this.bga.statusBar;
+        sb.removeActionButtons();
+        if (isCurrentPlayerActive) {
+            sb.addActionButton(_('Continue'), () => {
+                sb.removeActionButtons();
+                sb.setTitle(_('Waiting for other players…'));
+                onContinue();
+            }, { color: 'primary' });
+        }
+    }
+
+    /** Tear down the round-review screen when leaving the state (next round is about to be dealt). */
+    public endRoundReview() {
+        this.bga.statusBar.removeActionButtons();
+        document.getElementById('ucs-round-result')?.remove();
+    }
+
+    /** Render (or replace) the between-round results panel from a round summary. */
+    private renderRoundResult(args: RoundReviewArgs) {
+        document.getElementById('ucs-round-result')?.remove();
+        const rows = (args.breakdown || []).map((b) =>
+            `<tr><td class="ucs-rr-name">${b.player_name}</td>`
+            + `<td>${b.sweaters}</td><td>${b.runs}</td><td class="ucs-rr-score">${b.score}</td></tr>`
+        ).join('');
+        const html = `
+            <div id="ucs-round-result" class="ucs-zone">
+                <div class="ucs-zone-label">${_('Round')} ${args.round} — ${_('results')}</div>
+                <table class="ucs-result-table">
+                    <tr><th>${_('Player')}</th><th>${_('Sweaters')}</th><th>${_('Runs')}</th><th>${_('Total')}</th></tr>
+                    ${rows}
+                </table>
+            </div>`;
+        this.bga.gameArea.getElement().insertAdjacentHTML('beforeend', html);
+    }
+
+    // ===================================================================================
     //  Notifications
     // ===================================================================================
 
@@ -870,5 +917,14 @@ export class Game {
     async notif_gameplayRevealed(args: NotifGameplayRevealed) {
         this.gamedatas.gameplay = args.gameplay;
         this.renderGameplay();
+    }
+
+    /**
+     * A round was scored. The clienttranslate message auto-logs; the review panel itself is rendered
+     * from the RoundReview state args (refresh-safe), but render it here too so the summary appears the
+     * instant scoring resolves (also covers the final round, which has no RoundReview state).
+     */
+    async notif_roundScored(args: NotifRoundScored) {
+        this.renderRoundResult(args);
     }
 }

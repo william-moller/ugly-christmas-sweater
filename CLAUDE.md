@@ -147,6 +147,15 @@ Edit **`src/`**, never the generated `modules/js/Game.js` / `uglychristmassweate
 
 ## Current State (as of 2026-06-28)
 
+**Session 2026-06-28 (later) — applied two patterns from the new `crybaby` trick-taker reference (`bga-studio/_reference/crybaby/`). Client builds clean; PHP NOT lint/table-tested locally (no runtime); NOT yet SFTP-synced or pushed.**
+
+- **(a) `giveExtraTime` per turn.** `PlayCard` and `DraftCard` now have `onEnteringState(int $activePlayerId)` calling `$this->game->giveExtraTime($activePlayerId)` — resets the active player's clock each move (standard BGA courtesy; crybaby does this in its `PlayCard`). Fires again on the 2-player self-loop (a player's 2nd play/draft) — harmless.
+- **(b) Between-round "review results → Continue" pause.** New state **`RoundReview`** (id 75, **MULTIPLE_ACTIVE_PLAYER**) sits between `ScoreRound` and `NewRound` for non-final rounds: every player sees a per-player scoring summary and clicks **Continue**; once all have, the next round is dealt. (Final round still goes `ScoreRound → EndScore` directly — no review, mirroring crybaby's `ShowBets` which only runs between rounds.)
+  - **Server:** `ScoreRound` now builds a per-player summary via new `Game::roundBreakdown()` (player → completed sweaters / runs / cumulative score; read while the round's knitting builds are still in place), stashes it in the **`roundResult`** global (so the screen survives F5 — re-served by `RoundReview::getArgs`), sends an enriched **`roundScored`** notif (`{round, breakdown}`; the old empty-breakdown TODO is gone), then `setAllPlayersMultiactive()` → `RoundReview`. `RoundReview::actContinueRound` does `setPlayerNonMultiactive($pid, NewRound::class)`; `zombie` auto-continues.
+  - **Client:** new `src/ts/States/RoundReview.ts` (registered in `Game.ts`) → `Game.showRoundReview` renders a results table (`#ucs-round-result`, `.ucs-result-table`) from the state args and, for active players, a **Continue** action button; `endRoundReview` tears it down on leave. `notif_roundScored` also renders the panel immediately (and covers the final round, which has no `RoundReview`). New types `RoundReviewArgs` / `RoundResultRow` / `NotifRoundScored`.
+  - **Files touched:** `modules/php/States/PlayCard.php`, `DraftCard.php`, `ScoreRound.php`, new `modules/php/States/RoundReview.php`, `modules/php/Game.php`; `src/ts/Game.ts`, new `src/ts/States/RoundReview.ts`, `src/ts/types.d.ts`, `src/scss/Game.scss`.
+  - **Verify on Studio:** the multiactive Continue gate (all players, and a zombie/quitter auto-continuing), the summary numbers, F5 mid-review re-showing the panel, and that round 3 ends without a review screen.
+
 **Session 2026-06-28 — borrowed dev-ergonomics / config patterns from the `collect` reference game (builds clean; NOT yet table-tested; SFTP sync + GitHub push still needed). See `bga-studio/_reference/collect/CLAUDE.md` for the source-of-ideas analysis.**
 
 - **Studio-only "don't end the game" + debug hooks (testing ergonomics).** `Game::$preventEndGame` is forced **true on Studio** (set in `__construct` via `getBgaEnvironment()`); `EndScore` now routes to a new dead-end state **`GameStopped`** (id 97, ACTIVE_PLAYER, no-op zombie) instead of `ST_END_GAME` (99) when it's set — so a finished table **stays open to inspect final scoring/tableaus**. Added Studio server helpers callable from the Studio debug console: `debug_forceRoundOver()` (jump to `ScoreRound`), `debug_addScore(playerId, delta)`, plus the pre-existing `debug_goToState(id)`. `getAllDatas` now sends `isStudio`; the client shows a **"DEBUG: dump state"** button (`Game.ts::maybeAddDebugButton`) that console-logs `gamedatas` / builds / scores (pure client inspector, no server effect). *Verify on Studio that entering `GameStopped` with the carried-over active player is accepted (it should be).*
@@ -222,6 +231,28 @@ Captured 2026-06-24 from a planning brain-dump. **Not prioritised**; not yet sta
 8. **Player preferences & game settings.** Two distinct buckets: pre-game **game modes/options** → `gameoptions.jsonc` (difficulty, 2P/3P/Casual-Avid/Express, bonus cards); in-game **preferences** → `gamepreferences.jsonc` (card size, active-card indicator, show game log, show tooltips, etc.).
 9. **Simultaneous decisions.** Investigate BGA `multipleactiveplayer` states where order doesn't matter. Likely limited here (trade follows turn order; drafting follows draft order) — possible candidates: initial Secret Santa peek, or non-interacting placements. May not apply; evaluate.
 10. **Tooltips.** Mandatory for release (every card/icon needs name + rules). Extend the existing `cardTooltip`; add tooltips for gameplay cards, Secret Santa, draft-order badges, zones.
+
+### Patterns from the `crybaby` reference (surfaced 2026-06-28 — not yet applied)
+
+Mirrored a second read-only game, **`crybaby`** (`../_reference/crybaby/`), into the reference
+library. It's by the same author as `collect` but is **a trick-taker — our genre** — so it's the
+closest architectural match we have. Full analysis: `../_reference/crybaby/CLAUDE.md`. Four concrete
+opportunities it surfaces (all **surfaced, not applied**: UCS PHP can't be lint/table-tested
+locally and trick-flow changes are high-regret — decide before implementing):
+
+- **(a) `giveExtraTime` per turn — DONE 2026-06-28.** Added `onEnteringState(int $activePlayerId)`
+  calling `giveExtraTime` to `PlayCard` and `DraftCard`. (See the 2026-06-28 session entry.)
+- **(b) Between-round "review results → Continue" step — DONE 2026-06-28.** New `RoundReview`
+  MULTIPLE_ACTIVE_PLAYER state (id 75) + a results panel. (See the 2026-06-28 session entry.)
+- **(c) Seat players relative to "me" (backlog #6).** crybaby's `getAllDatas` orders players with
+  `ORDER BY player_no >= $current_no DESC, player_no ASC`, rotating the list to start at the
+  requesting player — the seating primitive for the self-tableau-focus layout.
+- **(d) Subset multi-active (backlog #9).** crybaby uses `setPlayersMultiactive($subset, Next::class)`
+  (only the trick's lowest-card players act in `DoCry`) — the concrete reference if any UCS step
+  ever activates a subset of players simultaneously.
+
+**Explicitly not borrowed:** crybaby's generic-`item`/raw-SQL card storage and its classic-dojo
+client — UCS deliberately uses BGA's `Deck` + a TypeScript client (shared guidance points that way).
 
 ## File Structure
 

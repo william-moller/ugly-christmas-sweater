@@ -27,6 +27,12 @@ class DraftCard extends GameState
         );
     }
 
+    function onEnteringState(int $activePlayerId)
+    {
+        // Reset the active player's clock each turn (standard BGA courtesy; pattern from crybaby).
+        $this->game->giveExtraTime($activePlayerId);
+    }
+
     public function getArgs(): array
     {
         $pool = $this->game->cards->getCardsInLocation(Game::LOC_DRAFTPOOL);

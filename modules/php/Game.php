@@ -871,6 +871,31 @@ class Game extends \Bga\GameFramework\Table
         $this->globals->set('appliedPublic', '[]');
     }
 
+    /**
+     * Per-player summary of the round just played, for the between-round review screen (see the
+     * RoundReview state). Must be called while the round's knitting builds are still in place (i.e. in
+     * ScoreRound, before NewRound wipes them). `score` is the cumulative total after this round's
+     * public + Secret-Santa points have been applied.
+     *
+     * @return list<array{player_id:int,player_name:string,sweaters:int,runs:int,score:int}>
+     */
+    public function roundBreakdown(): array
+    {
+        $scores = $this->getCollectionFromDb("SELECT `player_id`, `player_score` FROM `player`");
+        $rows = [];
+        foreach ($this->loadPlayersBasicInfos() as $pid => $info) {
+            $s = $this->roundSweaterStats((int) $pid);
+            $rows[] = [
+                'player_id'   => (int) $pid,
+                'player_name' => $info['player_name'],
+                'sweaters'    => $s['sweaters'],
+                'runs'        => $s['runs'],
+                'score'       => (int) ($scores[$pid]['player_score'] ?? 0),
+            ];
+        }
+        return $rows;
+    }
+
     /** Completed-sweater stats for a player's current knitting area: count of sweaters and of runs. */
     public function roundSweaterStats(int $playerId): array
     {

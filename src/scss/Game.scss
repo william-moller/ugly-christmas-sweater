@@ -524,6 +524,37 @@ $colors: (
     }
 */
 
+/* Between-round review screen (RoundReview state). */
+#ucs-round-result {
+    margin-top: 8px;
+}
+
+.ucs-result-table {
+    border-collapse: collapse;
+    font-size: 13px;
+
+    th, td {
+        padding: 3px 10px;
+        text-align: center;
+    }
+
+    th {
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        opacity: 0.6;
+    }
+
+    .ucs-rr-name {
+        text-align: left;
+        font-weight: bold;
+    }
+
+    .ucs-rr-score {
+        font-weight: bold;
+    }
+}
+
 
 
 

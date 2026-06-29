@@ -22,15 +22,26 @@ class ScoreRound extends GameState
     {
         $this->game->scoreRound();
 
-        $this->notify->all('roundScored', clienttranslate('Round scored'), [
-            // TODO: per-player breakdown for the scoring display.
+        $round = (int) $this->game->globals->get('roundNo');
+
+        // Per-player summary of the round just played (built while the round's knitting builds are
+        // still in place). Stashed in globals so the review screen survives a page refresh (it is
+        // re-served via RoundReview::getArgs), and sent now for the immediate render + log line.
+        $breakdown = $this->game->roundBreakdown();
+        $this->game->globals->set('roundResult', ['round' => $round, 'breakdown' => $breakdown]);
+
+        $this->notify->all('roundScored', clienttranslate('Round ${round} scored'), [
+            'round'     => $round,
+            'breakdown' => $breakdown,
         ]);
 
-        $round = (int) $this->game->globals->get('roundNo');
-        if ($round < self::TOTAL_ROUNDS) {
-            $this->game->globals->set('roundNo', $round + 1);
-            return NewRound::class;
+        // After the final round, end the game. Otherwise pause on a shared round-review screen — every
+        // player clicks Continue before the next round is dealt. (Pattern from the crybaby ShowBets state.)
+        if ($round >= self::TOTAL_ROUNDS) {
+            return EndScore::class;
         }
-        return EndScore::class;
+        $this->game->globals->set('roundNo', $round + 1);
+        $this->game->gamestate->setAllPlayersMultiactive();
+        return RoundReview::class;
     }
 }

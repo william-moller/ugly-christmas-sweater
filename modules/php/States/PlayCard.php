@@ -26,6 +26,12 @@ class PlayCard extends GameState
         );
     }
 
+    function onEnteringState(int $activePlayerId)
+    {
+        // Reset the active player's clock each turn (standard BGA courtesy; pattern from crybaby).
+        $this->game->giveExtraTime($activePlayerId);
+    }
+
     public function getArgs(): array
     {
         $activePlayerId = (int) $this->game->getActivePlayerId();

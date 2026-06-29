@@ -94,6 +94,21 @@ interface DraftCardArgs {
     draftableIds: number[];
 }
 
+/** One player's line on the between-round review screen. */
+interface RoundResultRow {
+    player_id: number;
+    player_name: string;
+    sweaters: number; // completed sweaters this round
+    runs: number;     // of those, how many were three-consecutive-number runs
+    score: number;    // cumulative total after this round
+}
+
+/** RoundReview state args (re-served on refresh from the `roundResult` global). */
+interface RoundReviewArgs {
+    round: number;
+    breakdown: RoundResultRow[];
+}
+
 /** Placement choices submitted alongside a draft (slot/value/icon only meaningful for a patch). */
 interface DraftPlacement {
     build_no: number;   // 0 = start a new sweater; otherwise an existing build number
@@ -135,4 +150,9 @@ interface NotifHandUpdate {
 
 interface NotifGameplayRevealed {
     gameplay: GameplayState; // the round-parameter decks after revealing the new round's cards
+}
+
+interface NotifRoundScored {
+    round: number;
+    breakdown: RoundResultRow[];
 }
