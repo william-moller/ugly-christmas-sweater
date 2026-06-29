@@ -26,8 +26,16 @@ class PlayCard extends GameState
         );
     }
 
-    function onEnteringState(int $activePlayerId)
+    function onEnteringState(int $activePlayerId, array $args)
     {
+        // Auto-play ONLY in the all-public final trick (every player down to their last card): playing
+        // it then leaks no hand info. We never auto-play a single legal card otherwise — that would
+        // reveal the player couldn't follow, destroying the bluff that they had a choice.
+        $cardId = $this->game->forcedFinalPlay($activePlayerId);
+        if ($cardId !== null) {
+            return $this->actPlayCard($cardId, 0, $activePlayerId, $args);
+        }
+
         // Reset the active player's clock each turn (standard BGA courtesy; pattern from crybaby).
         $this->game->giveExtraTime($activePlayerId);
     }
@@ -37,6 +45,8 @@ class PlayCard extends GameState
         $activePlayerId = (int) $this->game->getActivePlayerId();
         return [
             'playableCardsIds' => $this->game->getPlayableCardIds($activePlayerId),
+            // Skip the front-end "you must play a card" prep/blink for a play we auto-resolve on entering.
+            '_no_notify' => $this->game->forcedFinalPlay($activePlayerId) !== null,
         ];
     }
 

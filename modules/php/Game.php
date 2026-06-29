@@ -472,6 +472,30 @@ class Game extends \Bga\GameFramework\Table
         return array_map(fn($c) => (int) $c['id'], array_values($hand));
     }
 
+    /**
+     * Trade-phase auto-play, allowed ONLY in the all-public final trick: when every player is down to
+     * their last card (nobody holds 2+), the whole trick is forced and public, so the active player's
+     * last card can be played for them with no hidden-information leak. Returns that card id, else null.
+     *
+     * We deliberately never auto-play a single *legal* card outside this case: doing so would reveal
+     * that the player could not otherwise follow the led colour/icon, leaking their hand and removing
+     * the bluff that they still had a choice between cards.
+     */
+    public function forcedFinalPlay(int $playerId): ?int
+    {
+        $hand = array_values($this->cards->getCardsInLocation(self::LOC_HAND, $playerId));
+        if (count($hand) !== 1) {
+            return null; // the active player isn't on their literal last card
+        }
+        // Only auto-play once nobody at the table still holds a real choice (2+ cards in hand).
+        foreach (array_keys($this->loadPlayersBasicInfos()) as $pid) {
+            if ($this->cards->countCardInLocation(self::LOC_HAND, (int) $pid) > 1) {
+                return null;
+            }
+        }
+        return (int) $hand[0]['id'];
+    }
+
     /** The card led this trick (lowest trick_order), or null. */
     public function getLedCard(): ?array
     {
