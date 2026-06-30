@@ -740,13 +740,17 @@ export class Game {
         const cardSlot = isNewBuild ? null : this.patchSlot;
 
         if (!isNewBuild) {
-            const openForCard = ['L', 'R', 'B'].filter((s) => !occupied.has(s));
+            // A patch may take ANY orientation — including covering (placing over) an occupied slot,
+            // which discards the piece underneath. Offer all three; flag the ones that would cover.
             sb.setTitle(_('Choose an orientation for your patch'));
-            openForCard.forEach((s) => sb.addActionButton(s, () => {
-                this.patchSlot = s;
-                if (this.floatingPatchSlot === s) this.floatingPatchSlot = null;
-                this.renderPlacementPanel();
-            }, { color: this.patchSlot === s ? 'primary' : 'secondary' }));
+            ['L', 'R', 'B'].forEach((s) => {
+                const label = occupied.has(s) ? `${s} ${_('(cover)')}` : s;
+                sb.addActionButton(label, () => {
+                    this.patchSlot = s;
+                    if (this.floatingPatchSlot === s) this.floatingPatchSlot = null;
+                    this.renderPlacementPanel();
+                }, { color: this.patchSlot === s ? 'primary' : 'secondary' });
+            });
         }
         if (floatId !== undefined) {
             const openForFloat = ['L', 'R', 'B'].filter((s) => !occupied.has(s) && s !== cardSlot);
