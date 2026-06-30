@@ -151,6 +151,8 @@ Edit **`src/`**, never the generated `modules/js/Game.js` / `uglychristmassweate
 
 Other 2026-06-29 fixes (shipped): hybrid draft placement (regular = in-area targets, patch = action bar); unset Difficulty defaults to Expert (all three decks reveal); patch placement offers all L/R/B (place-over allowed); log shows a played patch as "★ as &lt;value&gt;".
 
+**Session 2026-06-30 — drafting is now no-timer free-edit + explicit Submit (autoclick kept for trade plays only).** Picking a draft card/position no longer triggers an autoclick countdown; the selection (pool card, sweater/position, patch orientation, floating-patch orientation) is **freely changeable** — re-click a pool card or an in-area target, or re-press an orientation button — and an explicit **Submit** sends it (the picked cell stays green meanwhile). The "Confirm before acting" preference still applies: **Off** = act immediately on the final click (no Submit); On (its two non-Off values) = explicit Submit. Trade-phase plays are unchanged (still use `confirmAction`'s autoclick). Client: `completeDraft`→`submitDraft` (no `confirmAction`); `placeDraftTarget` just records + re-renders; in-area targets stay clickable after a pick (picked = green); helpers consolidated to `applyTarget`/`makeTargetGhost`. (The 3-value gamepreference is unchanged; for drafting its Auto/Manual values both mean "Submit" — simplify the pref later if desired.)
+
 ## Current State (as of 2026-06-28)
 
 **Session 2026-06-28 (patch rules rewrite) — corrected when a Patch's value/icon/orientation are assigned. Client builds clean; PHP NOT lint/table-tested locally; NOT yet SFTP-synced or pushed when this entry was written.**
