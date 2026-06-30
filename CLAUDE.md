@@ -145,6 +145,12 @@ TypeScript + SCSS are **enabled**. Source lives in `src/ts/` and `src/scss/`; bu
 
 Edit **`src/`**, never the generated `modules/js/Game.js` / `uglychristmassweater.css` (overwritten on build). `node_modules/` is gitignored; `package-lock.json` is committed. State handlers go in `src/ts/States/*` and register in `src/ts/Game.ts`.
 
+## Current State (as of 2026-06-29)
+
+**Session 2026-06-29 — implemented trump resolution (supersedes the older "ResolveTrick trump TODO").** `Game::resolveTrickToDraftOrder` now ranks the trick into draft order honouring the round's trump cards, best→worst: **Perfect Fit** (super-trump: value == the PF number outranks all; an "Ultimate Trump" = PF value + Trendy-Yarn colour beats a plain PF regardless of play order; else later-played wins) → **Trendy Yarn** colour (any trump-colour card beats all non-trump colours regardless of value; among them higher value wins) → otherwise higher value; ties at every tier broken by later play. A card's **colour is always its own** (a patch's wild only affects value/icon). New `Game::activePerfectFit()` / `activeTrendyYarn()` read the revealed gameplay cards (null when that deck isn't active by difficulty → trump simply doesn't apply). PHP-only; not lint/table-tested locally. (Note: 2-player draft-order dedup is a separate pre-existing concern — 2P isn't wired up yet.) **Verify on Studio:** an off-suit Perfect-Fit card tops the order; a Trendy-Yarn card beats higher-value off-colour cards; Ultimate Trump beats a later plain PF; and a patch mimicking the PF value becomes a super-trump using its own colour for the Ultimate check.
+
+Other 2026-06-29 fixes (shipped): hybrid draft placement (regular = in-area targets, patch = action bar); unset Difficulty defaults to Expert (all three decks reveal); patch placement offers all L/R/B (place-over allowed); log shows a played patch as "★ as &lt;value&gt;".
+
 ## Current State (as of 2026-06-28)
 
 **Session 2026-06-28 (patch rules rewrite) — corrected when a Patch's value/icon/orientation are assigned. Client builds clean; PHP NOT lint/table-tested locally; NOT yet SFTP-synced or pushed when this entry was written.**

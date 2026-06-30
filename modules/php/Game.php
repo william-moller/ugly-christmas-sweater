@@ -554,26 +554,45 @@ class Game extends \Bga\GameFramework\Table
 
     /**
      * Resolve the completed trick into a draft order (array of player_ids best-first) and store it.
-     * Priority: Perfect Fit (super trump, later player wins; "Ultimate Trump" = PF + Trendy-Yarn colour)
-     *           -> Trendy Yarn colour (highest value) -> raw value. Ties: later player wins.
-     * TODO: full Perfect Fit / Trendy Yarn / Ultimate-Trump logic (needs active gameplay cards).
-     *       Current implementation ranks by value then play order — a correct fallback when no
-     *       Perfect Fit / Trendy Yarn is active.
+     * The full ranking honours the round's trump cards (these rules apply to draft order, not just a
+     * single winner), best → worst:
+     *   1. Perfect Fit (super-trump): any card whose value == the Perfect Fit number outranks everything.
+     *      Within it, an "Ultimate Trump" (also the Trendy Yarn colour) beats a plain Perfect Fit
+     *      regardless of play order; otherwise later-played wins.
+     *   2. Trendy Yarn colour: any card of the trump colour outranks all non-trump-colour cards
+     *      regardless of value; among them, higher value wins.
+     *   3. Otherwise: higher value wins.
+     * Ties at any tier are broken by play order — the later-played card ranks higher.
+     * A card's COLOUR is always its own (a patch's wild only affects value/icon, never colour). When a
+     * deck isn't active this round (difficulty), its trump simply doesn't apply.
      */
     public function resolveTrickToDraftOrder(): array
     {
         $trick = $this->getCardsWithExtras(self::LOC_TRICK);
 
-        $effValue = function (array $c): int {
-            // patches use wild_value when resolved, else their copied/own value
-            return $c['wildValue'] !== null ? (int) $c['wildValue'] : (int) $c['type_arg'];
+        $pf = $this->activePerfectFit();   // ?int  — the super-trump value, or null
+        $ty = $this->activeTrendyYarn();   // ?string — the trump colour, or null
+
+        // Ranking key per card (compared descending): [tier, secondary, trickOrder].
+        $rank = function (array $c) use ($pf, $ty): array {
+            $value = $this->effectiveValue($c);
+            $color = $c['type']; // a patch keeps its own colour
+            $isPF  = $pf !== null && $value === $pf;
+            $isTY  = $ty !== null && $color === $ty;
+            if ($isPF) {
+                return [3, $isTY ? 1 : 0, (int) $c['trickOrder']]; // Ultimate Trump (PF+TY) over plain PF
+            }
+            if ($isTY) {
+                return [2, $value, (int) $c['trickOrder']];
+            }
+            return [1, $value, (int) $c['trickOrder']];
         };
 
-        // Sort best-first: higher value wins; tie -> later trick_order wins.
-        usort($trick, function ($a, $b) use ($effValue) {
-            $va = $effValue($a); $vb = $effValue($b);
-            if ($va !== $vb) return $vb <=> $va;
-            return (int) $b['trickOrder'] <=> (int) $a['trickOrder'];
+        usort($trick, function ($a, $b) use ($rank) {
+            $ra = $rank($a); $rb = $rank($b);
+            if ($ra[0] !== $rb[0]) return $rb[0] <=> $ra[0]; // tier
+            if ($ra[1] !== $rb[1]) return $rb[1] <=> $ra[1]; // ultimate-flag / value
+            return $rb[2] <=> $ra[2];                        // later play ranks higher
         });
 
         $order = array_map(fn($c) => (int) $c['location_arg'], $trick); // location_arg = player who played
@@ -825,6 +844,21 @@ class Game extends \Bga\GameFramework\Table
     {
         $c = $this->activeGameplayCard('fad');
         return $c ? (Material::fads()[(int) $c['type_arg']] ?? null) : null;
+    }
+
+    /** The active Perfect Fit value (super-trump) this round, or null if that deck isn't revealed. */
+    public function activePerfectFit(): ?int
+    {
+        $c = $this->activeGameplayCard('perfectfit');
+        return $c ? (int) $c['type_arg'] : null; // type_arg holds the Perfect Fit value
+    }
+
+    /** The active Trendy Yarn colour (trump colour) this round, or null if that deck isn't revealed. */
+    public function activeTrendyYarn(): ?string
+    {
+        $c = $this->activeGameplayCard('trendyyarn');
+        // type_arg holds the colour's index into Material::COLORS (kept as an int so type_arg stays int).
+        return $c ? (Material::COLORS[(int) $c['type_arg']] ?? null) : null;
     }
 
     // ===========================================================================================
