@@ -475,12 +475,20 @@ class Game {
             return;
         zone.innerHTML = '';
         const cards = this.cardArray(this.gamedatas.knitting).filter((c) => Number(c.location_arg) === playerId);
-        // In-area targets only for: my area, mid-draft, a regular card, while still choosing the sweater.
         const sel = this.selectedDraftId != null ? this.gamedatas.draftpool[this.selectedDraftId] : null;
-        const draftingRegular = playerId === this.myId && this.onDraftComplete != null && !this.confirming
-            && this.pendingBuildNo == null && sel != null && !isPatch(sel, this.material);
-        const printedSlot = draftingRegular ? (faceOf(sel, this.material).slot ?? null) : null;
-        if (!cards.length && !(draftingRegular && printedSlot)) {
+        const mine = playerId === this.myId && this.onDraftComplete != null && sel != null;
+        const selPatch = mine ? isPatch(sel, this.material) : false;
+        // Clickable place-into targets: a regular card, while still CHOOSING the sweater (not confirming).
+        const choosing = mine && !selPatch && this.pendingBuildNo == null && !this.confirming;
+        const printedSlot = choosing ? (faceOf(sel, this.material).slot ?? null) : null;
+        // Once a build is chosen (the Confirm gate, or the floating-orientation step), show where the
+        // card will land as a persistent GREEN "selected" highlight that stays put until placed/reset.
+        const selecting = mine && this.pendingBuildNo != null;
+        const selBuild = selecting ? this.pendingBuildNo : null;
+        const selCardSlot = selecting ? (selPatch ? this.patchSlot : (faceOf(sel, this.material).slot ?? null)) : null;
+        const selFloatSlot = selecting ? this.floatingPatchSlot : null;
+        const showingTargets = (choosing && printedSlot) || selecting;
+        if (!cards.length && !showingTargets) {
             zone.innerHTML = `<div class="ucs-empty">No sweaters yet</div>`;
             return;
         }
@@ -498,6 +506,7 @@ class Game {
             if (this.isBuildComplete(builds[buildNo]))
                 build.classList.add('ucs-build-complete');
             const occupied = new Set();
+            const slotEls = {};
             builds[buildNo].forEach((card) => {
                 const el = createCardElement(card, this.material);
                 const slot = card.slot ?? faceOf(card, this.material).slot ?? null;
@@ -505,6 +514,7 @@ class Game {
                     el.style.gridArea = slot;
                     el.classList.add(`ucs-slot-${slot}`); // lets CSS rotate the B (hem) piece
                     occupied.add(slot);
+                    slotEls[slot] = el;
                 }
                 else {
                     el.classList.add('ucs-floating'); // a floating patch — orientation not set yet
@@ -519,17 +529,38 @@ class Game {
                 this.attachTooltip(el, card);
                 build.appendChild(el);
             });
-            // Empty printed-slot → an "add here" ghost target.
+            // Empty printed-slot → an "add here" ghost target (choosing phase).
             if (printedSlot && !occupied.has(printedSlot)) {
                 build.appendChild(this.makeDraftGhost(printedSlot, buildNo));
             }
+            // Chosen build → highlight the destination cell(s) green (the card, and a floating patch).
+            if (selBuild === buildNo) {
+                const markSel = (slot) => {
+                    if (slotEls[slot]) {
+                        slotEls[slot].classList.add('ucs-target', 'ucs-target-selected');
+                    }
+                    else {
+                        build.appendChild(this.makeSelectedGhost(slot));
+                    }
+                };
+                if (selCardSlot)
+                    markSel(selCardSlot);
+                if (selFloatSlot)
+                    markSel(selFloatSlot);
+            }
             zone.appendChild(build);
         });
-        // A "new sweater" target for the regular card being placed.
+        // "New sweater" cell: a clickable ghost while choosing, or a green selected ghost once chosen.
         if (printedSlot) {
             const newBuild = document.createElement('div');
             newBuild.className = 'ucs-build ucs-build-new';
             newBuild.appendChild(this.makeDraftGhost(printedSlot, 0));
+            zone.appendChild(newBuild);
+        }
+        else if (selBuild === 0 && selCardSlot) {
+            const newBuild = document.createElement('div');
+            newBuild.className = 'ucs-build ucs-build-new';
+            newBuild.appendChild(this.makeSelectedGhost(selCardSlot));
             zone.appendChild(newBuild);
         }
     }
@@ -545,6 +576,14 @@ class Game {
         ghost.style.gridArea = slot;
         ghost.innerHTML = `<div class="ucs-ghost-label">${slot}</div>`;
         ghost.addEventListener('click', () => this.placeDraftTarget(buildNo));
+        return ghost;
+    }
+    /** A non-clickable green "this is where it's going" ghost cell shown while confirming a placement. */
+    makeSelectedGhost(slot) {
+        const ghost = document.createElement('div');
+        ghost.className = `ucs-card ucs-ghost ucs-target ucs-target-selected ucs-slot-${slot}`;
+        ghost.style.gridArea = slot;
+        ghost.innerHTML = `<div class="ucs-ghost-label">${slot}</div>`;
         return ghost;
     }
     /**
