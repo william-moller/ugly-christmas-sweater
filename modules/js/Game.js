@@ -157,14 +157,25 @@ function createCardElement(card, material) {
 /**
  * A compact inline card "chip" for the game log: a colour-coded box showing the card's value
  * (colour + value is enough to identify the exact card in play). Built client-side from the card
- * row carried in the notification, so historical logs / replays stay valid. A resolved patch shows
- * its chosen value; an unresolved one shows a wild star.
+ * row carried in the notification, so historical logs / replays stay valid.
+ *
+ * A **Patch** is shown as its own wild-star chip so it's never confused with the real card it copies:
+ * a patch that has taken on a value (e.g. mimicking the previous card in a trick) reads "★ as 11";
+ * an unresolved patch (just drafted) shows only the star.
  */
 function cardLogChip(card, material) {
     const face = faceOf(card, material);
     const color = face?.color ?? String(card.type);
     const wildValue = card.wildValue != null && card.wildValue !== '' ? Number(card.wildValue) : null;
-    const valueLabel = wildValue != null ? String(wildValue) : (face?.patch ? '★' : String(face?.value ?? '?'));
+    if (face?.patch) {
+        const patchChip = `<span class="ucs-log-card ucs-log-patch ucs-color-${color}">★</span>`;
+        if (wildValue != null) {
+            const valueChip = `<span class="ucs-log-card ucs-color-${color}">${wildValue}</span>`;
+            return `${patchChip} ${_('as')} ${valueChip}`;
+        }
+        return patchChip;
+    }
+    const valueLabel = wildValue != null ? String(wildValue) : String(face?.value ?? '?');
     return `<span class="ucs-log-card ucs-color-${color}">${valueLabel}</span>`;
 }
 /** A face-down placeholder (e.g. opponents' hand backs). */
