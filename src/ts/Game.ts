@@ -2,7 +2,8 @@ import { PlayCard } from "./States/PlayCard";
 import { DraftCard } from "./States/DraftCard";
 import { RoundReview } from "./States/RoundReview";
 import { AssignPatches } from "./States/AssignPatches";
-import { createCardElement, createCardBack, cardTooltip, cardLogChip, faceOf, isPatch } from "./CardView";
+import { createCardElement, cardTooltip, cardLogChip, faceOf, isPatch, cardFaceInner } from "./CardView";
+import { BgaAnimations, BgaCards } from "./libs";
 
 type CardMapT = { [cardId: number]: SweaterCard };
 
@@ -44,6 +45,12 @@ export class Game {
     // Monotonic counter for assigning ids to gameplay-card elements (so tooltips can attach).
     private gpSeq = 0;
 
+    // bga-cards: the fanned hand is a HandStock backed by a CardManager (both loaded at runtime via
+    // libs.ts / importEsmLib). Typed loosely — the library ships its own generics we don't re-declare.
+    private animationManager: any = null;
+    private cardsManager: any = null;
+    private handStock: any = null;
+
     constructor(bga: Bga<UglyChristmasSweaterPlayer, UglyChristmasSweaterGamedatas>) {
         console.log('uglychristmassweater constructor');
         this.bga = bga;
@@ -66,27 +73,65 @@ export class Game {
         this.bga.gameArea.getElement().insertAdjacentHTML('beforeend', `
             <div id="ucs-table">
                 <div id="ucs-gameplay" class="ucs-zone"></div>
-                <div id="ucs-draft-pool" class="ucs-zone"></div>
+                <div id="ucs-shared-row">
+                    <div id="ucs-draft-pool" class="ucs-zone"></div>
+                    <div id="ucs-trade-area" class="ucs-zone"></div>
+                </div>
                 <div id="ucs-placement" class="ucs-zone" style="display:none"></div>
-                <div id="ucs-trade-area" class="ucs-zone"></div>
-                <div id="ucs-players"></div>
-                <div id="ucs-my-hand" class="ucs-zone"></div>
+                <div id="ucs-main">
+                    <div id="ucs-my-area" class="ucs-zone"></div>
+                    <div id="ucs-opponents"></div>
+                </div>
+                <div id="ucs-my-hand-wrap" class="ucs-zone">
+                    <div class="ucs-zone-label" id="ucs-hand-label">${_('Your hand')}</div>
+                    <div id="ucs-my-hand"></div>
+                </div>
+            </div>
+            <div id="ucs-popin" class="ucs-popin" style="display:none">
+                <div class="ucs-popin-backdrop"></div>
+                <div class="ucs-popin-box">
+                    <div class="ucs-popin-head">
+                        <span id="ucs-popin-title"></span>
+                        <a id="ucs-popin-close" href="#" class="ucs-popin-close">✕</a>
+                    </div>
+                    <div id="ucs-popin-body" class="ucs-knitting"></div>
+                </div>
             </div>
         `);
 
-        // Build one table per player (header + knitting area); cards fill in via render*().
+        // Self-focus layout: my own table (large, primary) lives in #ucs-my-area; every opponent goes
+        // into the compact, clickable #ucs-opponents side column. Element ids stay `ucs-*-<playerId>`
+        // so the render* methods keep working regardless of which container a table sits in.
         Object.values(gamedatas.players).forEach((player) => {
-            document.getElementById('ucs-players')!.insertAdjacentHTML('beforeend', `
-                <div class="ucs-player-table" id="ucs-player-${player.id}" style="--player-color:#${player.color}">
+            const mine = Number(player.id) === this.myId;
+            const parent = mine ? 'ucs-my-area' : 'ucs-opponents';
+            document.getElementById(parent)!.insertAdjacentHTML('beforeend', `
+                <div class="ucs-player-table ${mine ? 'ucs-me' : 'ucs-oppo'}" id="ucs-player-${player.id}"
+                     style="--player-color:#${player.color}" data-player-id="${player.id}">
                     <div class="ucs-player-header">
                         <span class="ucs-order-badge" id="ucs-order-${player.id}"></span>
-                        <span class="ucs-player-name">${player.name}</span>
+                        <span class="ucs-player-name">${mine ? _('Your Knitting Area') : player.name}</span>
                         <span class="ucs-player-counts" id="ucs-counts-${player.id}"></span>
                     </div>
                     <div class="ucs-knitting" id="ucs-knitting-${player.id}"></div>
+                    ${mine ? '' : `<div class="ucs-oppo-summary" id="ucs-summary-${player.id}"></div>`}
                 </div>
             `);
         });
+
+        // Clicking an opponent's table enlarges their Knitting Area in the popin.
+        document.querySelectorAll('#ucs-opponents .ucs-oppo').forEach((el) => {
+            el.addEventListener('click', () => this.openPopin(Number((el as HTMLElement).dataset.playerId)));
+        });
+        document.getElementById('ucs-popin-close')!.addEventListener('click', (e) => { e.preventDefault(); this.closePopin(); });
+        document.querySelector('#ucs-popin .ucs-popin-backdrop')!.addEventListener('click', () => this.closePopin());
+
+        // Build the CardManager + fanned HandStock for my hand (spectators have no hand).
+        if (this.bga.gameui.isSpectator) {
+            document.getElementById('ucs-hand-label')!.textContent = _('Spectating');
+        } else {
+            this.setupHandStock();
+        }
 
         this.renderAll();
         this.setupNotifications();
@@ -114,6 +159,44 @@ export class Game {
             console.log('[UCS DEBUG] Studio server helpers: debug_forceRoundOver(), '
                 + 'debug_addScore(playerId, delta), debug_goToState(id)');
         });
+    }
+
+    /**
+     * Create the CardManager + fanned HandStock (bga-cards) that power my hand. The stock renders the
+     * cards as an overlapping, fan-shaped arc; each front face reuses the shared `cardFaceInner` so it
+     * matches the custom-DOM cards in the other zones. Selection is wired to the existing play flow via
+     * `onSelectionChange` (see handSelectionChanged / enablePlayable).
+     */
+    private setupHandStock() {
+        this.animationManager = new BgaAnimations.Manager({
+            animationsActive: () => this.bga.gameui.bgaAnimationsActive(),
+        });
+        this.cardsManager = new BgaCards.Manager({
+            animationManager: this.animationManager,
+            type: 'ucs-sweater',
+            cardWidth: 64,
+            cardHeight: 90,
+            getId: (c: SweaterCard) => `ucs-hand-${c.id}`,
+            isCardVisible: () => true,
+            setupFrontDiv: (c: SweaterCard, div: HTMLElement) => {
+                // Note: we deliberately do NOT add the `.ucs-card` sizing class here — the stock's own
+                // card-side element handles sizing/positioning; we only paint colour + face.
+                const face = faceOf(c, this.material);
+                div.classList.add('ucs-card-face', `ucs-color-${face.color}`);
+                if (face.patch) div.classList.add('ucs-patch');
+                div.innerHTML = cardFaceInner(c, this.material);
+                if (!div.id) div.id = `ucs-hand-${c.id}-front`;
+                (this.bga.gameui as any).addTooltipHtml?.(div.id, cardTooltip(c, this.material));
+            },
+        });
+        this.handStock = new BgaCards.HandStock(this.cardsManager, document.getElementById('ucs-my-hand')!, {
+            fanShaped: true,
+            cardOverlap: 60,
+            emptyHandMessage: _('Hand is empty'),
+        });
+        this.handStock.setSelectionMode('none');
+        this.handStock.onSelectionChange = (selection: SweaterCard[], last: SweaterCard | null) =>
+            this.handSelectionChanged(selection, last);
     }
 
     // ===================================================================================
@@ -257,12 +340,19 @@ export class Game {
         cards.forEach((card) => {
             const el = createCardElement(card, this.material);
             this.attachTooltip(el, card);
+            // Each Trade Area card is captioned with who played it this trick. (This label is NOT
+            // carried into the Draft Pool — after the trick these cards rotate into the pool via
+            // renderDraftPool, where ownership no longer matters.)
             const owner = this.gamedatas.players[Number(card.location_arg)];
+            const wrap = document.createElement('div');
+            wrap.className = 'ucs-trade-card';
             if (owner) {
-                el.style.setProperty('--player-color', `#${owner.color}`);
+                wrap.style.setProperty('--player-color', `#${owner.color}`);
                 el.classList.add('ucs-owned');
+                wrap.insertAdjacentHTML('afterbegin', `<div class="ucs-trade-owner">${owner.name}</div>`);
             }
-            row.appendChild(el);
+            wrap.appendChild(el);
+            row.appendChild(wrap);
         });
         if (!cards.length) {
             row.innerHTML = `<div class="ucs-empty">No cards played yet</div>`;
@@ -275,7 +365,42 @@ export class Game {
             this.renderCounts(Number(player.id));
             this.renderOrderBadge(Number(player.id));
             this.renderKnitting(Number(player.id));
+            this.renderOppoSummary(Number(player.id));
         });
+    }
+
+    /**
+     * The compact abstraction shown for an opponent on small screens (the side column collapses to
+     * these chips): completed-sweater pips + a done/in-progress tally. No-op for my own table (no
+     * summary element). Tapping the chip opens the full-size popin (wired in setup).
+     */
+    private renderOppoSummary(playerId: number) {
+        const el = document.getElementById(`ucs-summary-${playerId}`);
+        if (!el) return;
+        const cards = this.cardArray(this.gamedatas.knitting).filter((c) => Number(c.location_arg) === playerId);
+        const builds: { [buildNo: number]: SweaterCard[] } = {};
+        cards.forEach((c) => { const b = Number(c.buildNo ?? 0); (builds[b] ||= []).push(c); });
+        const complete = Object.values(builds).filter((b) => this.isBuildComplete(b)).length;
+        const wip = Object.keys(builds).length - complete;
+        el.innerHTML = `<span class="ucs-pips">${'🧶'.repeat(complete) || '—'}</span>`
+            + `<span class="ucs-oppo-progress">${complete} ${_('done')} · ${wip} ${_('wip')}</span>`;
+    }
+
+    /** Open the popin showing one player's Knitting Area at full size (from a click on their table). */
+    private openPopin(playerId: number) {
+        const popin = document.getElementById('ucs-popin')!;
+        const body = document.getElementById('ucs-popin-body')!;
+        const player = this.gamedatas.players[playerId];
+        document.getElementById('ucs-popin-title')!.textContent =
+            player ? `${player.name} — ${_('Knitting Area')}` : _('Knitting Area');
+        popin.style.setProperty('--player-color', player ? `#${player.color}` : '#888');
+        this.renderKnitting(playerId, body);
+        popin.style.display = '';
+    }
+
+    private closePopin() {
+        const popin = document.getElementById('ucs-popin');
+        if (popin) popin.style.display = 'none';
     }
 
     private renderCounts(playerId: number) {
@@ -307,8 +432,8 @@ export class Game {
      * doubles as a click-to-place picker — the card's printed slot shows as a target in each build (and
      * a "new sweater" ghost). Patches are placed from the action bar instead, so they draw no targets.
      */
-    private renderKnitting(playerId: number) {
-        const zone = document.getElementById(`ucs-knitting-${playerId}`);
+    private renderKnitting(playerId: number, targetEl?: HTMLElement) {
+        const zone = targetEl ?? document.getElementById(`ucs-knitting-${playerId}`);
         if (!zone) return;
         zone.innerHTML = '';
 
@@ -418,34 +543,16 @@ export class Game {
         return slots.has('L') && slots.has('R') && slots.has('B');
     }
 
+    /**
+     * Resync the fanned HandStock from gamedatas.hand. The hand is small, so a full clear+add is fine;
+     * removeAll/addCards are async but their DOM ops apply in order and we don't need to await here.
+     * (Selectable/disabled styling is driven by the stock's selection API — see enablePlayable.)
+     */
     private renderHand() {
-        const zone = document.getElementById('ucs-my-hand')!;
-        if (this.bga.gameui.isSpectator) {
-            zone.innerHTML = `<div class="ucs-zone-label">Spectating</div>`;
-            return;
-        }
-        zone.innerHTML = `<div class="ucs-zone-label">Your hand</div>`;
-        const row = document.createElement('div');
-        row.className = 'ucs-card-row';
+        if (this.bga.gameui.isSpectator || !this.handStock) return;
         const hand = this.cardArray(this.gamedatas.hand).sort(this.handSort.bind(this));
-        hand.forEach((card) => {
-            const el = createCardElement(card, this.material);
-            this.attachTooltip(el, card);
-            if (this.playableIds.includes(Number(card.id))) {
-                el.classList.add('ucs-selectable');
-                if (Number(card.id) === this.selectedPlayId) {
-                    el.classList.add('ucs-chosen');
-                }
-                el.addEventListener('click', () => this.selectPlay(Number(card.id)));
-            } else if (this.playableIds.length) {
-                el.classList.add('ucs-disabled'); // a play is required but this card can't follow
-            }
-            row.appendChild(el);
-        });
-        if (!hand.length) {
-            row.innerHTML = `<div class="ucs-empty">Hand is empty</div>`;
-        }
-        zone.appendChild(row);
+        this.handStock.removeAll();
+        if (hand.length) this.handStock.addCards(hand);
     }
 
     /** Sort the hand by colour then value for a tidy, stable layout. */
@@ -467,8 +574,14 @@ export class Game {
         this.playableIds = ids;
         this.onPlay = onPlay;
         this.selectedPlayId = null;
-        this.renderHand();
         this.hidePanel();
+        if (!this.handStock) return;
+        this.handStock.setSelectionMode('single');
+        const selectable = this.cardArray(this.gamedatas.hand).filter((c) => ids.includes(Number(c.id)));
+        document.getElementById('ucs-my-hand')?.classList.add('ucs-hand-choosing');
+        // setSelectableCards is sync but addCards (from a hand refill on state entry) is async — defer a
+        // tick so the cards exist in the stock before we mark them selectable (bga-cards gotcha).
+        setTimeout(() => this.handStock?.setSelectableCards(selectable), 0);
     }
 
     public disablePlayable() {
@@ -476,8 +589,19 @@ export class Game {
         this.playableIds = [];
         this.onPlay = null;
         this.selectedPlayId = null;
-        this.renderHand();
         this.hidePanel();
+        if (this.handStock) {
+            this.handStock.setSelectionMode('none');
+            this.handStock.unselectAll(true);
+        }
+        document.getElementById('ucs-my-hand')?.classList.remove('ucs-hand-choosing');
+    }
+
+    /** A hand card was selected in the stock — route to the existing play logic (ignore deselections). */
+    private handSelectionChanged(selection: SweaterCard[], last: SweaterCard | null) {
+        if (!this.onPlay || !last) return;
+        if (!selection.some((c) => String(c.id) === String(last.id))) return;
+        this.selectPlay(Number(last.id));
     }
 
     /** A hand card was clicked. A leading Patch needs a pool card to copy first; everything else plays now. */
@@ -487,7 +611,6 @@ export class Game {
         const leading = this.cardArray(this.gamedatas.trick).length === 0;
         if (card && isPatch(card, this.material) && leading) {
             this.selectedPlayId = cardId;
-            this.renderHand();
             this.renderPatchCopyPanel(cardId);
         } else {
             this.completePlay(cardId, 0);
@@ -496,21 +619,19 @@ export class Game {
 
     /** A card (and, for a leading patch, its copy source) has been chosen — gate it behind Confirm/Reset. */
     private completePlay(cardId: number, copyFromCardId: number) {
-        this.selectedPlayId = cardId; // keep the pending card highlighted while confirming
-        this.renderHand();
+        this.selectedPlayId = cardId; // the stock keeps the pending card highlighted while confirming
         this.confirmAction(
             () => {
                 const cb = this.onPlay;
                 this.selectedPlayId = null;
                 this.hidePanel();
-                this.renderHand();
                 cb && cb(cardId, copyFromCardId);
             },
             () => {
-                // Reset: back to choosing a card from hand.
+                // Reset: clear the stock selection, back to choosing a card from hand.
                 this.selectedPlayId = null;
                 this.hidePanel();
-                this.renderHand();
+                this.handStock?.unselectAll(true);
                 this.bga.statusBar.setTitle(_('${you} must play a card'));
             },
         );
@@ -596,7 +717,7 @@ export class Game {
             this.selectedPlayId = null;
             sb.removeActionButtons();
             sb.setTitle(_('${you} must play a card'));
-            this.renderHand();
+            this.handStock?.unselectAll(true);
         }, { color: 'alert' });
     }
 
@@ -952,7 +1073,11 @@ export class Game {
             );
         }
         this.renderTradeArea();
-        this.renderHand();
+        // Only my own hand changes visually; slide the played card out of the fan (other players' plays
+        // don't touch my stock). disablePlayable on state-leave clears any lingering selection.
+        if (Number(args.player_id) === this.myId && this.handStock) {
+            this.handStock.removeCard(args.card).catch(() => {});
+        }
         this.renderCounts(args.player_id);
     }
 

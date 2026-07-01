@@ -31,18 +31,13 @@ export function isPatch(card: SweaterCard, material: UcsMaterial): boolean {
 }
 
 /**
- * Build a card element. `extras` lets callers add a small overlay (e.g. the slot a card occupies in a
- * build, which is dynamic and lives on the card row rather than the static face).
+ * The inner face markup for a sweater card, matching the printed card art: the value, the
+ * orientation letter on a "Christmas-light" bulb, and the icon all stacked in the TOP-LEFT corner,
+ * over the colour + colour-blind pattern. Shared by the custom-DOM zones (createCardElement) and the
+ * bga-cards hand (the CardManager's setupFrontDiv) so every card looks identical.
  */
-export function createCardElement(card: SweaterCard, material: UcsMaterial): HTMLElement {
+export function cardFaceInner(card: SweaterCard, material: UcsMaterial): string {
     const face = faceOf(card, material);
-    const el = document.createElement('div');
-    el.id = `ucs-card-${card.id}`;
-    el.dataset.cardId = String(card.id);
-    el.classList.add('ucs-card', `ucs-color-${face.color}`);
-    if (face.patch) {
-        el.classList.add('ucs-patch');
-    }
 
     // A placed patch carries its chosen value/icon on the card row (wildValue / wildIcon); a regular
     // card uses its printed face. An unresolved patch shows a wild star / placeholder.
@@ -59,13 +54,38 @@ export function createCardElement(card: SweaterCard, material: UcsMaterial): HTM
     // Orientation: prefer the card's placed slot (knitting), else the printed slot, else placeholder.
     const slotRaw = (card.slot as string) ?? face.slot ?? null;
     const slotLabel = slotRaw ? (SLOT_LABEL[slotRaw] ?? slotRaw) : (face.patch ? '✶' : '?');
+    const bulbKind = slotRaw ?? 'wild';
 
-    el.innerHTML = `
+    return `
         <div class="ucs-card-pattern"></div>
-        <div class="ucs-card-value">${valueLabel}</div>
-        <div class="ucs-card-icon">${iconLabel}</div>
-        <div class="ucs-card-slot" title="orientation">${slotLabel}</div>
+        <div class="ucs-card-corner">
+            <div class="ucs-card-value">${valueLabel}</div>
+            <div class="ucs-bulb ucs-bulb-${bulbKind}" title="orientation">${slotLabel}</div>
+            <div class="ucs-icon-col">${iconLabel}</div>
+        </div>
     `;
+}
+
+/** Add the colour/patch classes and inner face to an element (shared by both render paths). */
+export function applyCardFace(el: HTMLElement, card: SweaterCard, material: UcsMaterial): void {
+    const face = faceOf(card, material);
+    el.classList.add('ucs-card', `ucs-color-${face.color}`);
+    if (face.patch) {
+        el.classList.add('ucs-patch');
+    }
+    el.innerHTML = cardFaceInner(card, material);
+}
+
+/**
+ * Build a standalone card element (used by the custom-DOM zones: draft pool, trade area, knitting).
+ * The bga-cards hand builds its faces through the CardManager instead (see Game.ts), but both share
+ * `cardFaceInner` so the visuals match.
+ */
+export function createCardElement(card: SweaterCard, material: UcsMaterial): HTMLElement {
+    const el = document.createElement('div');
+    el.id = `ucs-card-${card.id}`;
+    el.dataset.cardId = String(card.id);
+    applyCardFace(el, card, material);
     return el;
 }
 

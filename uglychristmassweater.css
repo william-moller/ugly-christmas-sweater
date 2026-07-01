@@ -36,6 +36,8 @@
 */
 /********* You can start writing your SCSS below this line: **********/
 #ucs-table {
+  --ucs-card-w: 64px;
+  --ucs-card-h: 90px;
   display: flex;
   flex-direction: column;
   gap: 10px;
@@ -60,8 +62,8 @@
 .ucs-card-row {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
-  min-height: 90px;
+  gap: 12px;
+  min-height: var(--ucs-card-h);
   align-items: flex-start;
 }
 
@@ -74,8 +76,8 @@
 
 .ucs-card {
   position: relative;
-  width: 64px;
-  height: 90px;
+  width: var(--ucs-card-w);
+  height: var(--ucs-card-h);
   border-radius: 6px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
   color: #fff;
@@ -83,6 +85,12 @@
   flex: 0 0 auto;
   user-select: none;
   background: #555;
+}
+
+.ucs-card-face {
+  color: #fff;
+  overflow: hidden;
+  border-radius: 6px;
 }
 
 .ucs-card-pattern {
@@ -120,12 +128,55 @@
   background-image: repeating-linear-gradient(0deg, rgba(255, 255, 255, 0) 0, rgba(255, 255, 255, 0) 6px, rgba(255, 255, 255, 0.9) 6px, rgba(255, 255, 255, 0.9) 9px);
 }
 
-.ucs-card-value {
+.ucs-card-corner {
   position: absolute;
-  top: 2px;
-  left: 4px;
-  font-size: 20px;
+  top: calc(var(--ucs-card-w) * 0.05);
+  left: calc(var(--ucs-card-w) * 0.06);
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: calc(var(--ucs-card-w) * 0.03);
+  line-height: 1;
+  pointer-events: none;
+}
+
+.ucs-card-value {
+  font-size: calc(var(--ucs-card-w) * 0.3);
   font-weight: 800;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
+}
+
+.ucs-bulb {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: calc(var(--ucs-card-w) * 0.26);
+  height: calc(var(--ucs-card-w) * 0.3);
+  font-size: calc(var(--ucs-card-w) * 0.16);
+  font-weight: 800;
+  color: #fff;
+  background: #b5432f;
+  border: 1px solid rgba(255, 255, 255, 0.7);
+  border-radius: 42% 42% 46% 46%/58% 58% 42% 42%;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+}
+.ucs-bulb.ucs-bulb-L {
+  background: #2f8f4e;
+}
+.ucs-bulb.ucs-bulb-R {
+  background: #c0392b;
+}
+.ucs-bulb.ucs-bulb-B {
+  background: #c9a227;
+  color: #3a2d00;
+}
+.ucs-bulb.ucs-bulb-wild {
+  background: #6b6b6b;
+}
+
+.ucs-icon-col {
+  font-size: calc(var(--ucs-card-w) * 0.24);
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
 }
 
@@ -151,27 +202,6 @@
 .ucs-log-patch {
   border: 1.5px dashed #fff;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.4), inset 0 0 0 1px rgba(0, 0, 0, 0.25);
-}
-
-.ucs-card-icon {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 26px;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
-}
-
-.ucs-card-slot {
-  position: absolute;
-  bottom: 2px;
-  right: 4px;
-  font-size: 12px;
-  font-weight: bold;
-  background: rgba(0, 0, 0, 0.4);
-  border-radius: 3px;
-  padding: 0 3px;
 }
 
 .ucs-patch {
@@ -367,18 +397,63 @@
   opacity: 0.8;
 }
 
-#ucs-players {
+#ucs-main {
   display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+#ucs-my-area {
+  flex: 1 1 auto;
+  min-width: 0;
+  --ucs-card-w: 74px;
+  --ucs-card-h: 104px;
+}
+
+#ucs-opponents {
+  flex: 0 0 auto;
+  width: 210px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  --ucs-card-w: 40px;
+  --ucs-card-h: 56px;
 }
 
 .ucs-player-table {
-  flex: 1 1 220px;
   border: 2px solid var(--player-color, #888);
   border-radius: 8px;
   padding: 6px;
   background: rgba(0, 0, 0, 0.03);
+}
+
+.ucs-me {
+  border: none;
+  background: transparent;
+  padding: 0;
+}
+
+.ucs-oppo {
+  cursor: pointer;
+  transition: box-shadow 0.12s ease, transform 0.12s ease;
+}
+.ucs-oppo:hover {
+  box-shadow: 0 0 0 2px var(--player-color, #888);
+  transform: translateY(-1px);
+}
+
+.ucs-oppo-summary {
+  display: none;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  margin-top: 4px;
+}
+.ucs-oppo-summary .ucs-pips {
+  letter-spacing: 1px;
+}
+.ucs-oppo-summary .ucs-oppo-progress {
+  opacity: 0.75;
 }
 
 .ucs-player-header {
@@ -418,13 +493,13 @@
 .ucs-knitting {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
-  min-height: 90px;
+  gap: 12px;
+  min-height: var(--ucs-card-h);
 }
 
 .ucs-build {
   display: grid;
-  grid-template-columns: repeat(2, 64px);
+  grid-template-columns: repeat(2, var(--ucs-card-w));
   grid-template-areas: "L R" "B B";
   justify-items: center;
   gap: 3px;
@@ -583,4 +658,125 @@
 }
 .ucs-result-table .ucs-rr-score {
   font-weight: bold;
+}
+
+#ucs-shared-row {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  align-items: flex-start;
+}
+#ucs-shared-row > .ucs-zone {
+  flex: 1 1 320px;
+  min-width: 0;
+}
+
+.ucs-trade-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+}
+
+.ucs-trade-owner {
+  max-width: calc(var(--ucs-card-w) + 12px);
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--player-color, #555);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+#ucs-my-hand {
+  min-height: 124px;
+}
+
+#ucs-my-hand.ucs-hand-choosing .bga-cards_selectable-card {
+  cursor: pointer;
+  outline: 3px solid #ffd54a;
+  outline-offset: 1px;
+}
+#ucs-my-hand.ucs-hand-choosing .bga-cards_unselectable-card {
+  filter: grayscale(0.45) brightness(0.72);
+  opacity: 0.5;
+}
+
+.bga-cards_selected-card {
+  outline: 3px solid #2ecc71 !important;
+  outline-offset: 1px;
+}
+
+.ucs-popin {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ucs-popin-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+}
+
+.ucs-popin-box {
+  position: relative;
+  z-index: 1;
+  max-width: 92vw;
+  max-height: 88vh;
+  overflow: auto;
+  padding: 12px 14px;
+  background: #2b2b2b;
+  color: #fff;
+  border-radius: 10px;
+  border-top: 4px solid var(--player-color, #888);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.5);
+  --ucs-card-w: 80px;
+  --ucs-card-h: 112px;
+}
+
+.ucs-popin-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 10px;
+  font-weight: bold;
+}
+
+.ucs-popin-close {
+  color: #fff;
+  text-decoration: none;
+  font-size: 18px;
+  line-height: 1;
+  opacity: 0.8;
+}
+.ucs-popin-close:hover {
+  opacity: 1;
+}
+
+@media (max-width: 800px) {
+  #ucs-main {
+    flex-direction: column;
+  }
+  #ucs-shared-row {
+    flex-direction: column;
+  }
+  #ucs-opponents {
+    width: auto;
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+  #ucs-opponents .ucs-oppo {
+    flex: 1 1 160px;
+  }
+  #ucs-opponents .ucs-oppo .ucs-knitting {
+    display: none;
+  }
+  #ucs-opponents .ucs-oppo .ucs-oppo-summary {
+    display: flex;
+  }
 }

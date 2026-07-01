@@ -59,6 +59,10 @@ $colors: (
 );
 
 #ucs-table {
+    // Card size is a CSS variable so zones can scale their cards independently and responsively:
+    // my own area bumps it up (focus), the opponents column shrinks it, the popin shows them large.
+    --ucs-card-w: #{$card-w};
+    --ucs-card-h: #{$card-h};
     display: flex;
     flex-direction: column;
     gap: 10px;
@@ -83,8 +87,8 @@ $colors: (
 .ucs-card-row {
     display: flex;
     flex-wrap: wrap;
-    gap: 6px;
-    min-height: $card-h;
+    gap: 12px; // roomier spacing between cards
+    min-height: var(--ucs-card-h);
     align-items: flex-start;
 }
 
@@ -99,8 +103,8 @@ $colors: (
 
 .ucs-card {
     position: relative;
-    width: $card-w;
-    height: $card-h;
+    width: var(--ucs-card-w);
+    height: var(--ucs-card-h);
     border-radius: 6px;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
     color: #fff;
@@ -108,6 +112,15 @@ $colors: (
     flex: 0 0 auto;
     user-select: none;
     background: #555;
+}
+
+// The bga-cards hand paints its front face with `.ucs-card-face` (not `.ucs-card`, whose fixed sizing
+// would fight the stock's own card-side layout). It only needs colour + white text + clipping; the
+// absolute face children position against the stock's positioned card-side.
+.ucs-card-face {
+    color: #fff;
+    overflow: hidden;
+    border-radius: 6px;
 }
 
 .ucs-card-pattern {
@@ -134,12 +147,50 @@ $colors: (
     }
 }
 
-.ucs-card-value {
+// The printed corner: value, then the orientation letter on a "Christmas-light" bulb, then the icon —
+// all stacked top-left (matching the physical cards). Font/box sizes scale with the card width so the
+// same markup reads well in the big personal area, the shrunk opponent column, and the popin.
+.ucs-card-corner {
     position: absolute;
-    top: 2px;
-    left: 4px;
-    font-size: 20px;
+    top: calc(var(--ucs-card-w) * 0.05);
+    left: calc(var(--ucs-card-w) * 0.06);
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: calc(var(--ucs-card-w) * 0.03);
+    line-height: 1;
+    pointer-events: none;
+}
+
+.ucs-card-value {
+    font-size: calc(var(--ucs-card-w) * 0.30);
     font-weight: 800;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
+}
+
+// Christmas-light bulb carrying the L/R/B orientation letter.
+.ucs-bulb {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: calc(var(--ucs-card-w) * 0.26);
+    height: calc(var(--ucs-card-w) * 0.30);
+    font-size: calc(var(--ucs-card-w) * 0.16);
+    font-weight: 800;
+    color: #fff;
+    background: #b5432f;
+    border: 1px solid rgba(255, 255, 255, 0.7);
+    border-radius: 42% 42% 46% 46% / 58% 58% 42% 42%; // teardrop-ish bulb
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+    &.ucs-bulb-L { background: #2f8f4e; }
+    &.ucs-bulb-R { background: #c0392b; }
+    &.ucs-bulb-B { background: #c9a227; color: #3a2d00; }
+    &.ucs-bulb-wild { background: #6b6b6b; }
+}
+
+.ucs-icon-col {
+    font-size: calc(var(--ucs-card-w) * 0.24);
     text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
 }
 
@@ -167,27 +218,6 @@ $colors: (
 .ucs-log-patch {
     border: 1.5px dashed #fff;
     box-shadow: 0 1px 2px rgba(0, 0, 0, 0.4), inset 0 0 0 1px rgba(0, 0, 0, 0.25);
-}
-
-.ucs-card-icon {
-    position: absolute;
-    inset: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 26px;
-    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
-}
-
-.ucs-card-slot {
-    position: absolute;
-    bottom: 2px;
-    right: 4px;
-    font-size: 12px;
-    font-weight: bold;
-    background: rgba(0, 0, 0, 0.4);
-    border-radius: 3px;
-    padding: 0 3px;
 }
 
 .ucs-patch {
@@ -365,18 +395,66 @@ $colors: (
 
 // ---- Player tables / knitting -------------------------------------------------------
 
-#ucs-players {
+// Self-focus layout: my large Knitting Area beside a compact, clickable opponents column.
+#ucs-main {
     display: flex;
-    flex-wrap: wrap;
-    gap: 10px;
+    gap: 12px;
+    align-items: flex-start;
+}
+
+#ucs-my-area {
+    flex: 1 1 auto;
+    min-width: 0;
+    // The personal area is the focus: bigger cards, spanning the play width.
+    --ucs-card-w: 74px;
+    --ucs-card-h: 104px;
+}
+
+#ucs-opponents {
+    flex: 0 0 auto;
+    width: 210px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    // Opponents are shrunk down (scaled-down live sweaters).
+    --ucs-card-w: 40px;
+    --ucs-card-h: 56px;
 }
 
 .ucs-player-table {
-    flex: 1 1 220px;
     border: 2px solid var(--player-color, #888);
     border-radius: 8px;
     padding: 6px;
     background: rgba(0, 0, 0, 0.03);
+}
+
+// My own table sits inside the framed #ucs-my-area zone, so it drops its own frame.
+.ucs-me {
+    border: none;
+    background: transparent;
+    padding: 0;
+}
+
+// Each opponent table is a click target that opens the full-size popin.
+.ucs-oppo {
+    cursor: pointer;
+    transition: box-shadow 0.12s ease, transform 0.12s ease;
+    &:hover {
+        box-shadow: 0 0 0 2px var(--player-color, #888);
+        transform: translateY(-1px);
+    }
+}
+
+// The abstract chip summary (completed-sweater pips + tally) — shown only on small screens, where the
+// opponents column collapses (see the responsive block at the end of this file).
+.ucs-oppo-summary {
+    display: none;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    margin-top: 4px;
+    .ucs-pips { letter-spacing: 1px; }
+    .ucs-oppo-progress { opacity: 0.75; }
 }
 
 .ucs-player-header {
@@ -416,8 +494,8 @@ $colors: (
 .ucs-knitting {
     display: flex;
     flex-wrap: wrap;
-    gap: 8px;
-    min-height: $card-h;
+    gap: 12px;
+    min-height: var(--ucs-card-h);
 }
 
 .ucs-build {
@@ -425,7 +503,7 @@ $colors: (
     // B centred across the bottom (matches the physical card art). Incomplete builds keep
     // the full 2x2 grid so the missing slots read as gaps in the sweater shape.
     display: grid;
-    grid-template-columns: repeat(2, $card-w);
+    grid-template-columns: repeat(2, var(--ucs-card-w));
     grid-template-areas:
         "L R"
         "B B";
@@ -580,6 +658,133 @@ $colors: (
 
     .ucs-rr-score {
         font-weight: bold;
+    }
+}
+
+// ---- Shared row (Draft Pool + Trade Area side by side) -------------------------------
+#ucs-shared-row {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    align-items: flex-start;
+
+    > .ucs-zone {
+        flex: 1 1 320px;
+        min-width: 0;
+    }
+}
+
+// A Trade Area card captioned with who played it this trick (label not carried into the pool).
+.ucs-trade-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+}
+
+.ucs-trade-owner {
+    max-width: calc(var(--ucs-card-w) + 12px);
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--player-color, #555);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+// ---- Fanned hand (bga-cards HandStock) ----------------------------------------------
+#ucs-my-hand {
+    min-height: 124px;
+}
+
+// While a play is required, the stock marks legal cards selectable and the rest unselectable.
+#ucs-my-hand.ucs-hand-choosing {
+    .bga-cards_selectable-card {
+        cursor: pointer;
+        outline: 3px solid #ffd54a;
+        outline-offset: 1px;
+    }
+    .bga-cards_unselectable-card {
+        filter: grayscale(0.45) brightness(0.72);
+        opacity: 0.5;
+    }
+}
+
+.bga-cards_selected-card {
+    outline: 3px solid #2ecc71 !important;
+    outline-offset: 1px;
+}
+
+// ---- Opponent close-up popin --------------------------------------------------------
+.ucs-popin {
+    position: fixed;
+    inset: 0;
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.ucs-popin-backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.55);
+}
+
+.ucs-popin-box {
+    position: relative;
+    z-index: 1;
+    max-width: 92vw;
+    max-height: 88vh;
+    overflow: auto;
+    padding: 12px 14px;
+    background: #2b2b2b;
+    color: #fff;
+    border-radius: 10px;
+    border-top: 4px solid var(--player-color, #888);
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.5);
+    // Opponent sweaters render large in the close-up.
+    --ucs-card-w: 80px;
+    --ucs-card-h: 112px;
+}
+
+.ucs-popin-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 10px;
+    font-weight: bold;
+}
+
+.ucs-popin-close {
+    color: #fff;
+    text-decoration: none;
+    font-size: 18px;
+    line-height: 1;
+    opacity: 0.8;
+    &:hover { opacity: 1; }
+}
+
+// ---- Responsive: on small screens the opponents column collapses to tappable chips --------------
+@media (max-width: 800px) {
+    #ucs-main {
+        flex-direction: column;
+    }
+    #ucs-shared-row {
+        flex-direction: column;
+    }
+    #ucs-opponents {
+        width: auto;
+        flex-direction: row;
+        flex-wrap: wrap;
+
+        .ucs-oppo {
+            flex: 1 1 160px;
+            // Collapse to an abstract chip: hide the mini sweaters, show the pip summary.
+            .ucs-knitting { display: none; }
+            .ucs-oppo-summary { display: flex; }
+        }
     }
 }
 
