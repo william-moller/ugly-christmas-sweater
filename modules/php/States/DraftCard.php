@@ -89,6 +89,20 @@ class DraftCard extends GameState
         // immediately; a "place over" may also change/break an already-scored sweater).
         $this->game->refreshPublicScore($activePlayerId);
 
+        // Express: evaluated between each draft — the active player claims any displayed Fad their tableau
+        // now satisfies (locking that sweater). Only they can claim now, so there's never a tie. Re-score
+        // afterwards so the claimed Fad's points land immediately.
+        foreach ($this->game->evaluateFadClaims($activePlayerId) as $claim) {
+            $this->notify->all('fadClaimed', clienttranslate('${player_name} claims a Fad'), [
+                'player_id'   => $activePlayerId,
+                'player_name' => $this->game->getPlayerNameById($activePlayerId),
+                'fad_id'      => $claim['fad_id'],
+                'build_no'    => $claim['build_no'],
+                'gameplay'    => $this->game->getGameplayState(),
+            ]);
+            $this->game->refreshPublicScore($activePlayerId);
+        }
+
         // Each draft-order entry is exactly ONE pick. The order ranks the CARDS played this trick (one
         // entry per card, owner = who played it — see Game::resolveTrickToDraftOrder), so a player who
         // played 2 cards in a 2-player trick simply appears twice: they may end up drafting twice in a

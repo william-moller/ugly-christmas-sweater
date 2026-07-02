@@ -25,9 +25,30 @@
       }
     },
     "default": 2
+  },
+
+  // Game mode (read in Game::isExpress). Casual = the base game (3 rounds). Express = a single round
+  // with a Fad display players claim, a Trendy card that rotates on a trick cadence, a Perfect Fit
+  // that is replaced when matched, 2 Secret Santas each, and a 4th-sweater round-end. In Express the
+  // Difficulty option above is ignored (all three parameter systems are always active).
+  "101": {
+    "name": "Game mode",
+    "values": {
+      "0": {
+        "name": "Casual",
+        "description": "The base game: 3 rounds, one parameter of each type per round.",
+        "tmdisplay": "Casual"
+      },
+      "1": {
+        "name": "Express",
+        "description": "One round; claimable Fad display, rotating Trendy/Perfect Fit, 2 Secret Santas, ends at the 4th sweater.",
+        "tmdisplay": "Express"
+      }
+    },
+    "default": 0
   }
 
-  // NOTE: the player-count variants (2P/3P, Casual/Avid, Express) will go here too once their engine
-  // support lands. Those that require an exact player count should use a "startcondition" block
-  // (minplayers/maxplayers) — see the "collect" reference game's 2v2 option for the pattern.
+  // NOTE: the remaining variants (2P/3P player-count tuning, Casual/Avid Secret Santa mode) will go
+  // here too once their engine support lands. Those that require an exact player count should use a
+  // "startcondition" block (minplayers/maxplayers) — see the "collect" reference game for the pattern.
 }

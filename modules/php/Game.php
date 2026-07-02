@@ -44,6 +44,15 @@ class Game extends \Bga\GameFramework\Table
     const DIFF_NOVICE    = 1; // Fads + Trendy Yarn
     const DIFF_EXPERT    = 2; // all three (Fads + Trendy Yarn + Perfect Fit) — base game
 
+    /** Game mode option (gameoptions.jsonc id 101): Casual = base 3-round game, Express = 1-round variant. */
+    const OPT_MODE     = 101;
+    const MODE_CASUAL  = 0;
+    const MODE_EXPRESS = 1;
+
+    /** Displayed Fads (Express) live here in the gameplayCards deck; claimed ones move to `claimed_fad`. */
+    const LOC_FAD_DISPLAY = 'seen_fad';   // reuse the seen stack as the Express fad display
+    const LOC_FAD_CLAIMED = 'claimed_fad'; // arg = player who claimed it
+
     // Card locations (see dbmodel.sql).
     const LOC_SOURCE    = 'deck';      // transient shuffle source during dealing
     const LOC_HAND      = 'hand';      // arg = player_id
@@ -88,6 +97,46 @@ class Game extends \Bga\GameFramework\Table
     public function cardsPerTurn(): int
     {
         return $this->getPlayersNumber() === 2 ? 2 : 1;
+    }
+
+    // ===========================================================================================
+    //  Game mode (Casual vs Express) derived parameters
+    // ===========================================================================================
+
+    /** True when the Express variant is selected (gameoptions.jsonc id 101). Defaults to Casual. */
+    public function isExpress(): bool
+    {
+        return ((int) ($this->bga->tableOptions->get(self::OPT_MODE) ?? self::MODE_CASUAL)) === self::MODE_EXPRESS;
+    }
+
+    /** Rounds in the game: Express = 1, Casual = 3. */
+    public function totalRounds(): int
+    {
+        return $this->isExpress() ? 1 : 3;
+    }
+
+    /** Completed-sweater count that triggers round end: Express = 4, Casual = 3. */
+    public function sweatersToEndRound(): int
+    {
+        return $this->isExpress() ? 4 : 3;
+    }
+
+    /** Express: rotate the Trendy Yarn card after every Nth trick — 2P every 3rd, else every 4th. */
+    public function trendyRotateEvery(): int
+    {
+        return $this->getPlayersNumber() === 2 ? 3 : 4;
+    }
+
+    /** Express: number of Fad cards on display to be claimed (players + 1). */
+    public function fadsOnDisplay(): int
+    {
+        return $this->getPlayersNumber() + 1;
+    }
+
+    /** Secret Santas dealt to each player: Express = 2, Casual = 1. */
+    public function secretSantasPerPlayer(): int
+    {
+        return $this->isExpress() ? 2 : 1;
     }
 
     // ===========================================================================================
@@ -270,6 +319,10 @@ class Game extends \Bga\GameFramework\Table
      */
     public function revealGameplayCards(): void
     {
+        if ($this->isExpress()) {
+            $this->revealExpressGameplay();
+            return;
+        }
         $allowed = $this->revealableGameplayTypes();
         foreach (self::GAMEPLAY_TYPES as $type) {
             if (!in_array($type, $allowed, true)) {
@@ -281,6 +334,47 @@ class Game extends \Bga\GameFramework\Table
             $nextArg = $this->gameplayCards->countCardInLocation($this->gpSeenLoc($type));
             $this->gameplayCards->pickCardForLocation($this->gpDeckLoc($type), $this->gpSeenLoc($type), $nextArg);
         }
+    }
+
+    /**
+     * Express reveal (ignores the Difficulty option — all three systems are always on): a Fad DISPLAY of
+     * players+1 distinct fads to be claimed during the round, plus one Trendy Yarn (rotates on a trick
+     * cadence) and one Perfect Fit (replaced when matched). Also initialises the round's Express globals.
+     */
+    public function revealExpressGameplay(): void
+    {
+        $n = min($this->fadsOnDisplay(), $this->gameplayCards->countCardInLocation($this->gpDeckLoc('fad')));
+        for ($i = 0; $i < $n; $i++) {
+            $this->gameplayCards->pickCardForLocation($this->gpDeckLoc('fad'), self::LOC_FAD_DISPLAY, $i);
+        }
+        $this->globals->set('fadClaims', '{}');
+
+        $this->gameplayCards->pickCardForLocation($this->gpDeckLoc('trendyyarn'), $this->gpSeenLoc('trendyyarn'), 0);
+        $this->gameplayCards->pickCardForLocation($this->gpDeckLoc('perfectfit'), $this->gpSeenLoc('perfectfit'), 0);
+        $this->globals->set('expressTrickNo', 0);
+        $this->globals->set('pfMatched', 0);
+    }
+
+    /**
+     * Express: advance a single-card gameplay deck (Trendy Yarn / Perfect Fit) to a fresh card. If the
+     * draw pile is empty, first reshuffle ALL of that type's cards back into it (the Express "reset the
+     * deck" rule), then reveal one on top of the seen stack (activeGameplayCard reads the highest
+     * location_arg). Returns the new active card, or null if the type has no cards at all.
+     */
+    public function rotateGameplayDeck(string $type): ?array
+    {
+        if ($this->gameplayCards->countCardInLocation($this->gpDeckLoc($type)) === 0) {
+            foreach ($this->gameplayCards->getCardsInLocation($this->gpSeenLoc($type)) as $c) {
+                $this->gameplayCards->moveCard((int) $c['id'], $this->gpDeckLoc($type));
+            }
+            $this->gameplayCards->shuffle($this->gpDeckLoc($type));
+        }
+        if ($this->gameplayCards->getCardOnTop($this->gpDeckLoc($type)) === null) {
+            return null;
+        }
+        $nextArg = $this->gameplayCards->countCardInLocation($this->gpSeenLoc($type));
+        $this->gameplayCards->pickCardForLocation($this->gpDeckLoc($type), $this->gpSeenLoc($type), $nextArg);
+        return $this->activeGameplayCard($type);
     }
 
     /** Which gameplay decks are revealed this game, per the Difficulty option (Fad is always on). */
@@ -320,13 +414,34 @@ class Game extends \Bga\GameFramework\Table
                 'seenCount' => $this->gameplayCards->countCardInLocation($this->gpSeenLoc($type)),
             ];
         }
+        if ($this->isExpress()) {
+            // The Express Fad display (unclaimed) + the claimed fads and who/what they're locked to.
+            $out['express'] = [
+                'fadDisplay' => array_values($this->gameplayCards->getCardsInLocation(self::LOC_FAD_DISPLAY)),
+                'fadClaimed' => array_values($this->gameplayCards->getCardsInLocation(self::LOC_FAD_CLAIMED)),
+                'fadClaims'  => $this->fadClaims(),
+            ];
+        }
         return $out;
     }
 
-    /** Deal one Secret Santa to each player for the round. */
+    /** Express Fad claims: map of fadCardId => ['playerId' => int, 'buildNo' => int]. */
+    public function fadClaims(): array
+    {
+        return json_decode($this->globals->get('fadClaims') ?? '{}', true) ?: [];
+    }
+
+    /** Deal each player their Secret Santa objective(s) for the round: Casual = 1, Express = 2. */
     public function dealSecretSantas(): void
     {
-        // TODO: implement once Material::secretSantas() is populated.
+        $n = $this->secretSantasPerPlayer();
+        $this->secretSantas->shuffle('box');
+        foreach (array_keys($this->loadPlayersBasicInfos()) as $pid) {
+            if ($this->secretSantas->countCardInLocation('box') <= 0) {
+                break; // ran out (shouldn't within a single game)
+            }
+            $this->secretSantas->pickCards($n, 'box', (int) $pid);
+        }
     }
 
     // ===========================================================================================
@@ -365,8 +480,10 @@ class Game extends \Bga\GameFramework\Table
         ];
 
         // Round info.
-        $result["roundNo"]  = (int) $this->globals->get('roundNo');
-        $result["leaderId"] = (int) $this->globals->get('leaderId');
+        $result["roundNo"]     = (int) $this->globals->get('roundNo');
+        $result["leaderId"]    = (int) $this->globals->get('leaderId');
+        $result["express"]     = $this->isExpress();
+        $result["totalRounds"] = $this->totalRounds();
 
         // Studio-only client affordances (DEBUG button). Always false in production.
         $result["isStudio"] = $this->getBgaEnvironment() === 'studio';
@@ -663,6 +780,16 @@ class Game extends \Bga\GameFramework\Table
             'wild_value'  => $wildValue,
             'wild_icon'   => $wildIcon,
         ]);
+
+        // Express: if this play matches the current Perfect Fit value, flag it so EndTrickCleanup draws
+        // a replacement Perfect Fit at the end of this trick. A patch uses its just-copied wild value.
+        if ($this->isExpress()) {
+            $playedValue = $isPatch ? (int) $wildValue : (int) $card['type_arg'];
+            $pf = $this->activePerfectFit();
+            if ($pf !== null && $playedValue === $pf) {
+                $this->globals->set('pfMatched', 1);
+            }
+        }
     }
 
     /**
@@ -722,6 +849,13 @@ class Game extends \Bga\GameFramework\Table
         // Target an existing build, or open a new one.
         $knownBuild  = $buildNo > 0 && in_array($buildNo, $allBuildNos, true);
         $targetBuild = $knownBuild ? $buildNo : (empty($allBuildNos) ? 1 : max($allBuildNos) + 1);
+
+        // Express: a sweater that has claimed a Fad is locked — it can never be added to or placed over.
+        if ($knownBuild && $this->isExpress() && in_array($targetBuild, $this->lockedBuildsFor($playerId), true)) {
+            throw new \Bga\GameFramework\UserException(
+                clienttranslate('That sweater has claimed a Fad and can no longer be changed')
+            );
+        }
 
         // Resolve the drafted card's slot (value/icon are always deferred to scoring now).
         if ($isPatch) {
@@ -830,18 +964,31 @@ class Game extends \Bga\GameFramework\Table
         return $done;
     }
 
-    /** Round ends when a player completes their 3rd sweater (base) or all hands are exhausted. */
+    /** Round ends when a player completes the Nth sweater (Casual 3 / Express 4) or all hands are exhausted. */
     public function isRoundOver(): bool
     {
         if ($this->allHandsEmpty()) {
             return true;
         }
+        $target = $this->sweatersToEndRound();
         foreach (array_keys($this->loadPlayersBasicInfos()) as $pid) {
-            if ($this->countCompletedSweaters((int) $pid) >= 3) {
+            if ($this->countCompletedSweaters((int) $pid) >= $target) {
                 return true;
             }
         }
         return false;
+    }
+
+    /** A player's knitting builds keyed buildNo => [slot => card row] (oriented pieces only; floats omitted). */
+    public function playerBuilds(int $playerId): array
+    {
+        $builds = [];
+        foreach ($this->getCardsWithExtras(self::LOC_KNITTING, $playerId) as $c) {
+            if ($c['slot'] !== null) {
+                $builds[(int) $c['buildNo']][$c['slot']] = $c;
+            }
+        }
+        return $builds;
     }
 
     /** The active Fad for the round (round-bonus parameter), or null if none is active. */
@@ -864,6 +1011,116 @@ class Game extends \Bga\GameFramework\Table
         $c = $this->activeGameplayCard('trendyyarn');
         // type_arg holds the colour's index into Material::COLORS (kept as an int so type_arg stays int).
         return $c ? (Material::COLORS[(int) $c['type_arg']] ?? null) : null;
+    }
+
+    // ===========================================================================================
+    //  Express Fad claiming (a displayed Fad is claimed by the sweater that first satisfies it)
+    // ===========================================================================================
+
+    /**
+     * VP a completed sweater earns for a given Fad, +3 per objective met: a colour objective when all
+     * three pieces share the Fad colour, an icon objective when all three share the Fad icon; a "Clash
+     * Is In" Fad awards +3 when all three colours AND icons are distinct. Icons use effectiveIcon, so a
+     * sweater with an unassigned patch scores its colour/clash part now and gains the icon part once the
+     * patch is assigned at round-end. Returns 0 for an incomplete build or no match.
+     */
+    public function fadSweaterScore(array $bySlot, array $fad): int
+    {
+        if (!isset($bySlot[Material::SLOT_LEFT], $bySlot[Material::SLOT_RIGHT], $bySlot[Material::SLOT_BOTTOM])) {
+            return 0;
+        }
+        $cards  = [$bySlot[Material::SLOT_LEFT], $bySlot[Material::SLOT_RIGHT], $bySlot[Material::SLOT_BOTTOM]];
+        $colors = array_map(fn($c) => $c['type'], $cards);
+        $icons  = array_map(fn($c) => $this->effectiveIcon($c), $cards);
+        $allSameColor = count(array_unique($colors)) === 1;
+        $allSameIcon  = !in_array(null, $icons, true) && count(array_unique($icons)) === 1;
+
+        if (!empty($fad['clash'])) {
+            $allDiffColor = count(array_unique($colors)) === 3;
+            $allDiffIcon  = !in_array(null, $icons, true) && count(array_unique($icons)) === 3;
+            return ($allDiffColor && $allDiffIcon) ? Material::VP_FAD : 0;
+        }
+        $vp = 0;
+        foreach ($fad['objectives'] ?? [] as $obj) {
+            if ($obj['match'] === 'color' && $allSameColor && $colors[0] === $obj['value']) $vp += Material::VP_FAD;
+            if ($obj['match'] === 'icon'  && $allSameIcon  && $icons[0]  === $obj['value']) $vp += Material::VP_FAD;
+        }
+        return $vp;
+    }
+
+    /** Express: the buildNos of a player's sweaters that are locked by a claimed Fad (can't be altered). */
+    public function lockedBuildsFor(int $playerId): array
+    {
+        $out = [];
+        foreach ($this->fadClaims() as $claim) {
+            if ((int) $claim['playerId'] === $playerId) {
+                $out[] = (int) $claim['buildNo'];
+            }
+        }
+        return $out;
+    }
+
+    /**
+     * Express: after a placement, let the ACTING player claim any displayed Fad their tableau now
+     * satisfies. Only the acting player is evaluated (their sweaters are the only ones that changed) and
+     * this runs between each draft — so two players can never tie for the same Fad. A completed, unlocked
+     * sweater that meets a displayed Fad claims it: the Fad card moves onto that sweater (locking it) and
+     * the claim is recorded. A build claims at most one Fad; a Fad is claimed once.
+     * @return list<array{fad_id:int, build_no:int, type_arg:int}>
+     */
+    public function evaluateFadClaims(int $playerId): array
+    {
+        if (!$this->isExpress()) {
+            return [];
+        }
+        $claims = $this->fadClaims();
+        $locked = $this->lockedBuildsFor($playerId);
+        $events = [];
+
+        foreach ($this->playerBuilds($playerId) as $buildNo => $bySlot) {
+            if (in_array((int) $buildNo, $locked, true)) {
+                continue; // already locked by a claimed Fad
+            }
+            foreach ($this->gameplayCards->getCardsInLocation(self::LOC_FAD_DISPLAY) as $fadCard) {
+                $fad = Material::fads()[(int) $fadCard['type_arg']] ?? null;
+                if ($fad === null || $this->fadSweaterScore($bySlot, $fad) <= 0) {
+                    continue;
+                }
+                $fadId = (int) $fadCard['id'];
+                $claims[$fadId] = ['playerId' => $playerId, 'buildNo' => (int) $buildNo];
+                $this->gameplayCards->moveCard($fadId, self::LOC_FAD_CLAIMED, $playerId);
+                $locked[] = (int) $buildNo;
+                $events[] = ['fad_id' => $fadId, 'build_no' => (int) $buildNo, 'type_arg' => (int) $fadCard['type_arg']];
+                break; // this build is now locked → next build
+            }
+        }
+
+        if (!empty($events)) {
+            $this->globals->set('fadClaims', json_encode($claims));
+        }
+        return $events;
+    }
+
+    /**
+     * Express: map of a player's locked buildNo => the Fad definition (Material::fads entry) claimed on
+     * it. Feeding each locked build its OWN claimed Fad into publicSweaterScore reuses the base "Fad +3
+     * per objective, but no +1 non-fad match for the matched attribute" logic — so a claimed monochrome
+     * sweater scores +3 (Fad), not +3 and +1. Unlocked builds pass null (a plain non-Fad +1 if monochrome).
+     */
+    public function claimedFadByBuild(int $playerId): array
+    {
+        $out = [];
+        foreach ($this->fadClaims() as $fadId => $claim) {
+            if ((int) $claim['playerId'] !== $playerId) {
+                continue;
+            }
+            $fadCard = $this->gameplayCards->getCard((int) $fadId);
+            $fad = $fadCard ? (Material::fads()[(int) $fadCard['type_arg']] ?? null) : null;
+            if ($fad !== null) {
+                $out[(int) $claim['buildNo']] = $fad;
+            }
+        }
+        return $out;
     }
 
     // ===========================================================================================
@@ -993,15 +1250,17 @@ class Game extends \Bga\GameFramework\Table
     /** Total public (non-Secret-Santa) VP a player has earned from their completed sweaters so far. */
     public function livePublicScore(int $playerId): int
     {
-        $fad    = $this->activeFad();
-        $builds = [];
-        foreach ($this->getCardsWithExtras(self::LOC_KNITTING, $playerId) as $c) {
-            if ($c['slot'] !== null) {
-                $builds[(int) $c['buildNo']][$c['slot']] = $c;
-            }
-        }
+        // Casual scores every sweater against the single round Fad. Express has no single round Fad — each
+        // sweater is scored against the Fad it CLAIMED (locked builds), or null (a monochrome sweater that
+        // claimed nothing still earns the +1 non-Fad match). Passing the claimed Fad reuses the base
+        // scorer's +3-vs-+1 exclusivity, so there's no double count.
+        $express        = $this->isExpress();
+        $roundFad       = $express ? null : $this->activeFad();
+        $claimedByBuild = $express ? $this->claimedFadByBuild($playerId) : [];
+
         $total = 0;
-        foreach ($builds as $bySlot) {
+        foreach ($this->playerBuilds($playerId) as $buildNo => $bySlot) {
+            $fad = $express ? ($claimedByBuild[(int) $buildNo] ?? null) : $roundFad;
             $total += $this->publicSweaterScore($bySlot, $fad);
         }
         return $total;
@@ -1111,8 +1370,17 @@ class Game extends \Bga\GameFramework\Table
 
     public function getGameProgression()
     {
+        // Express is a single round — track progress by the leading player's sweaters toward the round-end
+        // trigger (4). Casual tracks by completed rounds out of 3.
+        if ($this->isExpress()) {
+            $max = 0;
+            foreach (array_keys($this->loadPlayersBasicInfos()) as $pid) {
+                $max = max($max, $this->countCompletedSweaters((int) $pid));
+            }
+            return min(100, (int) floor(($max / $this->sweatersToEndRound()) * 100));
+        }
         $round = (int) $this->globals->get('roundNo');
-        return min(100, (int) floor((($round - 1) / 3) * 100));
+        return min(100, (int) floor((($round - 1) / $this->totalRounds()) * 100));
     }
 
     public function upgradeTableDb($from_version) {}

@@ -73,6 +73,7 @@ export class Game {
         this.bga.gameArea.getElement().insertAdjacentHTML('beforeend', `
             <div id="ucs-table">
                 <div id="ucs-gameplay" class="ucs-zone"></div>
+                <div id="ucs-secret-santa" class="ucs-zone ucs-secret-santa" style="display:none"></div>
                 <div id="ucs-shared-row">
                     <div id="ucs-draft-pool" class="ucs-zone"></div>
                     <div id="ucs-trade-area" class="ucs-zone"></div>
@@ -217,10 +218,31 @@ export class Game {
 
     private renderAll() {
         this.renderGameplay();
+        this.renderSecretSanta();
         this.renderDraftPool();
         this.renderTradeArea();
         this.renderPlayers();
         this.renderHand();
+    }
+
+    /** My own Secret Santa objective(s) — 1 in Casual, 2 in Express (private; hidden from other players). */
+    private renderSecretSanta() {
+        const zone = document.getElementById('ucs-secret-santa');
+        if (!zone) return;
+        const cards = Object.values(this.gamedatas.secretSanta ?? {});
+        if (!cards.length) { zone.style.display = 'none'; return; }
+        zone.style.display = '';
+        zone.innerHTML = `<div class="ucs-zone-label">${_('Your Secret Santa')}</div>`;
+        const row = document.createElement('div');
+        row.className = 'ucs-santa-cards';
+        cards.forEach((c) => {
+            const ss = this.material.secretSantas?.[Number((c as any).type_arg)];
+            const el = document.createElement('div');
+            el.className = 'ucs-card ucs-santa-card';
+            el.innerHTML = `<div class="ucs-santa-name">${ss?.name ?? _('Secret Santa')}</div>`;
+            row.appendChild(el);
+        });
+        zone.appendChild(row);
     }
 
     /**
@@ -234,14 +256,41 @@ export class Game {
         const row = document.createElement('div');
         row.className = 'ucs-gameplay-row';
         const gp = this.gamedatas.gameplay;
-        ([
-            ['perfectfit', 'Perfect Fit'],
-            ['trendyyarn', 'Trendy Yarn'],
-            ['fad', 'Fads'],
-        ] as const).forEach(([type, label]) => {
-            row.appendChild(this.gameplayPileEl(type, label, gp?.[type]));
-        });
+        row.appendChild(this.gameplayPileEl('perfectfit', 'Perfect Fit', gp?.perfectfit));
+        row.appendChild(this.gameplayPileEl('trendyyarn', 'Trendy Yarn', gp?.trendyyarn));
+        // Express shows a DISPLAY of claimable Fads (players+1); Casual shows the single revealed Fad.
+        if (this.gamedatas.express) {
+            row.appendChild(this.fadDisplayEl(gp?.express));
+        } else {
+            row.appendChild(this.gameplayPileEl('fad', 'Fads', gp?.fad));
+        }
         zone.appendChild(row);
+    }
+
+    /** Express: the row of claimable Fad cards — unclaimed on display, claimed ones tagged with the owner. */
+    private fadDisplayEl(express: ExpressGameplay | undefined): HTMLElement {
+        const wrap = document.createElement('div');
+        wrap.className = 'ucs-gp-pile ucs-fad-display';
+        wrap.innerHTML = `<div class="ucs-gp-label">${_('Fads (claim to lock a sweater)')}</div>`;
+        const cards = document.createElement('div');
+        cards.className = 'ucs-fad-cards';
+        (express?.fadDisplay ?? []).forEach((c) => cards.appendChild(this.fadCardEl(c, null)));
+        (express?.fadClaimed ?? []).forEach((c) => cards.appendChild(this.fadCardEl(c, Number(c.location_arg))));
+        wrap.appendChild(cards);
+        return wrap;
+    }
+
+    /** One Fad card in the Express display; ownerId set → claimed (dimmed + tagged with the owner). */
+    private fadCardEl(card: GameplayCard, ownerId: number | null): HTMLElement {
+        const el = this.gameplayCardEl('fad', card);
+        el.classList.add('ucs-fad-card');
+        if (ownerId != null) {
+            el.classList.add('ucs-fad-claimed');
+            const owner = this.gamedatas.players[ownerId];
+            if (owner) el.style.setProperty('--player-color', `#${owner.color}`);
+            el.insertAdjacentHTML('beforeend', `<div class="ucs-fad-owner">${owner?.name ?? ''}</div>`);
+        }
+        return el;
     }
 
     /** One gameplay deck: label, the current face-up card, and the face-down draw pile + count. */
@@ -423,6 +472,25 @@ export class Game {
         }
     }
 
+    /** Express: the Fad-claim map (fadCardId -> {playerId, buildNo}), or empty outside Express. */
+    private expressClaims(): { [fadId: number]: FadClaim } {
+        return this.gamedatas.gameplay?.express?.fadClaims ?? {};
+    }
+
+    /** Express: the type_arg (fad id in Material::fads) of the Fad locking playerId's build, or null. */
+    private claimedFadForBuild(playerId: number, buildNo: number): number | null {
+        const claims = this.expressClaims();
+        for (const fadId of Object.keys(claims)) {
+            const c = claims[Number(fadId)];
+            if (Number(c.playerId) === playerId && Number(c.buildNo) === buildNo) {
+                const card = (this.gamedatas.gameplay?.express?.fadClaimed ?? [])
+                    .find((f) => Number(f.id) === Number(fadId));
+                return card ? Number(card.type_arg) : -1;
+            }
+        }
+        return null;
+    }
+
     /**
      * Render a player's knitting area: builds laid out in the sweater silhouette (L top-left, R
      * top-right, B centred below). A floating Patch (orientation not yet chosen) renders centred with a
@@ -474,6 +542,11 @@ export class Game {
                 const build = document.createElement('div');
                 build.className = 'ucs-build';
                 if (this.isBuildComplete(builds[buildNo])) build.classList.add('ucs-build-complete');
+                // Express: a sweater that has claimed a Fad is locked — it can't be altered, and the
+                // claimed Fad is shown on it. Locked builds draw no draft targets (guards below).
+                const claimedFad = this.claimedFadForBuild(playerId, buildNo);
+                const locked = claimedFad != null;
+                if (locked) build.classList.add('ucs-build-locked');
                 const slotEls: { [slot: string]: HTMLElement } = {};
                 builds[buildNo].forEach((card) => {
                     const el = createCardElement(card, this.material);
@@ -497,10 +570,10 @@ export class Game {
                     if (slotEls[slot]) this.applyTarget(slotEls[slot], mode, onClick);
                     else build.appendChild(this.makeTargetGhost(slot, mode, onClick));
                 };
-                if (regularSlot) {
+                if (regularSlot && !locked) {
                     cell(regularSlot, picked === buildNo ? 'selected' : 'option', () => this.placeDraftTarget(buildNo));
                 }
-                if (selPatch) {
+                if (selPatch && !locked) {
                     // Offer all three orientations; exclude the slot reserved for this sweater's floating
                     // patch (the two patches must land in different slots).
                     const reserved = (floatDest && floatDest.buildNo === buildNo) ? floatDest.slot : null;
@@ -511,6 +584,13 @@ export class Game {
                     });
                 }
                 if (floatDest && floatDest.buildNo === buildNo) cell(floatDest.slot, 'selected'); // green
+                if (locked && claimedFad != null) {
+                    const fad = this.material.fads[claimedFad];
+                    const chip = document.createElement('div');
+                    chip.className = 'ucs-build-fad';
+                    chip.textContent = fad?.title ?? _('Fad');
+                    build.appendChild(chip);
+                }
                 zone.appendChild(build);
             });
 
@@ -1170,6 +1250,17 @@ export class Game {
     async notif_gameplayRevealed(args: NotifGameplayRevealed) {
         this.gamedatas.gameplay = args.gameplay;
         this.renderGameplay();
+    }
+
+    /**
+     * Express: a player claimed a Fad. The Fad moves from the display onto their (now locked) sweater;
+     * re-render the Fad display and that player's knitting. Their score updates via the framework's
+     * score counter (server playerScore->inc), so no manual score bump is needed here.
+     */
+    async notif_fadClaimed(args: NotifFadClaimed) {
+        this.gamedatas.gameplay = args.gameplay;
+        this.renderGameplay();
+        this.renderKnitting(args.player_id);
     }
 
     /**

@@ -807,6 +807,76 @@ html {
     }
 }
 
+// =====================================================================================
+//  Express variant — claimable Fad display, claimed/locked sweaters, Secret Santa strip
+// =====================================================================================
 
+.ucs-fad-display .ucs-fad-cards {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+.ucs-fad-card {
+    position: relative;
+}
+// A claimed Fad is dimmed and tagged with its owner's colour + name.
+.ucs-fad-claimed {
+    opacity: 0.85;
+    outline: 3px solid var(--player-color, #2ecc71);
+    outline-offset: -2px;
+}
+.ucs-fad-owner {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    font-size: 9px;
+    font-weight: 700;
+    text-align: center;
+    color: #fff;
+    background: var(--player-color, #2ecc71);
+    padding: 1px 0;
+    border-radius: 0 0 4px 4px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
 
+// A sweater that has claimed a Fad is locked: it can't be altered, so we tint it and badge the Fad.
+.ucs-build-locked {
+    outline: 3px solid #c9a227;
+    outline-offset: 1px;
+    filter: saturate(1.05);
+}
+.ucs-build-fad {
+    grid-column: 1 / -1;
+    justify-self: center;
+    margin-top: 2px;
+    font-size: 10px;
+    font-weight: 700;
+    color: #7a5c00;
+    background: rgba(201, 162, 39, 0.22);
+    border-radius: 4px;
+    padding: 1px 6px;
+    text-align: center;
+}
+
+// Secret Santa strip (my private objective card(s)).
+.ucs-secret-santa .ucs-santa-cards {
+    display: flex;
+    gap: 6px;
+}
+.ucs-santa-card {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 4px;
+    background: repeating-linear-gradient(45deg, #7a1f1f, #7a1f1f 6px, #5c1414 6px, #5c1414 12px);
+    color: #fff;
+}
+.ucs-santa-name {
+    font-size: 10px;
+    font-weight: 700;
+    text-align: center;
+}
 

@@ -8,11 +8,9 @@ use Bga\GameFramework\StateType;
 use Bga\GameFramework\States\GameState;
 use Bga\Games\UglyChristmasSweater\Game;
 
-/** Score the round, then start the next round or end the game after round 3. */
+/** Score the round, then start the next round or end the game after the last round (Casual 3 / Express 1). */
 class ScoreRound extends GameState
 {
-    const TOTAL_ROUNDS = 3; // TODO: 1 for the Express variant (read from game options)
-
     function __construct(protected Game $game)
     {
         parent::__construct($game, id: 70, type: StateType::GAME);
@@ -35,9 +33,10 @@ class ScoreRound extends GameState
             'breakdown' => $breakdown,
         ]);
 
-        // After the final round, end the game. Otherwise pause on a shared round-review screen — every
-        // player clicks Continue before the next round is dealt. (Pattern from the crybaby ShowBets state.)
-        if ($round >= self::TOTAL_ROUNDS) {
+        // After the final round, end the game (Express: after its single round). Otherwise pause on a
+        // shared round-review screen — every player clicks Continue before the next round is dealt.
+        // (Pattern from the crybaby ShowBets state.)
+        if ($round >= $this->game->totalRounds()) {
             return EndScore::class;
         }
         $this->game->globals->set('roundNo', $round + 1);

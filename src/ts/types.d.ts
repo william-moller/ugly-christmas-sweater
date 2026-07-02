@@ -55,10 +55,24 @@ interface GameplayPile {
     seenCount: number;
 }
 
+/** Express: one entry per claimed Fad — which player claimed it and which of their builds it locks. */
+interface FadClaim {
+    playerId: number;
+    buildNo: number;
+}
+
+/** Express-only gameplay state: the claimable Fad display, the claimed Fads, and the claim map. */
+interface ExpressGameplay {
+    fadDisplay: GameplayCard[];                 // unclaimed Fads on display
+    fadClaimed: GameplayCard[];                 // claimed Fad cards (location_arg = owner)
+    fadClaims: { [fadId: number]: FadClaim };   // fadId -> {playerId, buildNo}
+}
+
 interface GameplayState {
     perfectfit: GameplayPile;
     trendyyarn: GameplayPile;
     fad: GameplayPile;
+    express?: ExpressGameplay; // present only in the Express variant
 }
 
 /** A map keyed by card id, as PHP getCollectionFromDb / Deck::getCardsInLocation return. */
@@ -80,6 +94,8 @@ interface UglyChristmasSweaterGamedatas extends Gamedatas<UglyChristmasSweaterPl
     material: UcsMaterial;
     roundNo: number;
     leaderId: number;
+    express: boolean;              // true in the Express variant (single round, claimable Fads, etc.)
+    totalRounds: number;           // 3 (Casual) or 1 (Express)
     isStudio: boolean;             // true only on the Studio environment (gates the DEBUG button)
 }
 
@@ -165,4 +181,12 @@ interface NotifGameplayRevealed {
 interface NotifRoundScored {
     round: number;
     breakdown: RoundResultRow[];
+}
+
+interface NotifFadClaimed {
+    player_id: number;
+    player_name: string;
+    fad_id: number;
+    build_no: number;
+    gameplay: GameplayState; // refreshed gameplay state (the fad has moved from display to claimed)
 }

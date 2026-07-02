@@ -10,7 +10,8 @@ use Bga\Games\UglyChristmasSweater\Game;
 
 /**
  * End-of-trick cleanup: the trade-area cards become the next draft pool, hands refill to 9, then either
- * the round ends (someone completed their 3rd sweater, or hands are empty) or the leader leads again.
+ * the round ends (someone completed their Nth sweater — Casual 3 / Express 4 — or hands are empty) or the
+ * leader leads again. In Express, the Trendy Yarn and Perfect Fit parameters may also rotate here.
  */
 class EndTrickCleanup extends GameState
 {
@@ -39,6 +40,30 @@ class EndTrickCleanup extends GameState
             $this->game->notify->player((int) $pid, 'handUpdate', '', [
                 'hand' => array_values($this->game->cards->getCardsInLocation(Game::LOC_HAND, (int) $pid)),
             ]);
+        }
+
+        // Express: rotate this trick's round parameters. Trendy Yarn changes every trendyRotateEvery()
+        // tricks (2P → 3rd, else 4th); Perfect Fit is replaced if a matching card was played this trick.
+        // Both reshuffle their deck when it empties (see Game::rotateGameplayDeck).
+        if ($this->game->isExpress()) {
+            $trickNo = ((int) $this->game->globals->get('expressTrickNo')) + 1;
+            $this->game->globals->set('expressTrickNo', $trickNo);
+
+            $rotated = false;
+            if ($trickNo % $this->game->trendyRotateEvery() === 0) {
+                $this->game->rotateGameplayDeck('trendyyarn');
+                $rotated = true;
+            }
+            if ((int) $this->game->globals->get('pfMatched') === 1) {
+                $this->game->rotateGameplayDeck('perfectfit');
+                $this->game->globals->set('pfMatched', 0);
+                $rotated = true;
+            }
+            if ($rotated) {
+                $this->notify->all('gameplayRevealed', clienttranslate('Round parameters updated'), [
+                    'gameplay' => $this->game->getGameplayState(),
+                ]);
+            }
         }
 
         if ($this->game->isRoundOver()) {
