@@ -446,17 +446,17 @@ export class Game {
         const selPatch = mine ? isPatch(sel!, this.material) : false;
         const picked = mine ? this.pendingBuildNo : null; // chosen build (highlighted green)
 
-        // A regular card is placed by clicking a slot in my area — those targets stay clickable so the
-        // position can be changed freely until Submit (the picked cell shows green, the rest as options).
+        // A regular card is placed by clicking its (single) printed slot in my area; a patch is wild and
+        // may be clicked into ANY L/R/B of any sweater (covering an occupied slot discards it). Either
+        // way the targets stay clickable so the placement can be changed freely until Submit (the picked
+        // cell shows green, the rest as options).
         const regularSlot = (mine && !selPatch) ? (faceOf(sel!, this.material).slot ?? null) : null;
-        // A patch's chosen orientation (picked from the action bar) and any floating-patch destination
-        // show as green, non-clickable, so the player can see where things will land before submitting.
-        const patchDest = (mine && selPatch && this.pendingBuildNo != null && this.patchSlot)
-            ? { buildNo: this.pendingBuildNo, slot: this.patchSlot } : null;
+        // A floating-patch orientation (chosen on the action bar when a 2nd card joins a sweater that
+        // holds a floating patch) shows as green, non-clickable, so the player sees where it will land.
         const floatDest = (mine && this.pendingBuildNo != null && this.floatingPatchSlot)
             ? { buildNo: this.pendingBuildNo, slot: this.floatingPatchSlot } : null;
 
-        if (!cards.length && regularSlot == null) {
+        if (!cards.length && regularSlot == null && !selPatch) {
             zone.innerHTML = `<div class="ucs-empty">No sweaters yet</div>`;
             return;
         }
@@ -492,49 +492,96 @@ export class Game {
                     build.appendChild(el);
                 });
                 // Apply a target/destination at `slot`: reuse the card el if present, else a ghost cell.
-                const cell = (slot: string, mode: 'option' | 'selected', clickable: boolean) => {
-                    if (slotEls[slot]) this.applyTarget(slotEls[slot], buildNo, mode, clickable);
-                    else build.appendChild(this.makeTargetGhost(slot, buildNo, mode, clickable));
+                // onClick omitted → a non-clickable (green, informational) destination.
+                const cell = (slot: string, mode: 'option' | 'selected', onClick?: () => void) => {
+                    if (slotEls[slot]) this.applyTarget(slotEls[slot], mode, onClick);
+                    else build.appendChild(this.makeTargetGhost(slot, mode, onClick));
                 };
-                if (regularSlot) cell(regularSlot, picked === buildNo ? 'selected' : 'option', true);
-                if (patchDest && patchDest.buildNo === buildNo) cell(patchDest.slot, 'selected', false);
-                if (floatDest && floatDest.buildNo === buildNo) cell(floatDest.slot, 'selected', false);
+                if (regularSlot) {
+                    cell(regularSlot, picked === buildNo ? 'selected' : 'option', () => this.placeDraftTarget(buildNo));
+                }
+                if (selPatch) {
+                    // Offer all three orientations; exclude the slot reserved for this sweater's floating
+                    // patch (the two patches must land in different slots).
+                    const reserved = (floatDest && floatDest.buildNo === buildNo) ? floatDest.slot : null;
+                    (['L', 'R', 'B'] as const).forEach((s) => {
+                        if (s === reserved) return;
+                        const isSel = picked === buildNo && this.patchSlot === s;
+                        cell(s, isSel ? 'selected' : 'option', () => this.placePatchTarget(buildNo, s));
+                    });
+                }
+                if (floatDest && floatDest.buildNo === buildNo) cell(floatDest.slot, 'selected'); // green
                 zone.appendChild(build);
             });
 
-        // "New sweater" target for a regular card (clickable; green when it's the picked destination).
+        // "New sweater" target: a regular card shows its printed slot; a patch shows a slot-less float ghost.
         if (regularSlot) {
             const newBuild = document.createElement('div');
             newBuild.className = 'ucs-build ucs-build-new';
-            newBuild.appendChild(this.makeTargetGhost(regularSlot, 0, picked === 0 ? 'selected' : 'option', true));
+            newBuild.appendChild(this.makeTargetGhost(regularSlot, picked === 0 ? 'selected' : 'option', () => this.placeDraftTarget(0)));
+            zone.appendChild(newBuild);
+        } else if (selPatch) {
+            const newBuild = document.createElement('div');
+            newBuild.className = 'ucs-build ucs-build-new';
+            newBuild.appendChild(this.makeFloatGhost(picked === 0 ? 'selected' : 'option', () => this.placePatchNew()));
             zone.appendChild(newBuild);
         }
     }
 
-    /** Style an existing piece as a placement target/destination; clickable ones (re)choose that sweater. */
-    private applyTarget(el: HTMLElement, buildNo: number, mode: 'option' | 'selected', clickable: boolean) {
+    /** Style an existing piece as a placement target/destination; `onClick` (if given) makes it clickable. */
+    private applyTarget(el: HTMLElement, mode: 'option' | 'selected', onClick?: () => void) {
         el.classList.add('ucs-target', mode === 'selected' ? 'ucs-target-selected' : 'ucs-target-option');
-        if (clickable) el.addEventListener('click', () => this.placeDraftTarget(buildNo));
+        if (onClick) el.addEventListener('click', onClick);
     }
 
-    /** A ghost cell at `slot` for `buildNo` (0 = new sweater); clickable ones (re)choose that sweater. */
-    private makeTargetGhost(slot: string, buildNo: number, mode: 'option' | 'selected', clickable: boolean): HTMLElement {
+    /** A ghost cell at `slot`; `onClick` (if given) makes it clickable. */
+    private makeTargetGhost(slot: string, mode: 'option' | 'selected', onClick?: () => void): HTMLElement {
         const ghost = document.createElement('div');
         ghost.className = `ucs-card ucs-ghost ucs-target ${mode === 'selected' ? 'ucs-target-selected' : 'ucs-target-option'} ucs-slot-${slot}`;
         ghost.style.gridArea = slot;
         ghost.innerHTML = `<div class="ucs-ghost-label">${slot}</div>`;
-        if (clickable) ghost.addEventListener('click', () => this.placeDraftTarget(buildNo));
+        if (onClick) ghost.addEventListener('click', onClick);
+        return ghost;
+    }
+
+    /** A slot-less ghost for starting a NEW sweater with a floating patch; `onClick` makes it clickable. */
+    private makeFloatGhost(mode: 'option' | 'selected', onClick?: () => void): HTMLElement {
+        const ghost = document.createElement('div');
+        ghost.className = `ucs-card ucs-ghost ucs-floating ucs-target ${mode === 'selected' ? 'ucs-target-selected' : 'ucs-target-option'}`;
+        ghost.innerHTML = `<div class="ucs-ghost-label">${_('float')}</div>`;
+        if (onClick) ghost.addEventListener('click', onClick);
         return ghost;
     }
 
     /**
-     * A knitting target was clicked while drafting a regular card: (re)choose that sweater. The choice
+     * A knitting target was clicked while drafting a REGULAR card: (re)choose that sweater. The choice
      * is freely changeable — re-render so the picked cell shows green and the action bar offers Submit
      * (or, if the target holds a floating patch, its orientation first). Nothing is sent until Submit.
      */
     private placeDraftTarget(buildNo: number) {
         if (this.pendingBuildNo !== buildNo) this.floatingPatchSlot = null; // re-picking clears the float choice
         this.pendingBuildNo = buildNo;
+        this.renderPlacementPanel();
+    }
+
+    /**
+     * A knitting slot was clicked while drafting a PATCH: choose that sweater AND the patch's own
+     * orientation in one click (clicking an occupied slot covers it → discards the piece underneath).
+     * Freely changeable until Submit.
+     */
+    private placePatchTarget(buildNo: number, slot: string) {
+        if (this.pendingBuildNo !== buildNo) this.floatingPatchSlot = null; // re-picking a build clears the float choice
+        this.pendingBuildNo = buildNo;
+        this.patchSlot = slot;
+        if (this.floatingPatchSlot === slot) this.floatingPatchSlot = null; // the two patches can't share a slot
+        this.renderPlacementPanel();
+    }
+
+    /** The "new sweater (floats)" ghost was clicked while drafting a PATCH: start a new floating sweater. */
+    private placePatchNew() {
+        this.pendingBuildNo = 0;
+        this.patchSlot = null;
+        this.floatingPatchSlot = null;
         this.renderPlacementPanel();
     }
 
@@ -839,73 +886,55 @@ export class Game {
             return;
         }
 
-        // ---- Patch: placement is action-bar driven (new sweater floats; no value/icon here). ----
+        // ---- Patch: placement is by clicking a slot in my Knitting Area (renderKnitting draws the
+        // targets — any L/R/B in any sweater, incl. covering; a slot-less "float" ghost starts a new
+        // sweater). The action bar only guides, orients an existing floating patch, and submits. ----
         const { builds, floating, buildNos } = this.myBuilds();
 
-        // Step 1 — choose the target sweater (auto when a new sweater is the only option).
-        if (this.pendingBuildNo == null) {
-            if (buildNos.length === 0) {
-                this.pendingBuildNo = 0; // only option: start a new (floating) sweater
-            } else {
-                sb.setTitle(_('Place your patch — choose a sweater'));
-                buildNos.forEach((no) => sb.addActionButton(`${_('Sweater')} ${no}`, () => {
-                    this.pendingBuildNo = no; this.patchSlot = null; this.floatingPatchSlot = null;
-                    this.renderPlacementPanel();
-                }, { color: 'primary' }));
-                sb.addActionButton(_('+ New sweater (floats)'), () => {
-                    this.pendingBuildNo = 0; this.patchSlot = null; this.floatingPatchSlot = null;
-                    this.renderPlacementPanel();
-                }, { color: 'primary' });
-                cancelBtn();
-                return;
-            }
-        }
+        // Auto-pick a new floating sweater when there's nothing to click into.
+        if (this.pendingBuildNo == null && buildNos.length === 0) this.pendingBuildNo = 0;
 
-        // Step 2 — orientation choices for the chosen sweater.
-        const buildNo = this.pendingBuildNo!;
-        const isNewBuild = buildNo === 0 || !(buildNo in builds);
-        const occupied = isNewBuild ? new Set<string>() : builds[buildNo];
-        const floatId = isNewBuild ? undefined : floating[buildNo];
+        const buildNo = this.pendingBuildNo;
+        const isNewBuild = buildNo === 0 || (buildNo != null && !(buildNo in builds));
+        const occupied = (buildNo != null && !isNewBuild) ? builds[buildNo] : new Set<string>();
+        const floatId = (buildNo != null && !isNewBuild) ? floating[buildNo] : undefined;
         // The patch's own slot: chosen on an existing sweater, null (floating) when starting a new one.
         const cardSlot = isNewBuild ? null : this.patchSlot;
 
-        if (!isNewBuild) {
-            // A patch may take ANY orientation — including covering (placing over) an occupied slot,
-            // which discards the piece underneath. Offer all three; flag the ones that would cover.
-            sb.setTitle(_('Choose an orientation for your patch'));
-            ['L', 'R', 'B'].forEach((s) => {
-                const label = occupied.has(s) ? `${s} ${_('(cover)')}` : s;
-                sb.addActionButton(label, () => {
-                    this.patchSlot = s;
-                    if (this.floatingPatchSlot === s) this.floatingPatchSlot = null;
+        const changeCancel = () => {
+            if (buildNos.length > 0 && this.pendingBuildNo != null) {
+                sb.addActionButton(_('Change'), () => {
+                    this.pendingBuildNo = null; this.patchSlot = null; this.floatingPatchSlot = null;
                     this.renderPlacementPanel();
-                }, { color: this.patchSlot === s ? 'primary' : 'secondary' });
-            });
+                }, { color: 'secondary' });
+            }
+            cancelBtn();
+        };
+
+        // Nothing chosen yet, or an existing sweater chosen but no slot clicked → wait for a board click.
+        if (buildNo == null || (!isNewBuild && this.patchSlot == null)) {
+            sb.setTitle(_('Click a slot in your sweaters to place your patch — or:'));
+            sb.addActionButton(_('+ New sweater (floats)'), () => this.placePatchNew(), { color: 'primary' });
+            changeCancel();
+            return;
         }
-        if (floatId !== undefined) {
+
+        // The chosen sweater still holds a floating patch → orient it (needs a 2nd, distinct open slot).
+        if (floatId !== undefined && this.floatingPatchSlot == null) {
             const openForFloat = ['L', 'R', 'B'].filter((s) => !occupied.has(s) && s !== cardSlot);
             sb.setTitle(_('Orient the floating patch already in this sweater'));
             openForFloat.forEach((s) => sb.addActionButton(`${_('Patch')} ${s}`, () => {
                 this.floatingPatchSlot = s; this.renderPlacementPanel();
-            }, { color: this.floatingPatchSlot === s ? 'primary' : 'secondary' }));
+            }, { color: 'secondary' }));
+            changeCancel();
+            return;
         }
 
-        const cardSlotReady = isNewBuild || this.patchSlot != null;
-        const floatReady = floatId === undefined || this.floatingPatchSlot != null;
-        const ready = cardSlotReady && floatReady;
-        // Ready: act immediately if the preference is "Off", else show Submit. The orientation buttons
-        // above stay live so the player can change a choice before submitting.
-        if (ready && this.confirmMode() === 0) { this.submitDraft(buildNo); return; }
-        if (ready) {
-            sb.addActionButton(_('Submit'), () => this.submitDraft(buildNo), { color: 'primary' });
-        }
-        if (buildNos.length > 0) {
-            sb.addActionButton(_('Change sweater'), () => {
-                this.pendingBuildNo = null; this.patchSlot = null; this.floatingPatchSlot = null;
-                this.renderPlacementPanel();
-            }, { color: 'secondary' });
-        }
-        cancelBtn();
+        // Ready: act immediately if the preference is "Off", else show Submit (the board stays editable).
+        if (this.confirmMode() === 0) { this.submitDraft(buildNo); return; }
+        sb.setTitle(_('Click a different slot to change, or submit'));
+        sb.addActionButton(_('Submit'), () => this.submitDraft(buildNo), { color: 'primary' });
+        changeCancel();
     }
 
     /** Send the draft with the chosen placement (no timer — the player has already clicked Submit, or

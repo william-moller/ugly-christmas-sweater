@@ -145,6 +145,16 @@ TypeScript + SCSS are **enabled**. Source lives in `src/ts/` and `src/scss/`; bu
 
 Edit **`src/`**, never the generated `modules/js/Game.js` / `uglychristmassweater.css` (overwritten on build). `node_modules/` is gitignored; `package-lock.json` is committed. State handlers go in `src/ts/States/*` and register in `src/ts/Game.ts`.
 
+## Current State (as of 2026-07-01)
+
+**Session 2026-07-01 — patch drafting now has full in-area (click-the-board) parity with regular cards. Client builds clean (`npm run build`, exit 0, no warnings); client-only, no PHP change; NOT yet SFTP-synced or table-tested.** Reverses the earlier deliberate "patches are action-bar-driven" decision (documented 2026-06-28/29) after it was flagged as an inconsistency in play (a drafted patch lit up no Knitting-Area targets — only `Sweater 1 / Sweater 2 / + New sweater` buttons). User picked **full parity** over hybrid/keep-as-is.
+
+- **`Game.ts::renderKnitting`** now draws clickable placement targets for a selected **patch** too: every sweater shows all three **L/R/B** slots as targets (occupied slots included → clicking one **covers**/discards the piece under it), plus a slot-less **"float" ghost** (`makeFloatGhost`) in a `.ucs-build-new` cell to start a new floating sweater. One click picks **sweater + orientation together** (`placePatchTarget(buildNo, slot)`); the float ghost calls `placePatchNew()`. The slot reserved for a sweater's *floating-patch* orientation is excluded from the patch's own options (the two patches must differ).
+- **Helpers generalised:** `applyTarget`/`makeTargetGhost` dropped the `buildNo`+`clickable` params for a single optional `onClick` callback (omitted = non-clickable green destination), so the same cell machinery serves regular cards, patches, and the floating-patch destination. Removed the old `patchDest` (patches now render their chosen slot as a normal `selected` target).
+- **`renderPlacementPanel` patch branch slimmed** from "choose-sweater buttons → orientation buttons" to just: a *"Click a slot… — or: + New sweater (floats)"* prompt, the **floating-patch orientation** buttons (still action-bar — needs a 2nd distinct open slot), a **Submit** (skipped when the Confirm pref = Off), and **Change/Cancel**. `submitDraft` and the `actDraftCard` payload (`build_no`/`slot`/`floating_patch_slot`) are unchanged.
+- **Verify on Studio:** drafting a patch — click an open slot / an occupied slot (cover) / the float ghost; the picked cell goes green and stays re-clickable; adding a patch to a sweater that holds a floating patch prompts the float's orientation on the bar; Submit/Change/Cancel; and the Confirm-pref = Off immediate-act path. Regression: regular-card in-area drafting + the AssignPatches highlight still work.
+- **Files:** `src/ts/Game.ts` only.
+
 ## Current State (as of 2026-06-30)
 
 **Session 2026-06-30 (UI overhaul) — self-focus layout, fanned hand via bga-cards, compact shared zones. Client builds clean (`npm run build`, no warnings); NOT yet SFTP-synced or table-tested on Studio.** Plan file: `~/.claude/plans/swift-orbiting-nebula.md`. Addresses backlog **#6 (self-tableau focus)** and **#7 (responsive)**. No PHP/server changes — all the data needed already ships in `getAllDatas` (player names/colours, per-player `knitting`/`counts`, trick-card owner = `location_arg`).
