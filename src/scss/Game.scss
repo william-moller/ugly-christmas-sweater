@@ -58,6 +58,25 @@ $colors: (
     "yellow": (#d4a017, 0deg),
 );
 
+// ---- Whole play-area backdrop: the Ugly Christmas Sweater box-cover green ------------------------
+// Green backdrop for the whole play area (Will's chosen value, 2026-07-01 — "for now"; swap
+// $box-green for a different box-cover match anytime, it's the only edit needed). Technique from the
+// trickykids reference: a radial-gradient vignette on the play surface — slightly lighter in the
+// centre, deepening to the box green at the edges.
+$box-green:    #4c8c2b; // the box-cover green
+$box-green-hi: #5ca338; // a touch lighter — the vignette centre
+
+// Backdrop on <html> (always present, full-window — same target trickykids uses). A radial vignette:
+// lighter in the centre, deepening to the box green at the edges.
+html {
+    background: radial-gradient(circle at 50% 38%, $box-green-hi 0%, $box-green 72%), $box-green;
+    background-attachment: fixed;
+}
+// BGA paints its own default texture on the game surface; make it transparent so the green shows.
+#game_play_area {
+    background: transparent;
+}
+
 #ucs-table {
     // Card size is a CSS variable so zones can scale their cards independently and responsively:
     // my own area bumps it up (focus), the opponents column shrinks it, the popin shows them large.

@@ -155,6 +155,11 @@ Edit **`src/`**, never the generated `modules/js/Game.js` / `uglychristmassweate
 - **Verify on Studio:** drafting a patch — click an open slot / an occupied slot (cover) / the float ghost; the picked cell goes green and stays re-clickable; adding a patch to a sweater that holds a floating patch prompts the float's orientation on the bar; Submit/Change/Cancel; and the Confirm-pref = Off immediate-act path. Regression: regular-card in-area drafting + the AssignPatches highlight still work.
 - **Files:** `src/ts/Game.ts` only.
 
+**Session 2026-07-01 (later) — play-area background + two new reference games.**
+
+- **Green backdrop.** `src/scss/Game.scss` now paints the whole play area with the box-cover green via a radial-gradient vignette on `html` (`$box-green: #4c8c2b`, centre `$box-green-hi: #5ca338`) and sets `#game_play_area { background: transparent }` so BGA's default wood surface no longer shows. Single-variable swap if the shade changes. Technique borrowed from the trickykids reference. SCSS builds clean; **NOT yet SFTP-synced** (upload `uglychristmassweater.css` + hard-refresh to see it).
+- **New `_reference/` games mirrored** (in `../_reference/`, not this repo): **`trickykids`** and **`insidejob`**, each with a `CLAUDE.md` analysis + a `../_reference/README.md` entry. `trickykids` is the **closest server-side match to UCS** (modern `Table` + `Deck` + `Material` trait) and the reference for **backlog #6** — its `played_card_position[count][seat]=[dx,dy]` offset table + inward rotations give every player a fixed, readable trick spot at any count. `insidejob` = origin of the `bga-cards` TS-client patterns UCS borrowed (zone-split `src/`), on the older `tsc`/`#3.1.1` build UCS chose to replace. **Trick-layout redesign deferred** (not started — Will held it off for now).
+
 ## Current State (as of 2026-06-30)
 
 **Session 2026-06-30 (UI overhaul) — self-focus layout, fanned hand via bga-cards, compact shared zones. Client builds clean (`npm run build`, no warnings); NOT yet SFTP-synced or table-tested on Studio.** Plan file: `~/.claude/plans/swift-orbiting-nebula.md`. Addresses backlog **#6 (self-tableau focus)** and **#7 (responsive)**. No PHP/server changes — all the data needed already ships in `getAllDatas` (player names/colours, per-player `knitting`/`counts`, trick-card owner = `location_arg`).

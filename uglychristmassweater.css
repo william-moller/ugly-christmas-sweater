@@ -35,6 +35,15 @@
            Consequently, don't hesitate to put as many comments as necessary.
 */
 /********* You can start writing your SCSS below this line: **********/
+html {
+  background: radial-gradient(circle at 50% 38%, #5ca338 0%, #4c8c2b 72%), #4c8c2b;
+  background-attachment: fixed;
+}
+
+#game_play_area {
+  background: transparent;
+}
+
 #ucs-table {
   --ucs-card-w: 64px;
   --ucs-card-h: 90px;
