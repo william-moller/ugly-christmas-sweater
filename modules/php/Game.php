@@ -79,7 +79,12 @@ class Game extends \Bga\GameFramework\Table
         return intdiv(48, $this->getPlayersNumber()); // 48 = 52 deck - 4 initial draft pool
     }
 
-    /** Cards each player plays into the trick / drafts per trick: 2P=2, else 1. */
+    /**
+     * How many cards each player plays into the trick per round of the trade phase: 2P=2, else 1.
+     * Only used to size the trade phase (trick target = players × cardsPerTurn). Drafting is NOT driven
+     * by this — the draft order has one entry per card played, so each 2P player drafts twice by virtue
+     * of appearing twice in that order (see resolveTrickToDraftOrder / NextDrafter).
+     */
     public function cardsPerTurn(): int
     {
         return $this->getPlayersNumber() === 2 ? 2 : 1;

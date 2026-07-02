@@ -12,7 +12,8 @@ use Bga\Games\UglyChristmasSweater\Game;
 
 /**
  * Draft phase. In draft order, the active player takes a card from the draft pool and places it into
- * their knitting area. In a 2-player game each player drafts 2 cards.
+ * their knitting area. The draft order has one entry per card played this trick (owner = who played it),
+ * so a 2-player player who played 2 cards appears twice and drafts twice — see actDraftCard.
  */
 class DraftCard extends GameState
 {
@@ -88,12 +89,10 @@ class DraftCard extends GameState
         // immediately; a "place over" may also change/break an already-scored sweater).
         $this->game->refreshPublicScore($activePlayerId);
 
-        // 2-player: draft a second card before passing.
-        $plays = ((int) $this->game->globals->get('drafterPlays')) + 1;
-        $this->game->globals->set('drafterPlays', $plays);
-        if ($plays < $this->game->cardsPerTurn()) {
-            return DraftCard::class;
-        }
+        // Each draft-order entry is exactly ONE pick. The order ranks the CARDS played this trick (one
+        // entry per card, owner = who played it — see Game::resolveTrickToDraftOrder), so a player who
+        // played 2 cards in a 2-player trick simply appears twice: they may end up drafting twice in a
+        // row, first-and-last, or split, purely by where their two cards ranked. So always advance.
         return NextDrafter::class;
     }
 

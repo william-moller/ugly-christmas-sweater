@@ -29,7 +29,6 @@ class ResolveTrick extends GameState
         // The top of the draft order holds the "1" card and leads the next trick.
         $this->game->globals->set('leaderId', $order[0]);
         $this->game->globals->set('draftIndex', 0);
-        $this->game->globals->set('drafterPlays', 0);
 
         $this->notify->all('draftOrder', clienttranslate('Draft order determined'), [
             'order' => $order,

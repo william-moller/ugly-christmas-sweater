@@ -21,14 +21,14 @@ class NextDrafter extends GameState
         $order = (array) $this->game->globals->get('draftOrder');
         $index = ((int) $this->game->globals->get('draftIndex')) + 1;
 
-        // NOTE (3P): only 3 of the 4 pool cards are drafted — falls out naturally since each of the
-        // 3 players drafts once and 1 card remains in the pool for next trick.
+        // One draft per order entry, and the order has one entry per card played this trick. So the
+        // number of drafts always equals the trick size: 4P → 4 (pool emptied), 2P → 4 (2 per player,
+        // pool emptied), 3P → 3 (each of 3 players once) so 1 of the 4 pool cards is left for next trick.
         if ($index >= count($order)) {
             return EndTrickCleanup::class;
         }
 
         $this->game->globals->set('draftIndex', $index);
-        $this->game->globals->set('drafterPlays', 0);
         $this->game->gamestate->changeActivePlayer($order[$index]);
         return DraftCard::class;
     }

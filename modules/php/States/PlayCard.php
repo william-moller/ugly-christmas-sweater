@@ -12,7 +12,7 @@ use Bga\Games\UglyChristmasSweater\Game;
 
 /**
  * Trade phase. The active player plays a card to the trick (must follow the led colour or icon if able).
- * In a 2-player game each player plays 2 cards (the action repeats for the same player).
+ * In a 2-player game each player plays 2 cards, but play ALTERNATES (P1, P2, P1, P2) — see actPlayCard.
  */
 class PlayCard extends GameState
 {
@@ -69,11 +69,10 @@ class PlayCard extends GameState
             'card_label'  => $this->game->cardLabel($card_id),
         ]);
 
-        // In a 2-player game the player plays a second card before the turn passes.
-        $myCardsInTrick = $this->game->cards->countCardInLocation(Game::LOC_TRICK, $activePlayerId);
-        if ($myCardsInTrick < $this->game->cardsPerTurn()) {
-            return PlayCard::class; // same player plays again
-        }
+        // Always hand off to NextInTrick, which advances to the next player or resolves once the trick
+        // is full (target = players × cardsPerTurn). In 2-player each player plays 2 cards, but play
+        // ALTERNATES (P1, P2, P1, P2) rather than one player playing both — so we pass after every
+        // single card and let NextInTrick's activeNextPlayer + target-size check drive the alternation.
         return NextInTrick::class;
     }
 
