@@ -72,17 +72,21 @@ export class Game {
 
         this.bga.gameArea.getElement().insertAdjacentHTML('beforeend', `
             <div id="ucs-table">
-                <div id="ucs-gameplay" class="ucs-zone"></div>
-                <div id="ucs-secret-santa" class="ucs-zone ucs-secret-santa" style="display:none"></div>
-                <div id="ucs-shared-row">
-                    <div id="ucs-draft-pool" class="ucs-zone"></div>
-                    <div id="ucs-trade-area" class="ucs-zone"></div>
-                </div>
-                <div id="ucs-placement" class="ucs-zone" style="display:none"></div>
-                <div id="ucs-main">
-                    <div id="ucs-my-area" class="ucs-zone"></div>
+                <div id="ucs-upper">
+                    <!-- Balances the opponents column so the centre stack sits page-centred. -->
+                    <div class="ucs-upper-spacer" aria-hidden="true"></div>
+                    <div id="ucs-center-stack">
+                        <div id="ucs-params-row">
+                            <div id="ucs-gameplay" class="ucs-zone"></div>
+                            <div id="ucs-secret-santa" class="ucs-zone ucs-secret-santa" style="display:none"></div>
+                        </div>
+                        <div id="ucs-draft-pool" class="ucs-zone"></div>
+                        <div id="ucs-trade-area" class="ucs-zone"></div>
+                    </div>
                     <div id="ucs-opponents"></div>
                 </div>
+                <div id="ucs-placement" class="ucs-zone" style="display:none"></div>
+                <div id="ucs-my-area" class="ucs-zone"></div>
                 <div id="ucs-my-hand-wrap" class="ucs-zone">
                     <div class="ucs-zone-label" id="ucs-hand-label">${_('Your hand')}</div>
                     <div id="ucs-my-hand"></div>
@@ -175,8 +179,11 @@ export class Game {
         this.cardsManager = new BgaCards.Manager({
             animationManager: this.animationManager,
             type: 'ucs-sweater',
-            cardWidth: 64,
-            cardHeight: 90,
+            // The hand is the primary interaction on a desktop table, so its cards run larger than the
+            // 64/90 used elsewhere. The inner face content (sized off --ucs-card-w) is matched to this in
+            // SCSS (#ucs-my-hand-wrap), and the mobile breakpoint scales the whole fan back down.
+            cardWidth: 96,
+            cardHeight: 135,
             getId: (c: SweaterCard) => `ucs-hand-${c.id}`,
             isCardVisible: () => true,
             setupFrontDiv: (c: SweaterCard, div: HTMLElement) => {
@@ -192,7 +199,7 @@ export class Game {
         });
         this.handStock = new BgaCards.HandStock(this.cardsManager, document.getElementById('ucs-my-hand')!, {
             fanShaped: true,
-            cardOverlap: 60,
+            cardOverlap: 90, // kept proportional to cardWidth (was 60 for a 64px card) so the fan spread reads the same
             emptyHandMessage: _('Hand is empty'),
         });
         this.handStock.setSelectionMode('none');
@@ -237,10 +244,15 @@ export class Game {
         row.className = 'ucs-santa-cards';
         cards.forEach((c) => {
             const ss = this.material.secretSantas?.[Number((c as any).type_arg)];
+            // A slot reserves the card's rotated (landscape) footprint so the turned card sits neatly
+            // beside the Round Parameters without overlapping its neighbour (Express deals 2).
+            const slot = document.createElement('div');
+            slot.className = 'ucs-santa-slot';
             const el = document.createElement('div');
             el.className = 'ucs-card ucs-santa-card';
             el.innerHTML = `<div class="ucs-santa-name">${ss?.name ?? _('Secret Santa')}</div>`;
-            row.appendChild(el);
+            slot.appendChild(el);
+            row.appendChild(slot);
         });
         zone.appendChild(row);
     }

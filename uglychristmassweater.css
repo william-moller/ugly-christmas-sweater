@@ -408,15 +408,26 @@ html {
   opacity: 0.8;
 }
 
-#ucs-main {
+#ucs-upper {
   display: flex;
   gap: 12px;
   align-items: flex-start;
 }
 
-#ucs-my-area {
+.ucs-upper-spacer {
+  flex: 0 0 210px;
+}
+
+#ucs-center-stack {
   flex: 1 1 auto;
   min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+#ucs-my-area {
   --ucs-card-w: 74px;
   --ucs-card-h: 104px;
 }
@@ -671,15 +682,13 @@ html {
   font-weight: bold;
 }
 
-#ucs-shared-row {
-  display: flex;
-  gap: 12px;
-  flex-wrap: wrap;
-  align-items: flex-start;
+#ucs-draft-pool .ucs-card-row,
+#ucs-trade-area .ucs-card-row {
+  justify-content: center;
 }
-#ucs-shared-row > .ucs-zone {
-  flex: 1 1 320px;
-  min-width: 0;
+
+#ucs-trade-area {
+  border: 3px solid #000;
 }
 
 .ucs-trade-card {
@@ -699,8 +708,13 @@ html {
   text-overflow: ellipsis;
 }
 
+#ucs-my-hand-wrap {
+  --ucs-card-w: 96px;
+  --ucs-card-h: 135px;
+}
+
 #ucs-my-hand {
-  min-height: 124px;
+  min-height: 186px;
 }
 
 #ucs-my-hand.ucs-hand-choosing .bga-cards_selectable-card {
@@ -770,11 +784,16 @@ html {
 }
 
 @media (max-width: 800px) {
-  #ucs-main {
+  #ucs-upper {
     flex-direction: column;
   }
-  #ucs-shared-row {
-    flex-direction: column;
+  .ucs-upper-spacer {
+    display: none;
+  }
+  #ucs-my-hand {
+    transform: scale(0.68);
+    transform-origin: top center;
+    min-height: 128px;
   }
   #ucs-opponents {
     width: auto;
@@ -843,9 +862,37 @@ html {
   text-align: center;
 }
 
+#ucs-params-row {
+  align-self: stretch;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 10px;
+}
+
+#ucs-gameplay {
+  grid-column: 2;
+  justify-self: center;
+}
+
+.ucs-secret-santa {
+  grid-column: 3;
+  justify-self: start;
+}
+
 .ucs-secret-santa .ucs-santa-cards {
   display: flex;
-  gap: 6px;
+  gap: 8px;
+  align-items: center;
+}
+
+.ucs-santa-slot {
+  width: var(--ucs-card-h);
+  height: var(--ucs-card-w);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
 }
 
 .ucs-santa-card {
@@ -853,8 +900,10 @@ html {
   align-items: center;
   justify-content: center;
   padding: 4px;
+  box-sizing: border-box;
   background: repeating-linear-gradient(45deg, #7a1f1f, #7a1f1f 6px, #5c1414 6px, #5c1414 12px);
   color: #fff;
+  transform: rotate(90deg);
 }
 
 .ucs-santa-name {

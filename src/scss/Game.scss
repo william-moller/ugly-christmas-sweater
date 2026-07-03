@@ -418,17 +418,30 @@ html {
 
 // ---- Player tables / knitting -------------------------------------------------------
 
-// Self-focus layout: my large Knitting Area beside a compact, clickable opponents column.
-#ucs-main {
+// Upper region: a page-centred stack (Gameplay → Draft Pool → Trade Area) flanked by the raised
+// opponents column on the right. The left spacer mirrors the opponents' width so the centre stack is
+// balanced about the true page centre rather than shoved left by the right-hand column.
+#ucs-upper {
     display: flex;
     gap: 12px;
-    align-items: flex-start;
+    align-items: flex-start; // opponents ride up to the top, level with the gameplay cards
+}
+
+.ucs-upper-spacer {
+    flex: 0 0 210px; // == #ucs-opponents width
+}
+
+#ucs-center-stack {
+    flex: 1 1 auto;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center; // centralise the gameplay / draft / trade zones
+    gap: 10px;
 }
 
 #ucs-my-area {
-    flex: 1 1 auto;
-    min-width: 0;
-    // The personal area is the focus: bigger cards, spanning the play width.
+    // The personal Knitting Area spans the play width below the shared stack.
     --ucs-card-w: 74px;
     --ucs-card-h: 104px;
 }
@@ -684,17 +697,18 @@ html {
     }
 }
 
-// ---- Shared row (Draft Pool + Trade Area side by side) -------------------------------
-#ucs-shared-row {
-    display: flex;
-    gap: 12px;
-    flex-wrap: wrap;
-    align-items: flex-start;
-
-    > .ucs-zone {
-        flex: 1 1 320px;
-        min-width: 0;
+// ---- Centre stack: Draft Pool above Trade Area, both shrink-to-fit and centred -------
+// (They live in #ucs-center-stack, whose `align-items: center` centres each zone.) The Trade Area
+// gets a black frame to set it apart as the current trick's play space.
+#ucs-draft-pool,
+#ucs-trade-area {
+    // Centre the card row within the zone so a partial pool/trick stays visually centred.
+    .ucs-card-row {
+        justify-content: center;
     }
+}
+#ucs-trade-area {
+    border: 3px solid #000;
 }
 
 // A Trade Area card captioned with who played it this trick (label not carried into the pool).
@@ -716,8 +730,17 @@ html {
 }
 
 // ---- Fanned hand (bga-cards HandStock) ----------------------------------------------
+// The hand runs larger than the other zones (it's the main interaction on a desktop table). The
+// bga-cards frame + fan geometry come from the manager's cardWidth/cardHeight (96/135, set in
+// Game.ts); match --ucs-card-w/h here so the inner face content (sized via calc off --ucs-card-w)
+// scales with the frame. The mobile breakpoint below scales the whole fan back down.
+#ucs-my-hand-wrap {
+    --ucs-card-w: 96px;
+    --ucs-card-h: 135px;
+}
+
 #ucs-my-hand {
-    min-height: 124px;
+    min-height: 186px;
 }
 
 // While a play is required, the stock marks legal cards selectable and the rest unselectable.
@@ -791,11 +814,21 @@ html {
 
 // ---- Responsive: on small screens the opponents column collapses to tappable chips --------------
 @media (max-width: 800px) {
-    #ucs-main {
+    // Stack the upper region: drop the balancing spacer and let the opponents column collapse below
+    // the centre stack into a row of tappable chips.
+    #ucs-upper {
         flex-direction: column;
     }
-    #ucs-shared-row {
-        flex-direction: column;
+    .ucs-upper-spacer {
+        display: none;
+    }
+    // The enlarged desktop hand would overflow a phone/tablet width, so scale the whole fan back
+    // down to roughly the original footprint (bga-cards fixes the frame px in JS, so a transform is
+    // the reliable lever regardless of how it sizes internally).
+    #ucs-my-hand {
+        transform: scale(0.68);
+        transform-origin: top center;
+        min-height: 128px;
     }
     #ucs-opponents {
         width: auto;
@@ -865,18 +898,49 @@ html {
     text-align: center;
 }
 
-// Secret Santa strip (my private objective card(s)).
+// Round Parameters (centred) with the turned Secret Santa card tucked to their right. A 3-track grid
+// (1fr · auto · 1fr) keeps the gameplay cards page-centred while the Secret Santa sits off to the
+// side without shoving them off-centre; the empty first track balances the third.
+#ucs-params-row {
+    align-self: stretch; // span the centre stack so the middle track is the true centre
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    align-items: center;
+    gap: 10px;
+}
+#ucs-gameplay {
+    grid-column: 2;
+    justify-self: center;
+}
+.ucs-secret-santa {
+    grid-column: 3;
+    justify-self: start;
+}
+
+// Secret Santa (my private objective card(s)) — rendered as a normal card turned 90°.
 .ucs-secret-santa .ucs-santa-cards {
     display: flex;
-    gap: 6px;
+    gap: 8px;
+    align-items: center;
+}
+// The slot reserves the rotated card's landscape footprint (w↔h swapped) so it doesn't overlap.
+.ucs-santa-slot {
+    width: var(--ucs-card-h);
+    height: var(--ucs-card-w);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 auto;
 }
 .ucs-santa-card {
     display: flex;
     align-items: center;
     justify-content: center;
     padding: 4px;
+    box-sizing: border-box;
     background: repeating-linear-gradient(45deg, #7a1f1f, #7a1f1f 6px, #5c1414 6px, #5c1414 12px);
     color: #fff;
+    transform: rotate(90deg);
 }
 .ucs-santa-name {
     font-size: 10px;
