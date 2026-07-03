@@ -778,6 +778,13 @@ class Game {
             return;
         zone.innerHTML = '';
         const cards = this.cardArray(this.gamedatas.knitting).filter((c) => Number(c.location_arg) === playerId);
+        // Opponents' inline area: a compact read-out — each card is just a small colour+number chip (no
+        // orientation letter / icon), each sweater a little cluster, all sweaters in a single left-to-
+        // right row. (The click-to-enlarge popin — targetEl set — and my own area keep the full silhouette.)
+        if (!targetEl && playerId !== this.myId) {
+            this.renderKnittingCompact(zone, playerId, cards);
+            return;
+        }
         const sel = this.selectedDraftId != null ? this.gamedatas.draftpool[this.selectedDraftId] : null;
         const mine = playerId === this.myId && this.onDraftComplete != null && sel != null;
         const selPatch = mine ? isPatch(sel, this.material) : false;
@@ -899,6 +906,51 @@ class Game {
             newBuild.appendChild(this.makeFloatGhost(picked === 0 ? 'selected' : 'option', () => this.placePatchNew()));
             zone.appendChild(newBuild);
         }
+    }
+    /**
+     * Compact opponent read-out of a knitting area: each card is a small colour+number chip (no
+     * orientation letter / icon), each sweater a little bordered cluster, all sweaters in a single
+     * left-to-right row. Inline opponents column only — the popin keeps the detailed silhouette.
+     */
+    renderKnittingCompact(zone, playerId, cards) {
+        zone.classList.add('ucs-knitting-compact');
+        if (!cards.length) {
+            zone.innerHTML = `<div class="ucs-empty">${_('No sweaters yet')}</div>`;
+            return;
+        }
+        const builds = {};
+        cards.forEach((c) => { const b = Number(c.buildNo ?? 0); (builds[b] || (builds[b] = [])).push(c); });
+        const slotRank = { L: 0, R: 1, B: 2 };
+        Object.keys(builds).map(Number).sort((a, b) => a - b).forEach((buildNo) => {
+            const group = document.createElement('div');
+            group.className = 'ucs-mini-build';
+            if (this.isBuildComplete(builds[buildNo]))
+                group.classList.add('ucs-mini-build-complete');
+            // Order the pieces L, R, B (floating/unslotted last) for a stable read.
+            const ordered = [...builds[buildNo]].sort((a, b) => {
+                const sa = a.slot ?? faceOf(a, this.material).slot ?? '';
+                const sb = b.slot ?? faceOf(b, this.material).slot ?? '';
+                return (slotRank[sa] ?? 3) - (slotRank[sb] ?? 3);
+            });
+            ordered.forEach((c) => group.appendChild(this.miniCardEl(c)));
+            zone.appendChild(group);
+        });
+    }
+    /** A tiny colour+number chip (log-card style) for the compact opponent view; a patch shows ★/value. */
+    miniCardEl(card) {
+        const face = faceOf(card, this.material);
+        const color = face?.color ?? String(card.type);
+        const el = document.createElement('div');
+        el.id = `ucs-mini-${card.id}`;
+        el.className = `ucs-mini-card ucs-color-${color}`;
+        if (face?.patch)
+            el.classList.add('ucs-mini-patch');
+        const wildValue = card.wildValue != null && card.wildValue !== '' ? Number(card.wildValue) : null;
+        el.textContent = face?.patch
+            ? (wildValue != null ? String(wildValue) : '★')
+            : String(wildValue ?? face?.value ?? '?');
+        this.attachTooltip(el, card);
+        return el;
     }
     /** Style an existing piece as a placement target/destination; `onClick` (if given) makes it clickable. */
     applyTarget(el, mode, onClick) {

@@ -516,6 +516,49 @@ html {
   min-height: var(--ucs-card-h);
 }
 
+.ucs-knitting-compact {
+  flex-wrap: nowrap;
+  gap: 6px;
+  min-height: 0;
+  align-items: flex-start;
+}
+
+.ucs-mini-build {
+  display: flex;
+  gap: 2px;
+  padding: 2px;
+  border: 1px dashed rgba(0, 0, 0, 0.3);
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.25);
+  flex: 0 0 auto;
+}
+
+.ucs-mini-build-complete {
+  border: 1.5px solid #2ecc71;
+  background: rgba(46, 204, 113, 0.15);
+}
+
+.ucs-mini-card {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  width: 18px;
+  height: 24px;
+  border-radius: 3px;
+  border: 1px solid #fff;
+  color: #fff;
+  font-weight: 800;
+  font-size: 12px;
+  line-height: 1;
+  box-shadow: 0 1px 1px rgba(0, 0, 0, 0.35);
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.5);
+}
+
+.ucs-mini-patch {
+  border-style: dashed;
+}
+
 .ucs-build {
   position: relative;
   display: grid;
