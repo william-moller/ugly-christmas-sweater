@@ -455,6 +455,7 @@ html {
 
 .ucs-oppo {
   cursor: pointer;
+  background: #dcecc8;
   transition: box-shadow 0.12s ease, transform 0.12s ease;
 }
 .ucs-oppo:hover {

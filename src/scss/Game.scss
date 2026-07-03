@@ -472,6 +472,9 @@ html {
 // Each opponent table is a click target that opens the full-size popin.
 .ucs-oppo {
     cursor: pointer;
+    // A light-green fill (not white) so the near-transparent default doesn't let the box-green
+    // backdrop bleed through and clash with green cards / a green player's colour — keeps it readable.
+    background: #dcecc8;
     transition: box-shadow 0.12s ease, transform 0.12s ease;
     &:hover {
         box-shadow: 0 0 0 2px var(--player-color, #888);
