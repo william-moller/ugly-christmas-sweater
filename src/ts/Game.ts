@@ -114,7 +114,6 @@ export class Game {
                     <div class="ucs-player-header">
                         <span class="ucs-order-badge" id="ucs-order-${player.id}"></span>
                         <span class="ucs-player-name">${mine ? _('Your Knitting Area') : player.name}</span>
-                        <span class="ucs-player-counts" id="ucs-counts-${player.id}"></span>
                     </div>
                     <div class="ucs-knitting" id="ucs-knitting-${player.id}"></div>
                     ${mine ? '' : `<div class="ucs-oppo-summary" id="ucs-summary-${player.id}"></div>`}
@@ -423,7 +422,6 @@ export class Game {
 
     private renderPlayers() {
         Object.values(this.gamedatas.players).forEach((player) => {
-            this.renderCounts(Number(player.id));
             this.renderOrderBadge(Number(player.id));
             this.renderKnitting(Number(player.id));
             this.renderOppoSummary(Number(player.id));
@@ -464,13 +462,6 @@ export class Game {
         if (popin) popin.style.display = 'none';
     }
 
-    private renderCounts(playerId: number) {
-        const el = document.getElementById(`ucs-counts-${playerId}`);
-        if (!el) return;
-        const c = this.gamedatas.counts?.[playerId];
-        el.textContent = c ? `✋ ${c.hand} · 🂠 ${c.pile}` : '';
-    }
-
     private renderOrderBadge(playerId: number) {
         const el = document.getElementById(`ucs-order-${playerId}`);
         if (!el) return;
@@ -501,6 +492,83 @@ export class Game {
             }
         }
         return null;
+    }
+
+    /** The Fad definition scoring a build: Casual's active round Fad, or Express's claimed Fad (or null). */
+    private fadForBuild(playerId: number, buildNo: number): any | null {
+        if (this.gamedatas.express) {
+            const t = this.claimedFadForBuild(playerId, buildNo);
+            return (t != null && t > 0) ? (this.material.fads[t] ?? null) : null;
+        }
+        const active = this.gamedatas.gameplay?.fad?.active;
+        return active ? (this.material.fads[Number(active.type_arg)] ?? null) : null;
+    }
+
+    /** A card's effective value (a placed patch carries its chosen wildValue; else its printed value). */
+    private effValue(c: SweaterCard): number {
+        if (c.wildValue != null && c.wildValue !== '') return Number(c.wildValue);
+        return Number(faceOf(c, this.material).value);
+    }
+
+    /** A card's effective icon (a placed patch's wildIcon; else its printed icon; may be null pre-art). */
+    private effIcon(c: SweaterCard): string | null {
+        if (c.wildIcon != null && c.wildIcon !== '') return String(c.wildIcon);
+        return faceOf(c, this.material).icon;
+    }
+
+    /**
+     * Live public VP for one sweater — a DISPLAY helper for the per-sweater badge that MIRRORS the
+     * server's Game::publicSweaterScore (the server stays authoritative; keep this in sync with the
+     * PHP). Returns 0 for an incomplete sweater, and +2 only for a complete one still holding an
+     * unassigned patch (its run / Fad / icon bonuses land at round-end once the patch is assigned).
+     */
+    private buildPublicScore(cards: SweaterCard[], playerId: number, buildNo: number): number {
+        const VP_SWEATER = 2, VP_RUN = 2, VP_FAD = 3, VP_NONFAD = 1; // == Material::VP_*
+
+        const bySlot: { [slot: string]: SweaterCard } = {};
+        cards.forEach((c) => {
+            const slot = (c.slot as string) ?? faceOf(c, this.material).slot ?? null;
+            if (slot) bySlot[slot] = c;
+        });
+        if (!bySlot.L || !bySlot.R || !bySlot.B) return 0; // not a completed L+R+B sweater
+        const trio = [bySlot.L, bySlot.R, bySlot.B];
+
+        // A completed sweater with an unresolved patch scores only the +2 build for now.
+        for (const c of trio) {
+            if (isPatch(c, this.material)
+                && (c.wildValue == null || c.wildValue === '' || c.wildIcon == null || c.wildIcon === '')) {
+                return VP_SWEATER;
+            }
+        }
+
+        const values = trio.map((c) => this.effValue(c)).sort((a, b) => a - b);
+        const colors = trio.map((c) => faceOf(c, this.material).color);
+        const icons = trio.map((c) => this.effIcon(c));
+
+        let vp = VP_SWEATER;
+        if (values[1] === values[0] + 1 && values[2] === values[1] + 1) vp += VP_RUN;
+
+        const allSameColor = new Set(colors).size === 1;
+        const allSameIcon = !icons.includes(null) && new Set(icons).size === 1;
+
+        const fad = this.fadForBuild(playerId, buildNo);
+        if (fad && fad.clash) {
+            // "Clash Is In": +3 when all three differ in BOTH colour and icon; any all-same still +1.
+            const allDiffColor = new Set(colors).size === 3;
+            const allDiffIcon = !icons.includes(null) && new Set(icons).size === 3;
+            if (allDiffColor && allDiffIcon) vp += VP_FAD;
+            if (allSameColor || allSameIcon) vp += VP_NONFAD;
+        } else {
+            let fadColor: string | null = null, fadIcon: string | null = null;
+            (fad?.objectives ?? []).forEach((o: any) => {
+                if (o.match === 'color') fadColor = o.value;
+                if (o.match === 'icon') fadIcon = o.value;
+            });
+            if (fadColor !== null && allSameColor && colors[0] === fadColor) vp += VP_FAD;
+            if (fadIcon !== null && allSameIcon && icons[0] === fadIcon) vp += VP_FAD;
+            if ((allSameColor && colors[0] !== fadColor) || (allSameIcon && icons[0] !== fadIcon)) vp += VP_NONFAD;
+        }
+        return vp;
     }
 
     /**
@@ -602,6 +670,14 @@ export class Game {
                     chip.className = 'ucs-build-fad';
                     chip.textContent = fad?.title ?? _('Fad');
                     build.appendChild(chip);
+                }
+                // A live VP counter on each of MY sweaters (public info; shown only in my own area).
+                if (playerId === this.myId) {
+                    const badge = document.createElement('div');
+                    badge.className = 'ucs-build-score';
+                    badge.textContent = `${this.buildPublicScore(builds[buildNo], playerId, buildNo)} VP`;
+                    badge.title = _('Current VP this sweater scores');
+                    build.appendChild(badge);
                 }
                 zone.appendChild(build);
             });
@@ -1199,7 +1275,6 @@ export class Game {
         if (Number(args.player_id) === this.myId && this.handStock) {
             this.handStock.removeCard(args.card).catch(() => {});
         }
-        this.renderCounts(args.player_id);
     }
 
     /** A card was drafted from the pool into a player's knitting area (possibly placed over a piece). */
@@ -1255,7 +1330,6 @@ export class Game {
             this.gamedatas.counts[this.myId].hand = args.hand.length;
         }
         this.renderHand();
-        this.renderCounts(this.myId);
     }
 
     /** A new round revealed fresh gameplay cards — refresh the round-parameter decks. */

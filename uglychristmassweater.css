@@ -488,10 +488,8 @@ html {
   color: var(--player-color, inherit);
 }
 
-.ucs-player-counts {
-  margin-left: auto;
-  font-size: 12px;
-  opacity: 0.75;
+.ucs-me .ucs-player-name {
+  color: #000;
 }
 
 .ucs-order-badge {
@@ -518,11 +516,12 @@ html {
 }
 
 .ucs-build {
+  position: relative;
   display: grid;
   grid-template-columns: repeat(2, var(--ucs-card-w));
   grid-template-areas: "L R" "B B";
   justify-items: center;
-  gap: 3px;
+  gap: 0 3px;
   padding: 3px;
   border-radius: 6px;
   border: 1px dashed rgba(0, 0, 0, 0.25);
@@ -605,6 +604,8 @@ html {
 
 .ucs-build .ucs-slot-B {
   transform: rotate(90deg);
+  margin-top: calc((var(--ucs-card-w) - var(--ucs-card-h)) / 2);
+  margin-bottom: calc((var(--ucs-card-w) - var(--ucs-card-h)) / 2);
 }
 
 .ucs-owned {
@@ -858,6 +859,24 @@ html {
   border-radius: 4px;
   padding: 1px 6px;
   text-align: center;
+}
+
+.ucs-build-score {
+  position: absolute;
+  top: -7px;
+  right: -7px;
+  z-index: 2;
+  min-width: 16px;
+  padding: 1px 5px;
+  font-size: 11px;
+  font-weight: 800;
+  text-align: center;
+  color: #fff;
+  background: #2c3e50;
+  border: 1px solid rgba(255, 255, 255, 0.8);
+  border-radius: 9px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+  pointer-events: none;
 }
 
 #ucs-params-row {
