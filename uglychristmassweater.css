@@ -424,7 +424,7 @@ html {
 }
 
 #ucs-my-area {
-  flex: 0 0 210px;
+  flex: 0 0 360px;
   align-self: stretch;
   --ucs-card-w: 74px;
   --ucs-card-h: 104px;
@@ -597,6 +597,13 @@ html {
   font-size: 26px;
   font-weight: 800;
   opacity: 0.8;
+}
+
+.ucs-slot-empty {
+  background: rgba(255, 255, 255, 0.05);
+  border: 2px dotted rgba(0, 0, 0, 0.35);
+  box-shadow: none;
+  color: rgba(0, 0, 0, 0.28);
 }
 
 .ucs-build-new {

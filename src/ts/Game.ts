@@ -644,9 +644,13 @@ export class Game {
                     this.attachTooltip(el, card);
                     build.appendChild(el);
                 });
+                // Slots occupied by a placed card, or (below) by a draft-target ghost — so the static
+                // empty-slot placeholders don't double up on a slot already drawn.
+                const takenSlots = new Set<string>(Object.keys(slotEls));
                 // Apply a target/destination at `slot`: reuse the card el if present, else a ghost cell.
                 // onClick omitted → a non-clickable (green, informational) destination.
                 const cell = (slot: string, mode: 'option' | 'selected', onClick?: () => void) => {
+                    takenSlots.add(slot);
                     if (slotEls[slot]) this.applyTarget(slotEls[slot], mode, onClick);
                     else build.appendChild(this.makeTargetGhost(slot, mode, onClick));
                 };
@@ -664,6 +668,14 @@ export class Game {
                     });
                 }
                 if (floatDest && floatDest.buildNo === buildNo) cell(floatDest.slot, 'selected'); // green
+                // Static silhouette: once a sweater holds a real (slotted) piece, draw every still-empty
+                // L/R/B as a dotted placeholder, so a build occupies the same L+R/B footprint whether it
+                // has 1 or 3 pieces. (A lone floating patch — no slotted piece yet — is left as-is.)
+                if (Object.keys(slotEls).length > 0) {
+                    (['L', 'R', 'B'] as const).forEach((s) => {
+                        if (!takenSlots.has(s)) build.appendChild(this.makeEmptySlot(s));
+                    });
+                }
                 if (locked && claimedFad != null) {
                     const fad = this.material.fads[claimedFad];
                     const chip = document.createElement('div');
@@ -700,6 +712,15 @@ export class Game {
     private applyTarget(el: HTMLElement, mode: 'option' | 'selected', onClick?: () => void) {
         el.classList.add('ucs-target', mode === 'selected' ? 'ucs-target-selected' : 'ucs-target-option');
         if (onClick) el.addEventListener('click', onClick);
+    }
+
+    /** A non-interactive dotted placeholder for a still-empty orientation in a started sweater. */
+    private makeEmptySlot(slot: string): HTMLElement {
+        const cell = document.createElement('div');
+        cell.className = `ucs-card ucs-ghost ucs-slot-empty ucs-slot-${slot}`;
+        cell.style.gridArea = slot;
+        cell.innerHTML = `<div class="ucs-ghost-label">${slot}</div>`;
+        return cell;
     }
 
     /** A ghost cell at `slot`; `onClick` (if given) makes it clickable. */

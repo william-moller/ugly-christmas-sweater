@@ -437,8 +437,9 @@ html {
 }
 
 #ucs-my-area {
-    // Raised to the top-left as a fixed column (mirrors #ucs-opponents' width for a centred stack).
-    flex: 0 0 210px;
+    // Raised to the top-left as a fixed column, sized to fit TWO sweaters side by side (each build is
+    // ~159px: 2×74px cards + gaps/padding/border; +12px inter-build gap +16px zone padding ≈ 350px).
+    flex: 0 0 360px;
     align-self: stretch;
     --ucs-card-w: 74px;
     --ucs-card-h: 104px;
@@ -611,6 +612,14 @@ html {
     font-size: 26px;
     font-weight: 800;
     opacity: 0.8;
+}
+// A still-empty orientation in a started sweater: dotted outline placeholder so the build keeps its
+// full L+R/B footprint whether 1 or 3 pieces are placed. Non-interactive (no target/hover styling).
+.ucs-slot-empty {
+    background: rgba(255, 255, 255, 0.05);
+    border: 2px dotted rgba(0, 0, 0, 0.35);
+    box-shadow: none;
+    color: rgba(0, 0, 0, 0.28);
 }
 .ucs-build-new {
     border-style: dashed;
