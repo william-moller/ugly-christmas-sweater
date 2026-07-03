@@ -73,8 +73,7 @@ export class Game {
         this.bga.gameArea.getElement().insertAdjacentHTML('beforeend', `
             <div id="ucs-table">
                 <div id="ucs-upper">
-                    <!-- Balances the opponents column so the centre stack sits page-centred. -->
-                    <div class="ucs-upper-spacer" aria-hidden="true"></div>
+                    <div id="ucs-my-area" class="ucs-zone"></div>
                     <div id="ucs-center-stack">
                         <div id="ucs-params-row">
                             <div id="ucs-gameplay" class="ucs-zone"></div>
@@ -86,7 +85,6 @@ export class Game {
                     <div id="ucs-opponents"></div>
                 </div>
                 <div id="ucs-placement" class="ucs-zone" style="display:none"></div>
-                <div id="ucs-my-area" class="ucs-zone"></div>
                 <div id="ucs-my-hand-wrap" class="ucs-zone">
                     <div class="ucs-zone-label" id="ucs-hand-label">${_('Your hand')}</div>
                     <div id="ucs-my-hand"></div>
@@ -199,7 +197,9 @@ export class Game {
         });
         this.handStock = new BgaCards.HandStock(this.cardsManager, document.getElementById('ucs-my-hand')!, {
             fanShaped: true,
-            cardOverlap: 90, // kept proportional to cardWidth (was 60 for a 64px card) so the fan spread reads the same
+            // cardOverlap is a PERCENTAGE of card width (not px). Low enough that ~70% of every card
+            // shows, so the whole hand (incl. the top-left value/orientation/icon) stays readable.
+            cardOverlap: 30,
             emptyHandMessage: _('Hand is empty'),
         });
         this.handStock.setSelectionMode('none');

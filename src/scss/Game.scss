@@ -418,17 +418,13 @@ html {
 
 // ---- Player tables / knitting -------------------------------------------------------
 
-// Upper region: a page-centred stack (Gameplay → Draft Pool → Trade Area) flanked by the raised
-// opponents column on the right. The left spacer mirrors the opponents' width so the centre stack is
-// balanced about the true page centre rather than shoved left by the right-hand column.
+// Upper region: three columns — my Knitting Area (left), the page-centred shared stack (Gameplay →
+// Draft Pool → Trade Area, centre), and the opponents column (right). Both side columns share the
+// same width so the centre stack stays balanced about the true page centre; all ride up to the top.
 #ucs-upper {
     display: flex;
     gap: 12px;
-    align-items: flex-start; // opponents ride up to the top, level with the gameplay cards
-}
-
-.ucs-upper-spacer {
-    flex: 0 0 210px; // == #ucs-opponents width
+    align-items: flex-start;
 }
 
 #ucs-center-stack {
@@ -441,7 +437,9 @@ html {
 }
 
 #ucs-my-area {
-    // The personal Knitting Area spans the play width below the shared stack.
+    // Raised to the top-left as a fixed column (mirrors #ucs-opponents' width for a centred stack).
+    flex: 0 0 210px;
+    align-self: stretch;
     --ucs-card-w: 74px;
     --ucs-card-h: 104px;
 }
@@ -814,13 +812,13 @@ html {
 
 // ---- Responsive: on small screens the opponents column collapses to tappable chips --------------
 @media (max-width: 800px) {
-    // Stack the upper region: drop the balancing spacer and let the opponents column collapse below
-    // the centre stack into a row of tappable chips.
+    // Stack the upper region vertically: my area / centre stack / opponents each go full width
+    // (drop the fixed column basis so my area isn't clamped to 210px tall), opponents → chips.
     #ucs-upper {
         flex-direction: column;
     }
-    .ucs-upper-spacer {
-        display: none;
+    #ucs-my-area {
+        flex: 0 0 auto;
     }
     // The enlarged desktop hand would overflow a phone/tablet width, so scale the whole fan back
     // down to roughly the original footprint (bga-cards fixes the frame px in JS, so a transform is

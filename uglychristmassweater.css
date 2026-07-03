@@ -414,10 +414,6 @@ html {
   align-items: flex-start;
 }
 
-.ucs-upper-spacer {
-  flex: 0 0 210px;
-}
-
 #ucs-center-stack {
   flex: 1 1 auto;
   min-width: 0;
@@ -428,6 +424,8 @@ html {
 }
 
 #ucs-my-area {
+  flex: 0 0 210px;
+  align-self: stretch;
   --ucs-card-w: 74px;
   --ucs-card-h: 104px;
 }
@@ -787,8 +785,8 @@ html {
   #ucs-upper {
     flex-direction: column;
   }
-  .ucs-upper-spacer {
-    display: none;
+  #ucs-my-area {
+    flex: 0 0 auto;
   }
   #ucs-my-hand {
     transform: scale(0.68);
