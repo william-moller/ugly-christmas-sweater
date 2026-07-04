@@ -23,7 +23,7 @@ class EndTrickCleanup extends GameState
     function onEnteringState()
     {
         $this->game->rotateTrickToPool();
-        $this->game->refillHands();
+        $drawn = $this->game->refillHands();
 
         // Public: the new draft pool (was the trade area) and resynced hand/pile counts.
         $this->notify->all(
@@ -35,10 +35,14 @@ class EndTrickCleanup extends GameState
             ]
         );
 
-        // Private: each player's refilled hand (card identities are hidden from others).
+        // Private: each player's refilled hand (card identities are hidden from others). `drawn` carries
+        // only the cards just taken from the pile, so the client animates those into the fan rather than
+        // re-dealing the whole hand; `hand` remains the authoritative full hand for the client's model.
         foreach (array_keys($this->game->loadPlayersBasicInfos()) as $pid) {
-            $this->game->notify->player((int) $pid, 'handUpdate', '', [
-                'hand' => array_values($this->game->cards->getCardsInLocation(Game::LOC_HAND, (int) $pid)),
+            $pid = (int) $pid;
+            $this->game->notify->player($pid, 'handUpdate', '', [
+                'hand'  => array_values($this->game->cards->getCardsInLocation(Game::LOC_HAND, $pid)),
+                'drawn' => $drawn[$pid] ?? [],
             ]);
         }
 

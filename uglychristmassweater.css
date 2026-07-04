@@ -224,6 +224,66 @@ html {
   background: repeating-linear-gradient(45deg, #7a1f1f, #7a1f1f 6px, #5c1414 6px, #5c1414 12px);
 }
 
+.ucs-draw-pile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  flex: 0 0 auto;
+}
+
+.ucs-pile-card {
+  border-radius: 6px;
+  box-shadow: 2px 2px 0 -1px #5c1414, 4px 4px 0 -2px #7a1f1f, 0 2px 4px rgba(0, 0, 0, 0.4);
+}
+
+.ucs-pile-empty {
+  background: rgba(0, 0, 0, 0.06);
+  border: 2px dashed rgba(0, 0, 0, 0.25);
+  box-shadow: none;
+}
+
+.ucs-pile-count {
+  font-size: 11px;
+  font-weight: 700;
+  opacity: 0.8;
+  white-space: nowrap;
+}
+
+.ucs-pile-count-empty {
+  opacity: 0.5;
+  font-style: italic;
+}
+
+#ucs-my-hand-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.ucs-my-pile .ucs-pile-card {
+  width: 52px;
+  height: 73px;
+}
+
+.ucs-oppo-pile {
+  margin-left: auto;
+}
+
+.ucs-oppo-pile .ucs-pile-card {
+  width: 26px;
+  height: 37px;
+}
+
+.ucs-draw-fly {
+  position: fixed;
+  z-index: 2000;
+  border-radius: 4px;
+  pointer-events: none;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.5);
+  transition: transform 0.6s ease-in-out, opacity 0.6s ease-in-out;
+}
+
 .ucs-gameplay-row {
   display: flex;
   gap: 18px;

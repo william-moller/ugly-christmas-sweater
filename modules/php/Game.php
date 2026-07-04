@@ -932,15 +932,23 @@ class Game extends \Bga\GameFramework\Table
                          WHERE c.card_location = '" . self::LOC_DRAFTPOOL . "'");
     }
 
-    /** Refill every hand up to HAND_SIZE from each player's personal pile. */
-    public function refillHands(): void
+    /**
+     * Refill every hand up to HAND_SIZE from each player's personal pile.
+     * Returns the cards newly drawn per player ([pid => [card rows]]) so the client can animate just
+     * those (drawing the top of the pile into the hand) instead of re-dealing the whole hand. A player
+     * whose pile is empty draws nothing — their entry is an empty array and their hand is left untouched.
+     */
+    public function refillHands(): array
     {
+        $drawn = [];
         foreach (array_keys($this->loadPlayersBasicInfos()) as $pid) {
-            $need = self::HAND_SIZE - $this->cards->countCardInLocation(self::LOC_HAND, (int) $pid);
-            if ($need > 0) {
-                $this->cards->pickCards($need, $this->pileLoc((int) $pid), (int) $pid);
-            }
+            $pid = (int) $pid;
+            $need = self::HAND_SIZE - $this->cards->countCardInLocation(self::LOC_HAND, $pid);
+            $drawn[$pid] = $need > 0
+                ? array_values($this->cards->pickCards($need, $this->pileLoc($pid), $pid))
+                : [];
         }
+        return $drawn;
     }
 
     public function allHandsEmpty(): bool

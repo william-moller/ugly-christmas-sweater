@@ -171,7 +171,8 @@ interface NotifTrickCleanup {
 }
 
 interface NotifHandUpdate {
-    hand: SweaterCard[]; // the receiving player's refilled hand
+    hand: SweaterCard[];   // the receiving player's full refilled hand (authoritative model)
+    drawn?: SweaterCard[]; // only the cards just drawn from the pile this refill (for the draw animation)
 }
 
 interface NotifGameplayRevealed {

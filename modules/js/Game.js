@@ -294,7 +294,10 @@ class Game {
                 <div id="ucs-placement" class="ucs-zone" style="display:none"></div>
                 <div id="ucs-my-hand-wrap" class="ucs-zone">
                     <div class="ucs-zone-label" id="ucs-hand-label">${_('Your hand')}</div>
-                    <div id="ucs-my-hand"></div>
+                    <div id="ucs-my-hand-row">
+                        <div id="ucs-my-pile" class="ucs-draw-pile ucs-my-pile" title="${_('Your draw pile')}"></div>
+                        <div id="ucs-my-hand"></div>
+                    </div>
                 </div>
             </div>
             <div id="ucs-popin" class="ucs-popin" style="display:none">
@@ -320,6 +323,7 @@ class Game {
                     <div class="ucs-player-header">
                         <span class="ucs-order-badge" id="ucs-order-${player.id}"></span>
                         <span class="ucs-player-name">${mine ? _('Your Knitting Area') : player.name}</span>
+                        ${mine ? '' : `<div class="ucs-draw-pile ucs-oppo-pile" id="ucs-pile-${player.id}"></div>`}
                     </div>
                     <div class="ucs-knitting" id="ucs-knitting-${player.id}"></div>
                     ${mine ? '' : `<div class="ucs-oppo-summary" id="ucs-summary-${player.id}"></div>`}
@@ -404,6 +408,9 @@ class Game {
             // shows, so the whole hand (incl. the top-left value/orientation/icon) stays readable.
             cardOverlap: 30,
             emptyHandMessage: _('Hand is empty'),
+            // Keep the fan sorted (colour then value) so a card drawn on refill slides into its correct
+            // position rather than tacking onto the end — see notif_handUpdate's incremental addCards.
+            sort: this.handSort.bind(this),
         });
         this.handStock.setSelectionMode('none');
         this.handStock.onSelectionChange = (selection, last) => this.handSelectionChanged(selection, last);
@@ -426,6 +433,7 @@ class Game {
         this.renderDraftPool();
         this.renderTradeArea();
         this.renderPlayers();
+        this.renderPiles();
         this.renderHand();
     }
     /** My own Secret Santa objective(s) — 1 in Casual, 2 in Express (private; hidden from other players). */
@@ -635,6 +643,61 @@ class Game {
         const wip = Object.keys(builds).length - complete;
         el.innerHTML = `<span class="ucs-pips">${'🧶'.repeat(complete) || '—'}</span>`
             + `<span class="ucs-oppo-progress">${complete} ${_('done')} · ${wip} ${_('wip')}</span>`;
+    }
+    /**
+     * Draw piles: my own (beside the hand, with a remaining count) and each opponent's (a face-down
+     * pile in their table header, no count). A pile shows a card-back while it holds cards and collapses
+     * to an empty slot once exhausted — it's also the origin element the refill animation slides from.
+     */
+    renderPiles() {
+        const my = document.getElementById('ucs-my-pile');
+        if (my) {
+            const n = this.gamedatas.counts?.[this.myId]?.pile ?? 0;
+            my.innerHTML = n
+                ? `<div class="ucs-pile-card ucs-card-back"></div><div class="ucs-pile-count">${n} ${_('left')}</div>`
+                : `<div class="ucs-pile-card ucs-pile-empty"></div><div class="ucs-pile-count ucs-pile-count-empty">${_('empty')}</div>`;
+        }
+        Object.values(this.gamedatas.players).forEach((p) => {
+            const pid = Number(p.id);
+            if (pid === this.myId)
+                return;
+            const el = document.getElementById(`ucs-pile-${pid}`);
+            if (!el)
+                return;
+            const n = this.gamedatas.counts?.[pid]?.pile ?? 0;
+            // No count text for opponents (per design) — just the pile presence.
+            el.innerHTML = n ? `<div class="ucs-pile-card ucs-card-back"></div>` : '';
+        });
+    }
+    /**
+     * A card-back "drawn" animation for an opponent: a face-down card flies from their draw pile to
+     * their BGA player panel (far right), signalling they refilled a card without revealing it. Purely
+     * decorative — a self-contained fixed-position transform, so it doesn't depend on stock/model state.
+     */
+    animateOpponentDraw(pid) {
+        if (!this.bga.gameui.bgaAnimationsActive?.())
+            return;
+        const from = document.querySelector(`#ucs-pile-${pid} .ucs-pile-card`);
+        const to = document.getElementById(`overall_player_board_${pid}`)
+            ?? document.getElementById(`player_board_${pid}`);
+        if (!from || !to)
+            return;
+        const a = from.getBoundingClientRect();
+        const b = to.getBoundingClientRect();
+        const ghost = document.createElement('div');
+        ghost.className = 'ucs-card-back ucs-draw-fly';
+        ghost.style.left = `${a.left}px`;
+        ghost.style.top = `${a.top}px`;
+        ghost.style.width = `${a.width}px`;
+        ghost.style.height = `${a.height}px`;
+        document.body.appendChild(ghost);
+        const dx = (b.left + b.width / 2) - (a.left + a.width / 2);
+        const dy = (b.top + b.height / 2) - (a.top + a.height / 2);
+        requestAnimationFrame(() => {
+            ghost.style.transform = `translate(${dx}px, ${dy}px) scale(0.35)`;
+            ghost.style.opacity = '0';
+        });
+        setTimeout(() => ghost.remove(), 650);
     }
     /** Open the popin showing one player's Knitting Area at full size (from a click on their table). */
     openPopin(playerId) {
@@ -898,6 +961,13 @@ class Game {
             const newBuild = document.createElement('div');
             newBuild.className = 'ucs-build ucs-build-new';
             newBuild.appendChild(this.makeTargetGhost(regularSlot, picked === 0 ? 'selected' : 'option', () => this.placeDraftTarget(0)));
+            // Draw the other two orientations as dotted (non-clickable) placeholders so a new sweater
+            // reads as the full L/R-over-B silhouette, even though this card can only land in its one
+            // printed slot. Matches the static footprint a started sweater already shows.
+            ['L', 'R', 'B'].forEach((s) => {
+                if (s !== regularSlot)
+                    newBuild.appendChild(this.makeEmptySlot(s));
+            });
             zone.appendChild(newBuild);
         }
         else if (selPatch) {
@@ -1569,13 +1639,29 @@ class Game {
         args.pool.forEach((c) => (pool[Number(c.id)] = c));
         this.gamedatas.draftpool = pool;
         this.gamedatas.trick = {};
+        // For each opponent, the drop in pile count is how many cards they drew this refill — fly that
+        // many card-backs from their pile to their panel. (My own draw animates via notif_handUpdate.)
+        const before = this.gamedatas.counts ?? {};
+        Object.values(this.gamedatas.players).forEach((p) => {
+            const pid = Number(p.id);
+            if (pid === this.myId)
+                return;
+            const drew = Math.max(0, (before[pid]?.pile ?? 0) - (args.counts[pid]?.pile ?? 0));
+            for (let i = 0; i < drew; i++)
+                this.animateOpponentDraw(pid);
+        });
         this.gamedatas.counts = args.counts;
         this.draftOrder = [];
         this.renderDraftPool();
         this.renderTradeArea();
         this.renderPlayers();
+        this.renderPiles();
     }
-    /** Private: my hand was refilled — replace it. */
+    /**
+     * Private: my hand was refilled. Rather than re-deal the whole fan, slide in only the newly-drawn
+     * card(s) from my draw pile (the stock's `sort` drops each into its correct spot). If nothing was
+     * drawn (pile empty), the fan is left untouched. `hand` stays the authoritative model either way.
+     */
     async notif_handUpdate(args) {
         const hand = {};
         args.hand.forEach((c) => (hand[Number(c.id)] = c));
@@ -1583,7 +1669,16 @@ class Game {
         if (this.gamedatas.counts?.[this.myId]) {
             this.gamedatas.counts[this.myId].hand = args.hand.length;
         }
-        this.renderHand();
+        this.renderPiles();
+        if (!this.handStock)
+            return;
+        const drawn = args.drawn ?? [];
+        if (!drawn.length)
+            return; // pile empty / nothing drawn → hand stays as-is
+        // addCards skips any card already in the stock, so a mid-refill F5 (where `hand` already
+        // rebuilt the fan) won't double-add. The pile card-back is the slide origin.
+        const from = document.querySelector('#ucs-my-pile .ucs-pile-card');
+        this.handStock.addCards(drawn, from ? { fromElement: from } : undefined, 80);
     }
     /** A new round revealed fresh gameplay cards — refresh the round-parameter decks. */
     async notif_gameplayRevealed(args) {
