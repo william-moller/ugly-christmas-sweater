@@ -145,6 +145,15 @@ TypeScript + SCSS are **enabled**. Source lives in `src/ts/` and `src/scss/`; bu
 
 Edit **`src/`**, never the generated `modules/js/Game.js` / `uglychristmassweater.css` (overwritten on build). `node_modules/` is gitignored; `package-lock.json` is committed. State handlers go in `src/ts/States/*` and register in `src/ts/Game.ts`.
 
+## Current State (as of 2026-07-03)
+
+**Session 2026-07-03 — fixed the hand jumping left vs. centred between turns. Client-only (`src/scss/Game.scss`); builds clean (`npm run build`, exit 0); NOT yet SFTP-synced or table-tested.**
+
+- **Symptom:** the fanned hand sometimes rendered centred (correct) and sometimes yanked to the left.
+- **Root cause:** `bga-cards`' `HandStock` is a **floating** hand — an `IntersectionObserver` (`watchFloatingState`) detaches the fan to `position:fixed` (centred on the viewport) whenever its holder falls below the viewport fold, and re-attaches it into normal flow when it doesn't. The hand sits right at the bottom edge, so that toggle flips as the layout height above it changes (status-bar action buttons on your turn, the `#ucs-placement` zone, scroll). In the **attached** mode the fan lived in `#ucs-my-hand-row`, a left-packed flex row `[pile][hand]` with no centering → hugged the left; **floating** mode was the centred one.
+- **Fix:** center the attached fan (`#ucs-my-hand-row { position:relative; justify-content:center }`) and pin the draw pile absolutely to the left (`#ucs-my-pile { position:absolute; left:0; top:50%; transform:translateY(-50%) }`) so it's out of the centering flow — the fan then centres on the full row width (matching the floating centre) in *both* modes. No JS/TS/PHP change.
+- **Verify on Studio:** the hand stays centred across the transitions that used to flip it (your turn vs. spectating, placement panel open/closed); and the pinned pile doesn't overlap the fan on a narrow/mobile viewport (mobile scales the fan to 0.68 `transform-origin:top center`; the pile stays at `left:0` — hide/shrink it under the `max-width:800px` breakpoint if it overlaps).
+
 ## Current State (as of 2026-07-02)
 
 **Session 2026-07-02 (client UI overhaul) — a run of layout/readability tweaks over several commits. Client-only (`src/ts/Game.ts` + `src/scss/Game.scss`, plus a `types`-free score helper); builds clean (`npm run build`, exit 0); NOT yet SFTP-synced or table-tested. This bullet list is the FINAL state (some values changed across commits — e.g. the hand overlap and the my-area column — this reflects where they landed).** No server/data change.

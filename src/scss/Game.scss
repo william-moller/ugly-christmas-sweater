@@ -280,11 +280,24 @@ html {
     opacity: 0.5;
     font-style: italic;
 }
-// My pile sits to the left of the fanned hand.
+// The fanned hand centers in the row. bga-cards' HandStock floats (position:fixed, centered on the
+// viewport) when its holder is under the fold, and re-attaches into normal flow when it isn't — a
+// toggle that flips as the layout height above the hand changes (status-bar buttons, placement zone,
+// scroll). Centering the attached fan here makes both modes land in the same place instead of the
+// fan jumping left when attached. The pile is pinned left, out of the centering flow, so the fan
+// centers on the full row width (matching the floating center) rather than on [pile + hand] as a group.
 #ucs-my-hand-row {
+    position: relative;
     display: flex;
+    justify-content: center;
     align-items: center;
     gap: 14px;
+}
+#ucs-my-pile {
+    position: absolute;
+    left: 0;
+    top: 50%;
+    transform: translateY(-50%);
 }
 .ucs-my-pile .ucs-pile-card {
     width: 52px;
