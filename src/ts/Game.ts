@@ -718,8 +718,11 @@ export class Game {
 
     /**
      * Compact opponent read-out of a knitting area: each card is a small colour+number chip (no
-     * orientation letter / icon), each sweater a little bordered cluster, all sweaters in a single
-     * left-to-right row. Inline opponents column only — the popin keeps the detailed silhouette.
+     * orientation letter / icon), laid out in the same L-R-over-B sweater silhouette as the full
+     * area — a started sweater keeps its whole footprint, with still-empty L/R/B slots drawn as
+     * dotted placeholders (matching `renderKnitting`), so an incomplete sweater reads as gaps in
+     * the sweater shape rather than a shorter cluster. All sweaters sit in a single left-to-right
+     * row. Inline opponents column only — the click-to-enlarge popin keeps the detailed silhouette.
      */
     private renderKnittingCompact(zone: HTMLElement, playerId: number, cards: SweaterCard[]) {
         zone.classList.add('ucs-knitting-compact');
@@ -729,20 +732,42 @@ export class Game {
         }
         const builds: { [buildNo: number]: SweaterCard[] } = {};
         cards.forEach((c) => { const b = Number(c.buildNo ?? 0); (builds[b] ||= []).push(c); });
-        const slotRank: { [s: string]: number } = { L: 0, R: 1, B: 2 };
         Object.keys(builds).map(Number).sort((a, b) => a - b).forEach((buildNo) => {
             const group = document.createElement('div');
             group.className = 'ucs-mini-build';
             if (this.isBuildComplete(builds[buildNo])) group.classList.add('ucs-mini-build-complete');
-            // Order the pieces L, R, B (floating/unslotted last) for a stable read.
-            const ordered = [...builds[buildNo]].sort((a, b) => {
-                const sa = (a.slot as string) ?? faceOf(a, this.material).slot ?? '';
-                const sb = (b.slot as string) ?? faceOf(b, this.material).slot ?? '';
-                return (slotRank[sa] ?? 3) - (slotRank[sb] ?? 3);
+            // Place each chip in its L/R/B grid slot; a floating patch (orientation not set yet) spans
+            // the build. Grid position handles the read order, so the DOM order no longer matters.
+            const takenSlots = new Set<string>();
+            builds[buildNo].forEach((c) => {
+                const slot = (c.slot as string) ?? faceOf(c, this.material).slot ?? null;
+                const el = this.miniCardEl(c);
+                if (slot) {
+                    el.style.gridArea = slot;
+                    takenSlots.add(slot);
+                } else {
+                    el.classList.add('ucs-mini-floating'); // a floating patch — no slot yet
+                }
+                group.appendChild(el);
             });
-            ordered.forEach((c) => group.appendChild(this.miniCardEl(c)));
+            // Static silhouette: once a sweater holds a real (slotted) piece, draw every still-empty
+            // L/R/B as a dotted placeholder so the build keeps its full footprint whether it has 1 or
+            // 3 pieces. A lone floating patch (0 slotted pieces) is left as-is, exactly as renderKnitting.
+            if (takenSlots.size > 0) {
+                (['L', 'R', 'B'] as const).forEach((s) => {
+                    if (!takenSlots.has(s)) group.appendChild(this.makeMiniEmptySlot(s));
+                });
+            }
             zone.appendChild(group);
         });
+    }
+
+    /** A tiny dotted placeholder for a still-empty orientation in a started sweater (compact view). */
+    private makeMiniEmptySlot(slot: string): HTMLElement {
+        const cell = document.createElement('div');
+        cell.className = `ucs-mini-card ucs-mini-empty`;
+        cell.style.gridArea = slot;
+        return cell;
     }
 
     /** A tiny colour+number chip (log-card style) for the compact opponent view; a patch shows ★/value. */

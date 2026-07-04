@@ -524,7 +524,10 @@ html {
 }
 
 .ucs-mini-build {
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(2, 18px);
+  grid-template-areas: "L R" "B B";
+  justify-items: center;
   gap: 2px;
   padding: 2px;
   border: 1px dashed rgba(0, 0, 0, 0.3);
@@ -536,6 +539,18 @@ html {
 .ucs-mini-build-complete {
   border: 1.5px solid #2ecc71;
   background: rgba(46, 204, 113, 0.15);
+}
+
+.ucs-mini-build .ucs-mini-floating {
+  grid-column: 1/-1;
+  justify-self: center;
+  border-style: dashed;
+}
+
+.ucs-mini-empty {
+  border: 1px dotted rgba(0, 0, 0, 0.35);
+  background: rgba(255, 255, 255, 0.05);
+  box-shadow: none;
 }
 
 .ucs-mini-card {

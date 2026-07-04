@@ -543,7 +543,14 @@ html {
     align-items: flex-start;
 }
 .ucs-mini-build {
-    display: flex;
+    // Same L-R-over-B silhouette as the full .ucs-build, at chip scale: L and R on top, B centred
+    // below, so an incomplete sweater keeps its full footprint with the missing slots reading as gaps.
+    display: grid;
+    grid-template-columns: repeat(2, 18px);
+    grid-template-areas:
+        "L R"
+        "B B";
+    justify-items: center;
     gap: 2px;
     padding: 2px;
     border: 1px dashed rgba(0, 0, 0, 0.3);
@@ -554,6 +561,18 @@ html {
 .ucs-mini-build-complete {
     border: 1.5px solid #2ecc71;
     background: rgba(46, 204, 113, 0.15);
+}
+// A floating patch (no orientation yet) spans the whole build, centred.
+.ucs-mini-build .ucs-mini-floating {
+    grid-column: 1 / -1;
+    justify-self: center;
+    border-style: dashed;
+}
+// A still-empty L/R/B in a started sweater: a dotted placeholder (mirrors .ucs-slot-empty).
+.ucs-mini-empty {
+    border: 1px dotted rgba(0, 0, 0, 0.35);
+    background: rgba(255, 255, 255, 0.05);
+    box-shadow: none;
 }
 .ucs-mini-card {
     display: inline-flex;
