@@ -1282,24 +1282,18 @@ class Game {
         }
     }
     /**
-     * Leading with a patch: choose which numbered draft-pool card it copies (value + icon).
-     * Rendered as compact buttons in the top action bar (one per copyable pool card), to match
-     * the draft-placement controls.
+     * Leading with a patch: choose which numbered draft-pool card it copies (value + icon) by
+     * clicking that card in the Draft Pool (see renderDraftPool's copy-mode branch). The action bar
+     * carries only the prompt and a Cancel.
      */
     renderPatchCopyPanel(cardId) {
         const sb = this.bga.statusBar;
         sb.removeActionButtons();
-        // Enter copy mode: the numbered Draft Pool cards also become clickable copy sources.
+        // Enter copy mode: the numbered Draft Pool cards become clickable copy sources.
         this.patchCopyPatchId = cardId;
         this.patchCopySourceId = null;
         this.renderDraftPool();
-        const sources = this.cardArray(this.gamedatas.draftpool).filter((c) => !isPatch(c, this.material));
-        sb.setTitle(_('Leading with a Patch — click a Draft Pool card (or a button) to copy its value & icon'));
-        sources.forEach((c) => {
-            const f = faceOf(c, this.material);
-            const icon = f.icon ?? '?';
-            sb.addActionButton(`${f.color} ${f.value} · ${icon}`, () => this.chooseCopySource(Number(c.id)), { color: 'primary' });
-        });
+        sb.setTitle(_('Leading with a Patch — click a Draft Pool card to copy its value & icon'));
         sb.addActionButton(_('Cancel'), () => {
             this.clearPatchCopy();
             sb.removeActionButtons();
@@ -1307,7 +1301,7 @@ class Game {
             this.handStock?.unselectAll(true);
         }, { color: 'alert' });
     }
-    /** A copy source (numbered pool card or its action-bar button) was chosen for the leading patch. */
+    /** A copy source (a numbered pool card) was chosen for the leading patch. */
     chooseCopySource(sourceId) {
         const patchId = this.patchCopyPatchId;
         if (patchId == null)
