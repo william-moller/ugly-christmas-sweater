@@ -372,7 +372,11 @@ class Game {
         this.draftOrderCardIds = (gamedatas.draftOrderCards ?? []).map(Number);
         this.draftOrderMode = 'idle';
         this.setupDraftOrderCards();
-        this.positionDraftOrder(false);
+        // Position after the layout settles (BGA may still be sizing player panels / the tabletop right
+        // after setup), and again on a short delay to catch any late reflow. The active state's handler
+        // (PlayCard/DraftCard onEnteringState) also re-snaps against the final layout.
+        requestAnimationFrame(() => this.positionDraftOrder(false));
+        setTimeout(() => this.positionDraftOrder(false), 400);
         window.addEventListener('resize', () => this.positionDraftOrder(false));
         this.setupNotifications();
         this.maybeAddDebugButton();
@@ -795,9 +799,30 @@ class Game {
         zone.innerHTML = `<div class="ucs-zone-label">${_('Draft Order')}</div>`
             + `<div class="ucs-draftorder-home"></div>`;
     }
-    /** Create the N fixed-position Draft Order card elements once (rebuilt if the count changed). */
+    /**
+     * The overlay that holds the Draft Order cards. It lives INSIDE #ucs-table (position:absolute,
+     * inset:0) so the cards share the tabletop's coordinate/transform context — positions are computed
+     * as deltas relative to this layer, which is robust to any transform/scale/offset BGA applies to the
+     * game area (a plain document.body + position:fixed approach mis-aligned by the game-area offset).
+     */
+    draftOrderLayer() {
+        let layer = document.getElementById('ucs-draftorder-layer');
+        if (!layer) {
+            const table = document.getElementById('ucs-table');
+            if (!table)
+                return null;
+            layer = document.createElement('div');
+            layer.id = 'ucs-draftorder-layer';
+            table.appendChild(layer);
+        }
+        return layer;
+    }
+    /** Create the N Draft Order card elements once (rebuilt if the count changed), inside the layer. */
     setupDraftOrderCards() {
-        if (this.draftOrderEls.length === this.draftOrderCount())
+        const layer = this.draftOrderLayer();
+        if (!layer)
+            return;
+        if (this.draftOrderEls.length === this.draftOrderCount() && this.draftOrderEls[0]?.isConnected)
             return;
         this.draftOrderEls.forEach((el) => el.remove());
         this.draftOrderEls = [];
@@ -807,7 +832,7 @@ class Game {
             el.id = `ucs-draftcard-${k}`;
             el.innerHTML = `<span class="ucs-draftorder-num">${k}</span>`;
             el.style.display = 'none';
-            document.body.appendChild(el);
+            layer.appendChild(el);
             this.draftOrderEls.push(el);
         }
     }
@@ -857,6 +882,14 @@ class Game {
     /** Lay every Draft Order card at its current-mode position (animated or snapped). */
     positionDraftOrder(animate) {
         this.setupDraftOrderCards();
+        const layer = this.draftOrderLayer();
+        if (!layer)
+            return;
+        // Convert the (viewport) target rects into the layer's internal coordinates. `scale` accounts for
+        // any transform BGA applies to the game area; the layer and the targets share that transform, so
+        // the delta / scale lands the card exactly over its target regardless of scale or offset.
+        const lr = layer.getBoundingClientRect();
+        const scale = layer.offsetWidth ? lr.width / layer.offsetWidth : 1;
         this.draftOrderEls.forEach((el, i) => {
             const t = this.draftOrderTargetRect(i + 1);
             if (!t) {
@@ -867,10 +900,12 @@ class Game {
             el.style.transition = animate
                 ? 'left .5s ease, top .5s ease, width .5s ease, height .5s ease'
                 : 'none';
-            el.style.left = `${t.left}px`;
-            el.style.top = `${t.top}px`;
-            el.style.width = `${t.w}px`;
-            el.style.height = `${t.h}px`;
+            el.style.left = `${(t.left - lr.left) / scale}px`;
+            el.style.top = `${(t.top - lr.top) / scale}px`;
+            // Always the internal card size (matches the tabletop cards); the target's viewport size would
+            // be scale-inflated. left/top already carry the 35% dealt offset baked in viewport terms.
+            el.style.width = `${this.draftOrderCardW()}px`;
+            el.style.height = `${this.draftOrderCardH()}px`;
             el.classList.toggle('ucs-draftorder-out', this.draftOrderMode !== 'idle'
                 && !(this.draftOrderMode === 'leader' && i + 1 !== 1));
         });
@@ -921,20 +956,16 @@ class Game {
      */
     syncDraftOrder(mode) {
         if (this.draftOrderAnimating)
-            return;
+            return; // don't snap over an in-flight notif animation
         const ids = (this.gamedatas.draftOrderCards ?? []).map(Number);
         // No trick has resolved yet this round → keep every card home. The opening leader doesn't need a
         // Draft Order card parked on them to show they lead first (issue raised 2026-07-05).
         const effective = (mode === 'leader' && ids.length === 0) ? 'idle' : mode;
-        const sameDealt = effective === 'dealt'
-            && this.draftOrderMode === 'dealt'
-            && ids.length === this.draftOrderCardIds.length
-            && ids.every((v, i) => v === this.draftOrderCardIds[i]);
-        if (this.draftOrderMode === effective && (effective !== 'dealt' || sameDealt))
-            return;
         if (effective === 'dealt')
             this.draftOrderCardIds = ids;
         this.draftOrderMode = effective;
+        // Always re-snap (don't early-return when already in this mode): the setup-time layout may not
+        // have settled, and this state entry is our reliable chance to place against the final layout.
         this.positionDraftOrder(false);
     }
     /** Express: the Fad-claim map (fadCardId -> {playerId, buildNo}), or empty outside Express. */

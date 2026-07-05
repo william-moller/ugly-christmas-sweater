@@ -82,6 +82,7 @@ html {
     // my own area bumps it up (focus), the opponents column shrinks it, the popin shows them large.
     --ucs-card-w: #{$card-w};
     --ucs-card-h: #{$card-h};
+    position: relative; // positioning context for #ucs-draftorder-layer (the Draft Order card overlay)
     display: flex;
     flex-direction: column;
     gap: 10px;
@@ -1114,9 +1115,17 @@ html {
     width: calc(var(--ucs-card-w) + 24px);
     height: calc(var(--ucs-card-h) + 10px);
 }
-.ucs-draftorder-card {
-    position: fixed;
+// Overlay inside #ucs-table holding the numbered cards (see Game.ts::draftOrderLayer). Absolute so it
+// shares the tabletop coordinate space; doesn't clip its cards or catch clicks.
+#ucs-draftorder-layer {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
     z-index: 50;
+    overflow: visible;
+}
+.ucs-draftorder-card {
+    position: absolute;
     pointer-events: none; // purely a marker — never intercept clicks on the cards beneath
     display: flex;
     align-items: center;

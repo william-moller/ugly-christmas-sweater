@@ -47,6 +47,7 @@ html {
 #ucs-table {
   --ucs-card-w: 64px;
   --ucs-card-h: 90px;
+  position: relative;
   display: flex;
   flex-direction: column;
   gap: 10px;
@@ -1055,9 +1056,16 @@ html {
   height: calc(var(--ucs-card-h) + 10px);
 }
 
-.ucs-draftorder-card {
-  position: fixed;
+#ucs-draftorder-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
   z-index: 50;
+  overflow: visible;
+}
+
+.ucs-draftorder-card {
+  position: absolute;
   pointer-events: none;
   display: flex;
   align-items: center;
