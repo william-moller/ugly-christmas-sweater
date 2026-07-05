@@ -48,14 +48,14 @@ export class Game {
     private draftOrder: number[] = [];
 
     // Draft Order cards (physical cards numbered 1..N, N = player count). They live in a stack left of
-    // Round Parameters, deal out onto the ranked Trade Area cards while drafting, then return home —
-    // except the "1" card, which parks by the leader between tricks. `draftOrderEls[k-1]` is card "k";
-    // `draftOrderCardIds` is the current trick's trade-card ids in rank order (rank k → the k-th id).
+    // Round Parameters, deal out onto the ranked Trade Area cards while drafting, then all return home
+    // once the trick's drafting is done. `draftOrderEls[k-1]` is card "k"; `draftOrderCardIds` is the
+    // current trick's trade-card ids in rank order (rank k → the k-th id).
     private draftOrderEls: HTMLElement[] = [];       // the N "home" cards — real flow children of the zone
-    private draftOrderClones: { [k: number]: HTMLElement } = {}; // overlay clones while a card is dealt/parked
+    private draftOrderClones: { [k: number]: HTMLElement } = {}; // overlay clones while a card is dealt out
     private draftOrderCardIds: number[] = [];
-    private draftOrderMode: 'idle' | 'dealt' | 'leader' = 'idle';
-    private draftOrderAnimating = false; // true while a deal/park transition is in flight (blocks snap)
+    private draftOrderMode: 'idle' | 'dealt' = 'idle';
+    private draftOrderAnimating = false; // true while a deal/return transition is in flight (blocks snap)
 
     // Monotonic counter for assigning ids to gameplay-card elements (so tooltips can attach).
     private gpSeq = 0;
@@ -159,7 +159,7 @@ export class Game {
 
         // Draft Order cards: build the N fixed-position cards and drop them home. The active state's
         // handler (PlayCard / DraftCard onEnteringState, which fires right after setup — including on an
-        // F5) snaps them to the correct dealt/leader layout; keep them aligned on viewport resize.
+        // F5) snaps them to the correct idle/dealt layout; keep them aligned on viewport resize.
         this.draftOrderCardIds = (gamedatas.draftOrderCards ?? []).map(Number);
         this.draftOrderMode = 'idle';
         this.setupDraftOrderCards();
@@ -650,23 +650,14 @@ export class Game {
         }
     }
 
-    /** Where the "1" card parks to show who leads the next trick — over the leader's player table. */
-    private leaderMarkerRect(): { left: number; top: number; w: number; h: number } | null {
-        const el = document.getElementById(`ucs-player-${this.gamedatas.leaderId}`);
-        if (!el) return null;
-        const r = el.getBoundingClientRect();
-        return { left: r.left + 6, top: r.top + 6, w: this.draftOrderCardW(), h: this.draftOrderCardH() };
-    }
-
     /**
      * Viewport rect where Draft Order card k should sit when it's OUT of the home stack (dealt below its
-     * ranked Trade Area card, or the "1" card parked at the leader). Returns null when the card belongs
-     * home — in which case the resting home card is shown and any clone animates back.
+     * ranked Trade Area card). Returns null when the card belongs home — the resting home card is then
+     * shown and any clone animates back.
      */
     private draftOrderOutTarget(k: number): { left: number; top: number; w: number; h: number } | null {
-        if (this.draftOrderMode === 'idle') return null;
-        if (this.draftOrderMode === 'leader') return k === 1 ? this.leaderMarkerRect() : null;
-        // dealt: directly BELOW the k-th ranked trade card (same x); Trade Area expands to frame the row.
+        if (this.draftOrderMode !== 'dealt') return null;
+        // directly BELOW the k-th ranked trade card (same x); Trade Area expands to frame the row.
         const cardId = this.draftOrderCardIds[k - 1];
         const cardEl = cardId != null ? document.getElementById(`ucs-card-${cardId}`) : null;
         if (!cardEl) return null; // e.g. 2P has 4 trade cards but only 2 order cards → extras stay home
@@ -742,30 +733,20 @@ export class Game {
         setTimeout(end, dur * 1000 + 120); // fallback if transitionend doesn't fire
     }
 
-    /**
-     * Draft order resolved: deal the numbered cards onto the ranked Trade Area cards. If the "1" card was
-     * parked at the previous leader, first send it home so all cards reunite in the stack, then deal — the
-     * "put the #1 card back before redealing" step the design calls for.
-     */
+    /** Draft order resolved: deal the numbered cards from the stack onto the ranked Trade Area cards. */
     public dealDraftOrder(orderCards: number[]) {
         this.draftOrderCardIds = orderCards.map(Number);
         this.gamedatas.draftOrderCards = this.draftOrderCardIds; // keep the model fresh for a later F5 sync
         this.beginDraftOrderAnim(1100);
-        const deal = () => { this.draftOrderMode = 'dealt'; this.positionDraftOrder(true); };
-        if (this.draftOrderMode === 'leader') {
-            this.draftOrderMode = 'idle';
-            this.positionDraftOrder(true);
-            setTimeout(deal, 520); // let the "reunite in the stack" animation finish first
-        } else {
-            deal();
-        }
+        this.draftOrderMode = 'dealt';
+        this.positionDraftOrder(true);
     }
 
-    /** Drafting done: cards 2..N return to the stack; the "1" card parks by the leader for the next trick. */
-    public parkDraftOrderAtLeader() {
-        // ~2s to move in step with the Trade Area → Draft Pool slide (animateTradeToPool).
+    /** Drafting done: ALL Draft Order cards return to the stack (~2s, in step with the pool slide). */
+    public returnDraftOrderHome() {
+        this.gamedatas.draftOrderCards = []; // the order is spent; the cards go home
         this.beginDraftOrderAnim(2100);
-        this.draftOrderMode = 'leader';
+        this.draftOrderMode = 'idle';
         this.positionDraftOrder(true, 2);
     }
 
@@ -790,13 +771,12 @@ export class Game {
      * matching notif already animated, so we skip (don't interrupt the in-flight transition, and don't
      * redundantly re-snap when we're already in the target state).
      */
-    public syncDraftOrder(mode: 'dealt' | 'leader') {
+    public syncDraftOrder(mode: 'dealt' | 'idle') {
         if (this.draftOrderAnimating) return; // don't snap over an in-flight notif animation
         const ids = (this.gamedatas.draftOrderCards ?? []).map(Number);
-        // No trick has resolved yet this round → keep every card home. The opening leader doesn't need a
-        // Draft Order card parked on them to show they lead first (issue raised 2026-07-05).
-        const effective: 'idle' | 'dealt' | 'leader' =
-            (mode === 'leader' && ids.length === 0) ? 'idle' : mode;
+        // 'dealt' only holds while a trick's order is live (cards on the trade area); once it's spent
+        // (draftOrderCards cleared on cleanup) fall back to 'idle' so the cards rest in their stack.
+        const effective: 'idle' | 'dealt' = (mode === 'dealt' && ids.length) ? 'dealt' : 'idle';
         if (effective === 'dealt') this.draftOrderCardIds = ids;
         this.draftOrderMode = effective;
         // Always re-snap (don't early-return when already in this mode): the setup-time layout may not
@@ -1753,8 +1733,6 @@ export class Game {
     /** The trick resolved into a draft order; show the order badges and deal the Draft Order cards. */
     async notif_draftOrder(args: NotifDraftOrder) {
         this.draftOrder = args.order.map(Number);
-        // order[0] holds the "1" card and leads the next trick — track it for the leader marker.
-        if (this.draftOrder.length) this.gamedatas.leaderId = this.draftOrder[0];
         this.gamedatas.players && Object.values(this.gamedatas.players).forEach(
             (p) => this.renderOrderBadge(Number(p.id))
         );
@@ -1792,9 +1770,8 @@ export class Game {
         this.renderPiles();
         // Slide the collected cards from the Trade Area up into their new Draft Pool spots (~2s, together).
         this.animateTradeToPool(oldRects);
-        // Drafting is done: cards 2..N return to the stack; the "1" card parks by the leader (order[0],
-        // tracked in notif_draftOrder) so everyone can see who leads the next trick.
-        this.parkDraftOrderAtLeader();
+        // Drafting is done: all Draft Order cards return to their stack (~2s, in step with the pool slide).
+        this.returnDraftOrderHome();
     }
 
     /**
