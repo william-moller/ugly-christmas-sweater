@@ -147,6 +147,8 @@ Edit **`src/`**, never the generated `modules/js/Game.js` / `uglychristmassweate
 
 ## Current State (as of 2026-07-05)
 
+**Session 2026-07-05 (later 2) — animate the collected cards sliding from the Trade Area into the Draft Pool (~2s, together). Client-only (`src/ts/Game.ts`); builds clean; NOT yet SFTP-synced.** `notif_trickCleanup` now captures each card's rect (trade cards + any leftover pool card) BEFORE the re-render, then `animateTradeToPool` FLIP-animates them: each new `ucs-card-<id>` (already at its final pool spot) is offset back via `transform: translate` then transitions to 0 over `2s ease`, so they all glide up together. Deltas divided by the tabletop scale (same technique as the Draft Order overlay); gated on `bgaAnimationsActive`.
+
 **Session 2026-07-05 (later) — Draft Order cards now deal BELOW the played cards instead of over them. Client-only (`src/ts/Game.ts`, `src/scss/Game.scss`); builds clean; NOT yet SFTP-synced.** The 35%-right overlap was replaced: the dealt target is now `left = tradeCard.left, top = tradeCard.bottom + 6` (directly under each played card, same x, so the face stays fully visible). The Trade Area frame grows to fit them via a `ucs-trade-has-order` class (toggled in `positionDraftOrder` when mode==='dealt') that adds `padding-bottom: calc(var(--ucs-card-h) + 14px)` — padding-bottom doesn't move the played cards, so their rects stay valid for positioning below. Resolves the earlier "35% overhang" flag.
 
 **Session 2026-07-05 — fixed two Draft Order card issues from the first table test. Client-only (`src/ts/Game.ts`, `src/scss/Game.scss`); builds clean (`rollup` + `sass`, exit 0); NOT yet SFTP-synced or re-tested.**

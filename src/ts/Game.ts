@@ -1735,6 +1735,14 @@ export class Game {
 
     /** End of trick: the trade area becomes the new draft pool; counts resync. */
     async notif_trickCleanup(args: NotifTrickCleanup) {
+        // Capture where the cards sit NOW (trade area + any leftover pool card) so we can slide them from
+        // there up into the new Draft Pool after the re-render (FLIP animation below).
+        const oldRects: { [id: number]: DOMRect } = {};
+        [...this.cardArray(this.gamedatas.trick), ...this.cardArray(this.gamedatas.draftpool)].forEach((c) => {
+            const el = document.getElementById(`ucs-card-${c.id}`);
+            if (el) oldRects[Number(c.id)] = el.getBoundingClientRect();
+        });
+
         const pool: CardMapT = {};
         args.pool.forEach((c) => (pool[Number(c.id)] = c));
         this.gamedatas.draftpool = pool;
@@ -1754,9 +1762,41 @@ export class Game {
         this.renderTradeArea();
         this.renderPlayers();
         this.renderPiles();
+        // Slide the collected cards from the Trade Area up into their new Draft Pool spots (~2s, together).
+        this.animateTradeToPool(oldRects);
         // Drafting is done: cards 2..N return to the stack; the "1" card parks by the leader (order[0],
         // tracked in notif_draftOrder) so everyone can see who leads the next trick.
         this.parkDraftOrderAtLeader();
+    }
+
+    /**
+     * FLIP-animate the just-collected cards from their old (Trade Area) positions to their new Draft Pool
+     * positions. The pool has already been re-rendered, so each `ucs-card-<id>` is at its final spot; we
+     * offset it back to where it was via a transform, then transition that transform to 0 over ~2s so
+     * they all glide up together. Deltas are divided by the tabletop scale (same as the Draft Order
+     * overlay) so it's correct under any transform BGA applies.
+     */
+    private animateTradeToPool(oldRects: { [id: number]: DOMRect }) {
+        if (!this.bga.gameui.bgaAnimationsActive?.()) return;
+        const table = document.getElementById('ucs-table');
+        const scale = (table && table.offsetWidth)
+            ? table.getBoundingClientRect().width / table.offsetWidth : 1;
+        Object.keys(oldRects).forEach((key) => {
+            const el = document.getElementById(`ucs-card-${key}`);
+            if (!el) return; // card isn't in the new pool (shouldn't happen) — skip
+            const now = el.getBoundingClientRect();
+            const old = oldRects[Number(key)];
+            const dx = (old.left - now.left) / scale, dy = (old.top - now.top) / scale;
+            if (!dx && !dy) return;
+            el.style.transition = 'none';
+            el.style.transform = `translate(${dx}px, ${dy}px)`;
+            void el.offsetWidth; // force reflow so the starting transform takes effect
+            requestAnimationFrame(() => {
+                el.style.transition = 'transform 2s ease';
+                el.style.transform = '';
+            });
+            setTimeout(() => { el.style.transition = ''; el.style.transform = ''; }, 2100);
+        });
     }
 
     /**
