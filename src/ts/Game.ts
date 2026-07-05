@@ -683,7 +683,7 @@ export class Game {
     }
 
     /** Lay every Draft Order card at its current-mode position (animated or snapped). */
-    private positionDraftOrder(animate: boolean) {
+    private positionDraftOrder(animate: boolean, durationSec = 0.5) {
         this.setupDraftOrderCards();
         const layer = this.draftOrderLayer();
         if (!layer) return;
@@ -702,7 +702,7 @@ export class Game {
             if (!t) { el.style.display = 'none'; return; }
             el.style.display = '';
             el.style.transition = animate
-                ? 'left .5s ease, top .5s ease, width .5s ease, height .5s ease'
+                ? `left ${durationSec}s ease, top ${durationSec}s ease, width ${durationSec}s ease, height ${durationSec}s ease`
                 : 'none';
             el.style.left = `${(t.left - lr.left) / scale}px`;
             el.style.top = `${(t.top - lr.top) / scale}px`;
@@ -736,9 +736,10 @@ export class Game {
 
     /** Drafting done: cards 2..N return to the stack; the "1" card parks by the leader for the next trick. */
     public parkDraftOrderAtLeader() {
-        this.beginDraftOrderAnim(600);
+        // ~2s to move in step with the Trade Area → Draft Pool slide (animateTradeToPool).
+        this.beginDraftOrderAnim(2100);
         this.draftOrderMode = 'leader';
-        this.positionDraftOrder(true);
+        this.positionDraftOrder(true, 2);
     }
 
     /** Tuck all Draft Order cards home (idle) — used by the round-end states so they don't linger. */
