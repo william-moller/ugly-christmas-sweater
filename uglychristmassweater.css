@@ -1044,11 +1044,15 @@ html {
 .ucs-draft-order {
   grid-column: 1;
   justify-self: end;
+  align-self: start;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 }
 
 .ucs-draftorder-home {
   width: calc(var(--ucs-card-w) + 24px);
-  height: calc(var(--ucs-card-h) + 24px);
+  height: calc(var(--ucs-card-h) + 10px);
 }
 
 .ucs-draftorder-card {

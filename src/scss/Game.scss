@@ -1102,11 +1102,17 @@ html {
 .ucs-draft-order {
     grid-column: 1;
     justify-self: end;
+    align-self: start; // hug the top of the (taller) params row so the stack sits under its label,
+                       // not centred down into the Draft Pool area
+    display: flex;
+    flex-direction: column;
+    align-items: center;
 }
 .ucs-draftorder-home {
-    // Card footprint + a little slack for the diagonal stack offset (Game.ts stacks by 5px per card).
+    // Reserves the stack's footprint under the label (Game.ts anchors the fixed cards to the label top
+    // and stacks them by 5px each). Height ≈ one card so the row isn't inflated.
     width: calc(var(--ucs-card-w) + 24px);
-    height: calc(var(--ucs-card-h) + 24px);
+    height: calc(var(--ucs-card-h) + 10px);
 }
 .ucs-draftorder-card {
     position: fixed;

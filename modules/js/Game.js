@@ -811,17 +811,22 @@ class Game {
             this.draftOrderEls.push(el);
         }
     }
-    /** Home (stack) rect for card k — a small diagonal stack centred over the reserved home box. */
+    /**
+     * Home (stack) rect for card k — a small diagonal stack under the "Draft Order" label. Anchored to
+     * the label's rect (reliably positioned) for the vertical, and centred in the reserved home box for
+     * the horizontal, so the stack always sits directly beneath its label regardless of row height.
+     */
     draftOrderHomeRect(k) {
-        const home = document.querySelector('#ucs-draft-order .ucs-draftorder-home');
-        if (!home)
+        const label = document.querySelector('#ucs-draft-order .ucs-zone-label');
+        const box = document.querySelector('#ucs-draft-order .ucs-draftorder-home');
+        if (!label || !box)
             return null;
-        const r = home.getBoundingClientRect();
+        const rl = label.getBoundingClientRect(), rb = box.getBoundingClientRect();
         const w = this.draftOrderCardW(), h = this.draftOrderCardH();
         const step = 5, span = step * (this.draftOrderCount() - 1);
         return {
-            left: r.left + (r.width - w - span) / 2 + step * (k - 1),
-            top: r.top + (r.height - h - span) / 2 + step * (k - 1),
+            left: rb.left + (rb.width - w - span) / 2 + step * (k - 1),
+            top: rl.bottom + 4 + step * (k - 1),
             w, h,
         };
     }
@@ -897,6 +902,8 @@ class Game {
     }
     /** Tuck all Draft Order cards home (idle) — used by the round-end states so they don't linger. */
     hideDraftOrder() {
+        // Forget the resolved order too, so the next round's opening leader shows no parked "1" card.
+        this.gamedatas.draftOrderCards = [];
         this.beginDraftOrderAnim(600);
         this.draftOrderMode = 'idle';
         this.positionDraftOrder(true);
@@ -916,15 +923,18 @@ class Game {
         if (this.draftOrderAnimating)
             return;
         const ids = (this.gamedatas.draftOrderCards ?? []).map(Number);
-        const sameDealt = mode === 'dealt'
+        // No trick has resolved yet this round → keep every card home. The opening leader doesn't need a
+        // Draft Order card parked on them to show they lead first (issue raised 2026-07-05).
+        const effective = (mode === 'leader' && ids.length === 0) ? 'idle' : mode;
+        const sameDealt = effective === 'dealt'
             && this.draftOrderMode === 'dealt'
             && ids.length === this.draftOrderCardIds.length
             && ids.every((v, i) => v === this.draftOrderCardIds[i]);
-        if (this.draftOrderMode === mode && (mode !== 'dealt' || sameDealt))
+        if (this.draftOrderMode === effective && (effective !== 'dealt' || sameDealt))
             return;
-        if (mode === 'dealt')
+        if (effective === 'dealt')
             this.draftOrderCardIds = ids;
-        this.draftOrderMode = mode;
+        this.draftOrderMode = effective;
         this.positionDraftOrder(false);
     }
     /** Express: the Fad-claim map (fadCardId -> {playerId, buildNo}), or empty outside Express. */

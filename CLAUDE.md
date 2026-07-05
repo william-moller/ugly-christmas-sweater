@@ -145,6 +145,15 @@ TypeScript + SCSS are **enabled**. Source lives in `src/ts/` and `src/scss/`; bu
 
 Edit **`src/`**, never the generated `modules/js/Game.js` / `uglychristmassweater.css` (overwritten on build). `node_modules/` is gitignored; `package-lock.json` is committed. State handlers go in `src/ts/States/*` and register in `src/ts/Game.ts`.
 
+## Current State (as of 2026-07-05)
+
+**Session 2026-07-05 — fixed two Draft Order card issues from the first table test. Client-only (`src/ts/Game.ts`, `src/scss/Game.scss`); builds clean (`rollup` + `sass`, exit 0); NOT yet SFTP-synced or re-tested.**
+
+- **(1) No "1" card parked on the opening leader at game/round start.** The spec parked the #1 card by the leader during every play phase, but at the very first trick (no draft resolved yet) that put a stray "1" in the starting player's Knitting Area — unwanted (a Draft Order card isn't needed to show the first player). `syncDraftOrder('leader')` now falls back to **idle** (all cards home) when `draftOrderCards` is empty, and `hideDraftOrder` clears `draftOrderCards`, so the parked #1 only appears **between tricks after a real resolution**, never at round/game start. (The lingering-#1-between-tricks behaviour is kept for now — Will is undecided on removing it entirely.)
+- **(2) Home stack rendered too low (down by the Draft Pool instead of under its label).** The `.ucs-draft-order` zone sat in the `align-items: center` params-row grid and stretched/centred within the tall row, pushing the reserved home box (and the fixed cards anchored to it) down. Fix: the zone now `align-self: start` + top-aligned flex column so it hugs the row top, and `draftOrderHomeRect` anchors the stack's **vertical to the label's rect** (reliably placed) rather than the reserved box — so the cards always sit directly under the "Draft Order" label.
+- **Still open (Will to decide):** whether to drop the lingering #1-at-leader between tricks entirely; plus the earlier flags (35% overhang onto the next card, 2P mapping).
+- **Verify on Studio:** game start shows all N cards home in the stack under the label (no #1 in anyone's Knitting Area); mid-round the #1 still parks by the leader between tricks; the stack sits neatly under its label (not down by the Draft Pool).
+
 ## Current State (as of 2026-07-04)
 
 **Session 2026-07-04 (later still) — added visual Draft Order cards (physical cards 1..N) that deal onto the Trade Area, then park by the leader. Server + client; both build clean (`build:ts` + `build:scss`, exit 0); PHP not lint/table-testable locally; NOT yet SFTP-synced or table-tested.**
