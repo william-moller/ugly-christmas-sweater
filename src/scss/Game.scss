@@ -763,13 +763,13 @@ html {
     border-style: dashed;
 }
 
-// The B (bottom / hem) piece is rotated 90° so its printed sweater art lines up with the L and R
-// pieces above it. Only applied in the knitting area (an assembled sweater) — pool/hand/trade show
-// cards upright. Rotating a portrait card leaves (cardH − cardW)/2 of empty box above and below the
+// The B (bottom / hem) piece is rotated 90° counter-clockwise so its printed sweater art lines up with
+// the L and R pieces above it. Only applied in the knitting area (an assembled sweater) — pool/hand/trade
+// show cards upright. Rotating a portrait card leaves (cardH − cardW)/2 of empty box above and below the
 // visible landscape card; negative vertical margins collapse that so the hem sits flush against L/R
 // (and no trailing gap remains below).
 .ucs-build .ucs-slot-B {
-    transform: rotate(90deg);
+    transform: rotate(-90deg);
     margin-top: calc((var(--ucs-card-w) - var(--ucs-card-h)) / 2);
     margin-bottom: calc((var(--ucs-card-w) - var(--ucs-card-h)) / 2);
 }

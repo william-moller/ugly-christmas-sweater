@@ -746,7 +746,7 @@ html {
 }
 
 .ucs-build .ucs-slot-B {
-  transform: rotate(90deg);
+  transform: rotate(-90deg);
   margin-top: calc((var(--ucs-card-w) - var(--ucs-card-h)) / 2);
   margin-bottom: calc((var(--ucs-card-w) - var(--ucs-card-h)) / 2);
 }
