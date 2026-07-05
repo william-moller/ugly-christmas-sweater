@@ -51,7 +51,8 @@ export class Game {
     // Round Parameters, deal out onto the ranked Trade Area cards while drafting, then return home —
     // except the "1" card, which parks by the leader between tricks. `draftOrderEls[k-1]` is card "k";
     // `draftOrderCardIds` is the current trick's trade-card ids in rank order (rank k → the k-th id).
-    private draftOrderEls: HTMLElement[] = [];
+    private draftOrderEls: HTMLElement[] = [];       // the N "home" cards — real flow children of the zone
+    private draftOrderClones: { [k: number]: HTMLElement } = {}; // overlay clones while a card is dealt/parked
     private draftOrderCardIds: number[] = [];
     private draftOrderMode: 'idle' | 'dealt' | 'leader' = 'idle';
     private draftOrderAnimating = false; // true while a deal/park transition is in flight (blocks snap)
@@ -621,41 +622,32 @@ export class Game {
         return layer;
     }
 
-    /** Create the N Draft Order card elements once (rebuilt if the count changed), inside the layer. */
+    /**
+     * Create the N "home" Draft Order cards as real flow children of the zone's home box (rebuilt if the
+     * count changed). They're absolutely positioned WITHIN that box (a small diagonal stack), so they
+     * always sit correctly inside the Draft Order area no matter how the surrounding grid reflows — no
+     * viewport-coordinate guessing for the resting position (that was fragile / per-view inconsistent).
+     */
     private setupDraftOrderCards() {
-        const layer = this.draftOrderLayer();
-        if (!layer) return;
+        const home = document.querySelector('#ucs-draft-order .ucs-draftorder-home') as HTMLElement | null;
+        if (!home) return;
         if (this.draftOrderEls.length === this.draftOrderCount() && this.draftOrderEls[0]?.isConnected) return;
         this.draftOrderEls.forEach((el) => el.remove());
         this.draftOrderEls = [];
+        const step = 5;
         for (let k = 1; k <= this.draftOrderCount(); k++) {
             const el = document.createElement('div');
-            el.className = 'ucs-draftorder-card';
+            el.className = 'ucs-draftorder-card ucs-draftorder-home-card';
             el.id = `ucs-draftcard-${k}`;
             el.innerHTML = `<span class="ucs-draftorder-num">${k}</span>`;
-            el.style.display = 'none';
-            layer.appendChild(el);
+            el.style.left = `${step * (k - 1)}px`;
+            el.style.top = `${step * (k - 1)}px`;
+            el.style.width = `${this.draftOrderCardW()}px`;
+            el.style.height = `${this.draftOrderCardH()}px`;
+            el.style.zIndex = String(k);
+            home.appendChild(el);
             this.draftOrderEls.push(el);
         }
-    }
-
-    /**
-     * Home (stack) rect for card k — a small diagonal stack under the "Draft Order" label. Anchored to
-     * the label's rect (reliably positioned) for the vertical, and centred in the reserved home box for
-     * the horizontal, so the stack always sits directly beneath its label regardless of row height.
-     */
-    private draftOrderHomeRect(k: number): { left: number; top: number; w: number; h: number } | null {
-        const label = document.querySelector('#ucs-draft-order .ucs-zone-label') as HTMLElement | null;
-        const box = document.querySelector('#ucs-draft-order .ucs-draftorder-home') as HTMLElement | null;
-        if (!label || !box) return null;
-        const rl = label.getBoundingClientRect(), rb = box.getBoundingClientRect();
-        const w = this.draftOrderCardW(), h = this.draftOrderCardH();
-        const step = 5, span = step * (this.draftOrderCount() - 1);
-        return {
-            left: rb.left + (rb.width - w - span) / 2 + step * (k - 1),
-            top: rl.bottom + 4 + step * (k - 1),
-            w, h,
-        };
     }
 
     /** Where the "1" card parks to show who leads the next trick — over the leader's player table. */
@@ -666,53 +658,88 @@ export class Game {
         return { left: r.left + 6, top: r.top + 6, w: this.draftOrderCardW(), h: this.draftOrderCardH() };
     }
 
-    /** Target rect for card k under the current mode (dealt onto a trade card / parked at leader / home). */
-    private draftOrderTargetRect(k: number): { left: number; top: number; w: number; h: number } | null {
-        const home = this.draftOrderHomeRect(k);
-        if (this.draftOrderMode === 'idle') return home;
-        if (this.draftOrderMode === 'leader') {
-            return k === 1 ? (this.leaderMarkerRect() ?? home) : home;
-        }
-        // dealt: sit directly BELOW the k-th ranked trade card (same x) so the played card's face stays
-        // fully visible; the Trade Area is expanded downward to frame this row (see ucs-trade-has-order).
+    /**
+     * Viewport rect where Draft Order card k should sit when it's OUT of the home stack (dealt below its
+     * ranked Trade Area card, or the "1" card parked at the leader). Returns null when the card belongs
+     * home — in which case the resting home card is shown and any clone animates back.
+     */
+    private draftOrderOutTarget(k: number): { left: number; top: number; w: number; h: number } | null {
+        if (this.draftOrderMode === 'idle') return null;
+        if (this.draftOrderMode === 'leader') return k === 1 ? this.leaderMarkerRect() : null;
+        // dealt: directly BELOW the k-th ranked trade card (same x); Trade Area expands to frame the row.
         const cardId = this.draftOrderCardIds[k - 1];
         const cardEl = cardId != null ? document.getElementById(`ucs-card-${cardId}`) : null;
-        if (!cardEl) return home; // e.g. 2P has 4 trade cards but only 2 order cards → extras stay home
+        if (!cardEl) return null; // e.g. 2P has 4 trade cards but only 2 order cards → extras stay home
         const r = cardEl.getBoundingClientRect();
         return { left: r.left, top: r.bottom + 6, w: r.width, h: r.height };
     }
 
-    /** Lay every Draft Order card at its current-mode position (animated or snapped). */
+    /** Place an overlay clone at a viewport rect, converted into the layer's internal coords (scale-aware). */
+    private setCloneRect(clone: HTMLElement, vp: { left: number; top: number },
+        lr: DOMRect, scale: number, animate: boolean, dur: number) {
+        clone.style.transition = animate ? `left ${dur}s ease, top ${dur}s ease` : 'none';
+        clone.style.left = `${(vp.left - lr.left) / scale}px`;
+        clone.style.top = `${(vp.top - lr.top) / scale}px`;
+        clone.style.width = `${this.draftOrderCardW()}px`;
+        clone.style.height = `${this.draftOrderCardH()}px`;
+    }
+
+    /**
+     * Position every Draft Order card for the current mode. Resting cards are the flow "home" cards
+     * (correct by construction); a card that's OUT is shown as an overlay clone animated from/to its home
+     * card's spot, so only the *animation* uses viewport coordinates (the resting position never does).
+     */
     private positionDraftOrder(animate: boolean, durationSec = 0.5) {
         this.setupDraftOrderCards();
         const layer = this.draftOrderLayer();
         if (!layer) return;
-        // Convert the (viewport) target rects into the layer's internal coordinates. `scale` accounts for
-        // any transform BGA applies to the game area; the layer and the targets share that transform, so
-        // the delta / scale lands the card exactly over its target regardless of scale or offset.
         const lr = layer.getBoundingClientRect();
         const scale = layer.offsetWidth ? lr.width / layer.offsetWidth : 1;
-        // Expand the Trade Area to reserve room for the Draft Order card row below the played cards
-        // (only while they're dealt there). padding-bottom doesn't move the played cards, so their rects
-        // stay valid for positioning below.
+        // Expand the Trade Area to reserve room for the Draft Order card row below the played cards.
         document.getElementById('ucs-trade-area')
             ?.classList.toggle('ucs-trade-has-order', this.draftOrderMode === 'dealt');
-        this.draftOrderEls.forEach((el, i) => {
-            const t = this.draftOrderTargetRect(i + 1);
-            if (!t) { el.style.display = 'none'; return; }
-            el.style.display = '';
-            el.style.transition = animate
-                ? `left ${durationSec}s ease, top ${durationSec}s ease, width ${durationSec}s ease, height ${durationSec}s ease`
-                : 'none';
-            el.style.left = `${(t.left - lr.left) / scale}px`;
-            el.style.top = `${(t.top - lr.top) / scale}px`;
-            // Always the internal card size (matches the tabletop cards); the target's viewport size would
-            // be scale-inflated. left/top already carry the 35% dealt offset baked in viewport terms.
-            el.style.width = `${this.draftOrderCardW()}px`;
-            el.style.height = `${this.draftOrderCardH()}px`;
-            el.classList.toggle('ucs-draftorder-out', this.draftOrderMode !== 'idle'
-                && !(this.draftOrderMode === 'leader' && i + 1 !== 1));
+        this.draftOrderEls.forEach((homeEl, i) => {
+            const k = i + 1;
+            const target = this.draftOrderOutTarget(k);
+            if (!target) {
+                this.returnDraftCloneHome(k, homeEl, lr, scale, animate, durationSec);
+            } else {
+                this.sendDraftClone(k, homeEl, target, layer, lr, scale, animate, durationSec);
+            }
         });
+    }
+
+    /** Show Draft Order card k OUT at `target` via an overlay clone; hide its home card. */
+    private sendDraftClone(k: number, homeEl: HTMLElement, target: { left: number; top: number },
+        layer: HTMLElement, lr: DOMRect, scale: number, animate: boolean, dur: number) {
+        let clone = this.draftOrderClones[k];
+        if (!clone) {
+            const start = homeEl.getBoundingClientRect(); // begin exactly where the home card sits
+            clone = document.createElement('div');
+            clone.className = 'ucs-draftorder-card ucs-draftorder-out';
+            clone.innerHTML = homeEl.innerHTML;
+            layer.appendChild(clone);
+            this.draftOrderClones[k] = clone;
+            this.setCloneRect(clone, start, lr, scale, false, dur);
+            void clone.offsetWidth; // reflow so the start position sticks before the transition
+            homeEl.style.visibility = 'hidden';
+        }
+        this.setCloneRect(clone, target, lr, scale, animate, dur);
+    }
+
+    /** Return Draft Order card k home: animate its clone back to the home card, then reveal the home card. */
+    private returnDraftCloneHome(k: number, homeEl: HTMLElement, lr: DOMRect, scale: number,
+        animate: boolean, dur: number) {
+        const clone = this.draftOrderClones[k];
+        if (!clone) { homeEl.style.visibility = ''; return; }
+        delete this.draftOrderClones[k];
+        const finish = () => { clone.remove(); homeEl.style.visibility = ''; };
+        if (!animate) { finish(); return; }
+        this.setCloneRect(clone, homeEl.getBoundingClientRect(), lr, scale, true, dur); // hidden el keeps layout
+        let done = false;
+        const end = () => { if (!done) { done = true; finish(); } };
+        clone.addEventListener('transitionend', end, { once: true });
+        setTimeout(end, dur * 1000 + 120); // fallback if transitionend doesn't fire
     }
 
     /**
