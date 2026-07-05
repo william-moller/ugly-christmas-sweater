@@ -1095,6 +1095,44 @@ html {
     justify-self: start;
 }
 
+// ---- Draft Order cards (physical cards 1..N marking pick order) ---------------------------------
+// The stack lives in the left track of the params row; the numbered cards themselves are position:fixed
+// elements (created in Game.ts) that fly out onto the Trade Area cards and back, so this zone only
+// reserves the "home" footprint they rest over between deals.
+.ucs-draft-order {
+    grid-column: 1;
+    justify-self: end;
+}
+.ucs-draftorder-home {
+    // Card footprint + a little slack for the diagonal stack offset (Game.ts stacks by 5px per card).
+    width: calc(var(--ucs-card-w) + 24px);
+    height: calc(var(--ucs-card-h) + 24px);
+}
+.ucs-draftorder-card {
+    position: fixed;
+    z-index: 50;
+    pointer-events: none; // purely a marker — never intercept clicks on the cards beneath
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #fff;                 // placeholder look until the real Draft Order art arrives
+    color: #111;
+    border: 2px solid #111;
+    border-radius: 6px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.35);
+    box-sizing: border-box;
+    // left / top / width / height are set inline by Game.ts; transition is toggled there per move.
+}
+.ucs-draftorder-card.ucs-draftorder-out {
+    // Lifted look while dealt onto a trade card or parked at the leader.
+    box-shadow: 0 5px 14px rgba(0, 0, 0, 0.5);
+}
+.ucs-draftorder-num {
+    font-weight: 900;
+    font-size: calc(var(--ucs-card-w) * 0.6);
+    line-height: 1;
+}
+
 // Secret Santa (my private objective card(s)) — rendered as a normal card turned 90°.
 .ucs-secret-santa .ucs-santa-cards {
     display: flex;

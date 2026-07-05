@@ -1041,6 +1041,41 @@ html {
   justify-self: start;
 }
 
+.ucs-draft-order {
+  grid-column: 1;
+  justify-self: end;
+}
+
+.ucs-draftorder-home {
+  width: calc(var(--ucs-card-w) + 24px);
+  height: calc(var(--ucs-card-h) + 24px);
+}
+
+.ucs-draftorder-card {
+  position: fixed;
+  z-index: 50;
+  pointer-events: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #fff;
+  color: #111;
+  border: 2px solid #111;
+  border-radius: 6px;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.35);
+  box-sizing: border-box;
+}
+
+.ucs-draftorder-card.ucs-draftorder-out {
+  box-shadow: 0 5px 14px rgba(0, 0, 0, 0.5);
+}
+
+.ucs-draftorder-num {
+  font-weight: 900;
+  font-size: calc(var(--ucs-card-w) * 0.6);
+  line-height: 1;
+}
+
 .ucs-secret-santa .ucs-santa-cards {
   display: flex;
   gap: 8px;

@@ -11,6 +11,7 @@ export class AssignPatches {
     }
 
     onEnteringState(args: AssignPatchesArgs, isCurrentPlayerActive: boolean) {
+        this.game.hideDraftOrder(); // round-end: the Draft Order cards go back to their stack
         if (!isCurrentPlayerActive) {
             return;
         }

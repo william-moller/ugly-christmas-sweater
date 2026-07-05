@@ -11,6 +11,7 @@ export class RoundReview {
     }
 
     onEnteringState(args: RoundReviewArgs, isCurrentPlayerActive: boolean) {
+        this.game.hideDraftOrder(); // between rounds: keep the Draft Order cards tucked in their stack
         this.game.showRoundReview(args, isCurrentPlayerActive, () => {
             this.bga.actions.performAction('actContinueRound', {});
         });

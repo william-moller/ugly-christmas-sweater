@@ -10,6 +10,9 @@ export class DraftCard {
     }
 
     onEnteringState(args: DraftCardArgs, isCurrentPlayerActive: boolean) {
+        // Every player (and an F5 reload) shows the Draft Order cards dealt onto the ranked Trade Area
+        // cards during the draft phase — before the active-player check so all seats see it.
+        this.game.syncDraftOrder('dealt');
         if (!isCurrentPlayerActive) {
             return;
         }

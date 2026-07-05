@@ -94,6 +94,7 @@ interface UglyChristmasSweaterGamedatas extends Gamedatas<UglyChristmasSweaterPl
     material: UcsMaterial;
     roundNo: number;
     leaderId: number;
+    draftOrderCards: number[];     // trade-card ids in rank order for the current trick (empty until resolved)
     express: boolean;              // true in the Express variant (single round, claimable Fads, etc.)
     totalRounds: number;           // 3 (Casual) or 1 (Express)
     isStudio: boolean;             // true only on the Studio environment (gates the DEBUG button)
@@ -162,7 +163,8 @@ interface NotifPatchAssigned {
 }
 
 interface NotifDraftOrder {
-    order: number[]; // player ids, best-first
+    order: number[];      // player ids, best-first
+    orderCards: number[]; // trade-area card ids in the same best-first rank order
 }
 
 interface NotifTrickCleanup {

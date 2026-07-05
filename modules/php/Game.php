@@ -175,6 +175,7 @@ class Game extends \Bga\GameFramework\Table
         $this->globals->set('leaderId', $playerIds[array_rand($playerIds)]); // random opening leader ("1" Draft card)
         $this->globals->set('trickIndex', 0);
         $this->globals->set('draftOrder', []);
+        $this->globals->set('draftOrderCards', []);
         $this->globals->set('draftIndex', 0);
 
         // --- Stats (defined in stats.jsonc) ---------------------------------------------------
@@ -298,8 +299,10 @@ class Game extends \Bga\GameFramework\Table
         // 5) Deal one Secret Santa per player (Casual). TODO: Avid variant deals 3 at game start.
         $this->dealSecretSantas();
 
-        // 6) Activate the leader to lead the first trick.
+        // 6) Activate the leader to lead the first trick. No trick has resolved yet this round, so the
+        //    Draft Order cards are unassigned (the leader just holds the "1" card).
         $this->globals->set('trickIndex', 0);
+        $this->globals->set('draftOrderCards', []);
         $this->gamestate->changeActivePlayer((int) $this->globals->get('leaderId'));
     }
 
@@ -482,6 +485,9 @@ class Game extends \Bga\GameFramework\Table
         // Round info.
         $result["roundNo"]     = (int) $this->globals->get('roundNo');
         $result["leaderId"]    = (int) $this->globals->get('leaderId');
+        // Ordered trade-card ids for the current trick's draft order (empty until a trick resolves) —
+        // lets the client restore the Draft Order cards onto the right cards after an F5 mid-draft.
+        $result["draftOrderCards"] = $this->globals->get('draftOrderCards') ?: [];
         $result["express"]     = $this->isExpress();
         $result["totalRounds"] = $this->totalRounds();
 
@@ -718,7 +724,11 @@ class Game extends \Bga\GameFramework\Table
         });
 
         $order = array_map(fn($c) => (int) $c['location_arg'], $trick); // location_arg = player who played
+        // The trade-area card ids in the same best-first rank order, so the client can lay the numbered
+        // Draft Order cards onto the exact card each rank corresponds to (see the client draft-order UI).
+        $orderCards = array_map(fn($c) => (int) $c['id'], $trick);
         $this->globals->set('draftOrder', $order);
+        $this->globals->set('draftOrderCards', $orderCards);
         $this->globals->set('draftIndex', 0);
         return $order;
     }

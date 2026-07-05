@@ -31,7 +31,10 @@ class ResolveTrick extends GameState
         $this->game->globals->set('draftIndex', 0);
 
         $this->notify->all('draftOrder', clienttranslate('Draft order determined'), [
-            'order' => $order,
+            'order'      => $order,
+            // The trade-area card ids in rank order, so the client lays Draft Order card #k onto the
+            // card ranked k-th (offset so the card's own top-left value/icon stays visible).
+            'orderCards' => $this->game->globals->get('draftOrderCards') ?: [],
         ]);
 
         $this->game->gamestate->changeActivePlayer($order[0]);

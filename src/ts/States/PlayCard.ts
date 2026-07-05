@@ -9,6 +9,9 @@ export class PlayCard {
     }
 
     onEnteringState(args: PlayCardArgs, isCurrentPlayerActive: boolean) {
+        // Every player (and an F5 reload) parks the "1" Draft Order card by the leader during the play
+        // phase — do this before the active-player check so spectators/opponents see it too.
+        this.game.syncDraftOrder('leader');
         if (!isCurrentPlayerActive) {
             return;
         }
