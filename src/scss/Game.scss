@@ -891,6 +891,14 @@ html {
 }
 
 #ucs-my-hand {
+    // Fill the row so the HandStock always measures a stable, wide box. The fanned cards are
+    // position:absolute (they add no width) and the pile beside us is absolute too, so without an
+    // explicit width this flex item shrinks to ~0 during the trick-end layout churn (refill + the
+    // floating/resize toggle). bga-cards' watchHandSize then reads that collapsed width and squeezes
+    // the whole fan into a tight overlapping stack. A definite width keeps the fan spread in every
+    // state. The library centres the fan within the holder, so this still matches the floating centre.
+    flex: 1 1 100%;
+    width: 100%;
     min-height: 186px;
 }
 

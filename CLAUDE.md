@@ -147,6 +147,15 @@ Edit **`src/`**, never the generated `modules/js/Game.js` / `uglychristmassweate
 
 ## Current State (as of 2026-07-04)
 
+**Session 2026-07-04 (later) — fixed the fanned hand collapsing into a tight stack at trick end. Client-only (`src/scss/Game.scss`); builds clean (`npm run build`, exit 0); NOT yet SFTP-synced or table-tested. Diagnosis is high-confidence but the bga-cards width logic is inferred from its `.d.ts` (the lib loads from BGA at runtime, no local source) — verify on Studio.**
+
+- **Symptom:** at the end of a trick, the active player's (a drafter's) fanned hand compressed into a nearly-fully-overlapped stack in the centre and stayed that way, instead of spreading. Seen right around the refill/draw step.
+- **Root cause:** `#ucs-my-hand` (the HandStock holder) had **no explicit width**. It's the only in-flow flex child of `#ucs-my-hand-row` (the draw pile beside it is `position:absolute`, out of flow), and the fanned cards are `position:absolute` too — so the holder shrinks to ~0 width. bga-cards' `HandStock` adapts its fan overlap to the measured holder width (`watchHandSize`/`lastHandWidth`/`minOverlap` in `bga-cards.d.ts`): a collapsed width → the whole fan squeezes to full overlap. The trick-end layout churn (refill + the floating/resize toggle from the 2026-07-03 note) triggers a re-measure at the collapsed moment and the fan stays stuck compressed.
+- **Fix:** give the holder a definite width — `#ucs-my-hand { flex: 1 1 100%; width: 100% }` — so `watchHandSize` always reads a stable, wide box and the fan keeps its natural 30% overlap. The library still centres the fan within the holder, so this matches the floating-centre from 2026-07-03 (no re-introduction of the left-jump). CSS-only; no JS/TS/PHP change.
+- **Verify on Studio:** play through several tricks; the active player's hand stays fanned/spread across the draft→cleanup→refill→lead transition (both when the pile still draws and when it's empty, "0 left"); the hand still centres (no left-jump) attached and floating, and scales on mobile. **If it still compresses,** the next lever is to disable the floating HandStock behaviour (or force a deferred `renderHand()` re-sync after cleanup) — the floating/resize toggle is the recurring culprit.
+
+## Current State (as of 2026-07-04)
+
 **Session 2026-07-04 — leading a trick with a Patch: copy source is now chosen by clicking the actual Draft Pool card. Client-only (`src/ts/Game.ts`, `src/scss/Game.scss`); builds clean (`npm run build`, exit 0); NOT yet SFTP-synced or table-tested.**
 
 - **Request:** a leading patch's copy options were only buttons in the top action row; the actual cards in the Draft Pool weren't clickable. First added clickable pool cards *in parallel* with the buttons, then (per follow-up) **removed the action-bar buttons** — clicking the pool card is now the only way to pick the copy source; the bar carries just the prompt + Cancel.
