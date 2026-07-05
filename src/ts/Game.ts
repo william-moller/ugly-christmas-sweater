@@ -15,6 +15,11 @@ export class Game {
     private playableIds: number[] = [];
     private onPlay: ((cardId: number, copyFromCardId: number) => void) | null = null;
     private selectedPlayId: number | null = null;
+    // Leading with a patch: the patch card awaiting a copy source, and the pool card chosen to copy.
+    // While patchCopyPatchId is set, the numbered Draft Pool cards render as clickable copy options
+    // (in parallel with the action-bar buttons in renderPatchCopyPanel). null = not choosing a copy.
+    private patchCopyPatchId: number | null = null;
+    private patchCopySourceId: number | null = null;
 
     // Drafting / placement selection state.
     private draftableIds: number[] = [];
@@ -381,10 +386,21 @@ export class Game {
         zone.innerHTML = `<div class="ucs-zone-label">Draft Pool</div>`;
         const row = document.createElement('div');
         row.className = 'ucs-card-row';
+        // While leading with a patch, the numbered pool cards are clickable copy sources (a patch can't
+        // copy another patch). Otherwise, during the Draft phase they're clickable draft picks.
+        const copying = this.patchCopyPatchId != null;
         this.cardArray(this.gamedatas.draftpool).forEach((card) => {
             const el = createCardElement(card, this.material);
             this.attachTooltip(el, card);
-            if (this.draftableIds.includes(Number(card.id))) {
+            if (copying) {
+                if (!isPatch(card, this.material)) {
+                    el.classList.add('ucs-selectable', 'ucs-copy-option');
+                    if (Number(card.id) === this.patchCopySourceId) {
+                        el.classList.add('ucs-chosen');
+                    }
+                    el.addEventListener('click', () => this.chooseCopySource(Number(card.id)));
+                }
+            } else if (this.draftableIds.includes(Number(card.id))) {
                 el.classList.add('ucs-selectable');
                 if (Number(card.id) === this.selectedDraftId) {
                     el.classList.add('ucs-chosen');
@@ -969,7 +985,7 @@ export class Game {
         this.cancelConfirm();
         this.playableIds = [];
         this.onPlay = null;
-        this.selectedPlayId = null;
+        this.clearPatchCopy();
         this.hidePanel();
         if (this.handStock) {
             this.handStock.setSelectionMode('none');
@@ -1010,7 +1026,7 @@ export class Game {
             },
             () => {
                 // Reset: clear the stock selection, back to choosing a card from hand.
-                this.selectedPlayId = null;
+                this.clearPatchCopy();
                 this.hidePanel();
                 this.handStock?.unselectAll(true);
                 this.bga.statusBar.setTitle(_('${you} must play a card'));
@@ -1086,20 +1102,43 @@ export class Game {
         const sb = this.bga.statusBar;
         sb.removeActionButtons();
 
+        // Enter copy mode: the numbered Draft Pool cards also become clickable copy sources.
+        this.patchCopyPatchId = cardId;
+        this.patchCopySourceId = null;
+        this.renderDraftPool();
+
         const sources = this.cardArray(this.gamedatas.draftpool).filter((c) => !isPatch(c, this.material));
-        sb.setTitle(_('Leading with a Patch — copy a draft-pool card\'s value & icon'));
+        sb.setTitle(_('Leading with a Patch — click a Draft Pool card (or a button) to copy its value & icon'));
         sources.forEach((c) => {
             const f = faceOf(c, this.material);
             const icon = f.icon ?? '?';
-            sb.addActionButton(`${f.color} ${f.value} · ${icon}`, () => this.completePlay(cardId, Number(c.id)), { color: 'primary' });
+            sb.addActionButton(`${f.color} ${f.value} · ${icon}`, () => this.chooseCopySource(Number(c.id)), { color: 'primary' });
         });
 
         sb.addActionButton(_('Cancel'), () => {
-            this.selectedPlayId = null;
+            this.clearPatchCopy();
             sb.removeActionButtons();
             sb.setTitle(_('${you} must play a card'));
             this.handStock?.unselectAll(true);
         }, { color: 'alert' });
+    }
+
+    /** A copy source (numbered pool card or its action-bar button) was chosen for the leading patch. */
+    private chooseCopySource(sourceId: number) {
+        const patchId = this.patchCopyPatchId;
+        if (patchId == null) return;
+        this.patchCopySourceId = sourceId; // highlight the chosen pool card while confirming
+        this.renderDraftPool();
+        this.completePlay(patchId, sourceId);
+    }
+
+    /** Leave patch-copy mode (chosen, cancelled, or state left) and drop the pool's copy highlighting. */
+    private clearPatchCopy() {
+        this.selectedPlayId = null;
+        if (this.patchCopyPatchId == null && this.patchCopySourceId == null) return;
+        this.patchCopyPatchId = null;
+        this.patchCopySourceId = null;
+        this.renderDraftPool();
     }
 
     /** Hide and clear the shared placement / patch-copy panel and any status-bar action buttons. */

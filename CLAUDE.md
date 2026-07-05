@@ -145,6 +145,15 @@ TypeScript + SCSS are **enabled**. Source lives in `src/ts/` and `src/scss/`; bu
 
 Edit **`src/`**, never the generated `modules/js/Game.js` / `uglychristmassweater.css` (overwritten on build). `node_modules/` is gitignored; `package-lock.json` is committed. State handlers go in `src/ts/States/*` and register in `src/ts/Game.ts`.
 
+## Current State (as of 2026-07-04)
+
+**Session 2026-07-04 — leading a trick with a Patch: the Draft Pool cards are now clickable copy sources, in parallel with the existing action-bar buttons. Client-only (`src/ts/Game.ts`, `src/scss/Game.scss`); builds clean (`npm run build`, exit 0); NOT yet SFTP-synced or table-tested.**
+
+- **Symptom/request:** when a leading patch's copy options were only offered as buttons in the top action row; the actual cards in the Draft Pool weren't clickable. Now clicking a numbered pool card selects it as the copy source too.
+- **Implementation:** two new fields on `Game` — `patchCopyPatchId` (the leading patch awaiting a copy source) and `patchCopySourceId` (the chosen pool card, for highlight). `renderPatchCopyPanel` now sets `patchCopyPatchId` and re-renders the pool; `renderDraftPool` branches on "copy mode" to make every **non-patch** pool card clickable (`ucs-selectable ucs-copy-option`, chosen one gets `ucs-chosen`). Both the pool-card click and the action-bar button route through the shared new `chooseCopySource(sourceId)` → `completePlay(patchId, sourceId)` (unchanged Confirm/Reset gate + `actPlayCard` payload). New `clearPatchCopy()` exits copy mode + drops the highlighting, called on Confirm-submit path (via `disablePlayable`), Reset, Cancel, and state leave.
+- **SCSS:** `.ucs-copy-option` tints the selectable glow **cyan** (vs the yellow "draft pick" language) so a copy source reads distinctly; the two modes never co-occur (copy = Trade phase, draft = Draft phase).
+- **Verify on Studio:** lead a trick with a patch — the numbered Draft Pool cards glow cyan and are clickable (patches in the pool are not); clicking one (or an action-bar button) picks it (green), then Confirm/Reset/Cancel behave as before and the played patch copies that card's value+icon for trick resolution. Confirm-pref Off = immediate; re-clicking a different pool card during the confirm gate changes the pick.
+
 ## Current State (as of 2026-07-03)
 
 **Session 2026-07-03 — fixed the hand jumping left vs. centred between turns. Client-only (`src/scss/Game.scss`); builds clean (`npm run build`, exit 0); NOT yet SFTP-synced or table-tested.**

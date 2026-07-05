@@ -421,6 +421,13 @@ html {
   transform: translateY(-6px);
 }
 
+.ucs-copy-option:not(.ucs-chosen) {
+  outline-color: #38c6d9;
+}
+.ucs-copy-option:not(.ucs-chosen):hover {
+  box-shadow: 0 0 0 3px #7fe3ef, 0 6px 16px 6px rgba(56, 198, 217, 0.9);
+}
+
 #ucs-placement {
   background: rgba(46, 204, 113, 0.1);
   border: 1px solid rgba(46, 204, 113, 0.5);

@@ -434,6 +434,15 @@ html {
     transform: translateY(-6px);
 }
 
+// A Draft Pool card offered as a copy source for a leading Patch — cyan glow to read as "copy",
+// distinct from the yellow "draft pick" language (the two never appear at the same time).
+.ucs-copy-option:not(.ucs-chosen) {
+    outline-color: #38c6d9;
+    &:hover {
+        box-shadow: 0 0 0 3px #7fe3ef, 0 6px 16px 6px rgba(56, 198, 217, 0.9);
+    }
+}
+
 // ---- Placement panel (choose build / patch value+icon+orientation when drafting) ----
 
 #ucs-placement {
