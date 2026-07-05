@@ -871,13 +871,14 @@ class Game {
         if (this.draftOrderMode === 'leader') {
             return k === 1 ? (this.leaderMarkerRect() ?? home) : home;
         }
-        // dealt: sit on the k-th ranked trade card, shifted right 35% so its own top-left stays visible.
+        // dealt: sit directly BELOW the k-th ranked trade card (same x) so the played card's face stays
+        // fully visible; the Trade Area is expanded downward to frame this row (see ucs-trade-has-order).
         const cardId = this.draftOrderCardIds[k - 1];
         const cardEl = cardId != null ? document.getElementById(`ucs-card-${cardId}`) : null;
         if (!cardEl)
             return home; // e.g. 2P has 4 trade cards but only 2 order cards → extras stay home
         const r = cardEl.getBoundingClientRect();
-        return { left: r.left + r.width * 0.35, top: r.top, w: r.width, h: r.height };
+        return { left: r.left, top: r.bottom + 6, w: r.width, h: r.height };
     }
     /** Lay every Draft Order card at its current-mode position (animated or snapped). */
     positionDraftOrder(animate) {
@@ -890,6 +891,11 @@ class Game {
         // the delta / scale lands the card exactly over its target regardless of scale or offset.
         const lr = layer.getBoundingClientRect();
         const scale = layer.offsetWidth ? lr.width / layer.offsetWidth : 1;
+        // Expand the Trade Area to reserve room for the Draft Order card row below the played cards
+        // (only while they're dealt there). padding-bottom doesn't move the played cards, so their rects
+        // stay valid for positioning below.
+        document.getElementById('ucs-trade-area')
+            ?.classList.toggle('ucs-trade-has-order', this.draftOrderMode === 'dealt');
         this.draftOrderEls.forEach((el, i) => {
             const t = this.draftOrderTargetRect(i + 1);
             if (!t) {

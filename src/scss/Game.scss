@@ -862,6 +862,11 @@ html {
 #ucs-trade-area {
     border: 3px solid #000;
 }
+// While the Draft Order cards are dealt, reserve room below the played cards for their row (the cards
+// themselves are positioned by Game.ts in the #ucs-draftorder-layer overlay; this just grows the frame).
+#ucs-trade-area.ucs-trade-has-order {
+    padding-bottom: calc(var(--ucs-card-h) + 14px);
+}
 
 // A Trade Area card captioned with who played it this trick (label not carried into the pool).
 .ucs-trade-card {

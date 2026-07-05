@@ -833,6 +833,10 @@ html {
   border: 3px solid #000;
 }
 
+#ucs-trade-area.ucs-trade-has-order {
+  padding-bottom: calc(var(--ucs-card-h) + 14px);
+}
+
 .ucs-trade-card {
   display: flex;
   flex-direction: column;

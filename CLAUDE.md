@@ -147,6 +147,8 @@ Edit **`src/`**, never the generated `modules/js/Game.js` / `uglychristmassweate
 
 ## Current State (as of 2026-07-05)
 
+**Session 2026-07-05 (later) — Draft Order cards now deal BELOW the played cards instead of over them. Client-only (`src/ts/Game.ts`, `src/scss/Game.scss`); builds clean; NOT yet SFTP-synced.** The 35%-right overlap was replaced: the dealt target is now `left = tradeCard.left, top = tradeCard.bottom + 6` (directly under each played card, same x, so the face stays fully visible). The Trade Area frame grows to fit them via a `ucs-trade-has-order` class (toggled in `positionDraftOrder` when mode==='dealt') that adds `padding-bottom: calc(var(--ucs-card-h) + 14px)` — padding-bottom doesn't move the played cards, so their rects stay valid for positioning below. Resolves the earlier "35% overhang" flag.
+
 **Session 2026-07-05 — fixed two Draft Order card issues from the first table test. Client-only (`src/ts/Game.ts`, `src/scss/Game.scss`); builds clean (`rollup` + `sass`, exit 0); NOT yet SFTP-synced or re-tested.**
 
 - **(1) No "1" card parked on the opening leader at game/round start.** The spec parked the #1 card by the leader during every play phase, but at the very first trick (no draft resolved yet) that put a stray "1" in the starting player's Knitting Area — unwanted (a Draft Order card isn't needed to show the first player). `syncDraftOrder('leader')` now falls back to **idle** (all cards home) when `draftOrderCards` is empty, and `hideDraftOrder` clears `draftOrderCards`, so the parked #1 only appears **between tricks after a real resolution**, never at round/game start. (The lingering-#1-between-tricks behaviour is kept for now — Will is undecided on removing it entirely.)
