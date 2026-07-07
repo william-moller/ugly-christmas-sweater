@@ -305,9 +305,11 @@ class Game {
                     <div id="ucs-my-area" class="ucs-zone"></div>
                     <div id="ucs-center-stack">
                         <div id="ucs-params-row">
-                            <div id="ucs-draft-order" class="ucs-zone ucs-draft-order"></div>
                             <div id="ucs-gameplay" class="ucs-zone"></div>
-                            <div id="ucs-secret-santa" class="ucs-zone ucs-secret-santa" style="display:none"></div>
+                            <div id="ucs-params-right">
+                                <div id="ucs-draft-order" class="ucs-zone ucs-draft-order"></div>
+                                <div id="ucs-secret-santa" class="ucs-zone ucs-secret-santa" style="display:none"></div>
+                            </div>
                         </div>
                         <div id="ucs-draft-pool" class="ucs-zone"></div>
                         <div id="ucs-trade-area" class="ucs-zone"></div>
@@ -443,6 +445,9 @@ class Game {
             // shows, so the whole hand (incl. the top-left value/orientation/icon) stays readable.
             cardOverlap: 30,
             emptyHandMessage: _('Hand is empty'),
+            // Lift the floating (position:fixed) hand above the Draft Order overlay (z-index 50) so the
+            // dealt rank cards never paint over the player's fanned hand. Stays below the popin (1000).
+            floatZIndex: 100,
             // Keep the fan sorted (colour then value) so a card drawn on refill slides into its correct
             // position rather than tacking onto the end — see notif_handUpdate's incremental addCards.
             sort: this.handSort.bind(this),
@@ -700,7 +705,10 @@ class Game {
     renderPiles() {
         const my = document.getElementById('ucs-my-pile');
         if (my) {
-            const n = this.gamedatas.counts?.[this.myId]?.pile ?? 0;
+            // Coerce to a number: the pile count arrives from the PHP Deck component as a STRING
+            // ("0"), and a non-empty string is truthy — so an exhausted pile would otherwise fall into
+            // the card-back "0 left" branch instead of collapsing to empty.
+            const n = Number(this.gamedatas.counts?.[this.myId]?.pile ?? 0);
             my.innerHTML = n
                 ? `<div class="ucs-pile-card ucs-card-back"></div><div class="ucs-pile-count">${n} ${_('left')}</div>`
                 : `<div class="ucs-pile-card ucs-pile-empty"></div><div class="ucs-pile-count ucs-pile-count-empty">${_('empty')}</div>`;
@@ -712,8 +720,8 @@ class Game {
             const el = document.getElementById(`ucs-pile-${pid}`);
             if (!el)
                 return;
-            const n = this.gamedatas.counts?.[pid]?.pile ?? 0;
-            // No count text for opponents (per design) — just the pile presence.
+            const n = Number(this.gamedatas.counts?.[pid]?.pile ?? 0); // string "0" is truthy — coerce
+            // No count text for opponents (per design) — just the pile presence; empty → collapse away.
             el.innerHTML = n ? `<div class="ucs-pile-card ucs-card-back"></div>` : '';
         });
     }
@@ -1200,8 +1208,10 @@ class Game {
                 chip.textContent = fad?.title ?? _('Fad');
                 build.appendChild(chip);
             }
-            // A live VP counter on each of MY sweaters (public info; shown only in my own area).
-            if (playerId === this.myId) {
+            // A live VP counter on each sweater (public info). Always shown in my own area; for an
+            // opponent it's shown in the enlarged click-to-view popin (targetEl set), not the small
+            // inline read-out (that path uses renderKnittingCompact and returns earlier).
+            if (playerId === this.myId || targetEl != null) {
                 const badge = document.createElement('div');
                 badge.className = 'ucs-build-score';
                 badge.textContent = `${this.buildPublicScore(builds[buildNo], playerId, buildNo)} VP`;

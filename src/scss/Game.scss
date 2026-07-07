@@ -894,6 +894,11 @@ html {
 #ucs-my-hand-wrap {
     --ucs-card-w: 96px;
     --ucs-card-h: 135px;
+    // Keep the (attached) hand painting above the Draft Order overlay (#ucs-draftorder-layer, z-index 50)
+    // so the dealt rank cards sit BEHIND the fanned hand where they overlap. The floating hand is lifted
+    // separately via the HandStock `floatZIndex` option in Game.ts. Stays below the popin (z-index 1000).
+    position: relative;
+    z-index: 100;
 }
 
 #ucs-my-hand {
@@ -1082,34 +1087,30 @@ html {
     pointer-events: none;
 }
 
-// Round Parameters (centred) with the turned Secret Santa card tucked to their right. A 3-track grid
-// (1fr · auto · 1fr) keeps the gameplay cards page-centred while the Secret Santa sits off to the
-// side without shoving them off-centre; the empty first track balances the third.
+// Round Parameters (the Gameplay cards) with a right-hand column holding the Draft Order stack ABOVE
+// the turned Secret Santa card. Dropping the old empty left balancing track saves horizontal width on
+// smaller monitors; the gameplay + right column centre as a group (gameplay reads slightly left of the
+// true page centre, which is fine — the Draft Pool/Trade Area below stay centred in the stack).
 #ucs-params-row {
-    align-self: stretch; // span the centre stack so the middle track is the true centre
-    display: grid;
-    grid-template-columns: 1fr auto 1fr;
+    align-self: center;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start; // let the right column ride up under its own labels
+    gap: 14px;
+}
+// Right column: Draft Order stack on top, Secret Santa beneath it.
+#ucs-params-right {
+    display: flex;
+    flex-direction: column;
     align-items: center;
     gap: 10px;
 }
-#ucs-gameplay {
-    grid-column: 2;
-    justify-self: center;
-}
-.ucs-secret-santa {
-    grid-column: 3;
-    justify-self: start;
-}
 
 // ---- Draft Order cards (physical cards 1..N marking pick order) ---------------------------------
-// The stack lives in the left track of the params row; the numbered cards themselves are position:fixed
-// elements (created in Game.ts) that fly out onto the Trade Area cards and back, so this zone only
-// reserves the "home" footprint they rest over between deals.
+// The stack lives at the top of the params row's right column (above Secret Santa); the numbered cards
+// themselves are overlay clones (created in Game.ts) that fly out onto the Trade Area cards and back, so
+// this zone only reserves the "home" footprint they rest over between deals.
 .ucs-draft-order {
-    grid-column: 1;
-    justify-self: end;
-    align-self: start; // hug the top of the (taller) params row so the stack sits under its label,
-                       // not centred down into the Draft Pool area
     display: flex;
     flex-direction: column;
     align-items: center;

@@ -857,6 +857,8 @@ html {
 #ucs-my-hand-wrap {
   --ucs-card-w: 96px;
   --ucs-card-h: 135px;
+  position: relative;
+  z-index: 100;
 }
 
 #ucs-my-hand {
@@ -1029,27 +1031,21 @@ html {
 }
 
 #ucs-params-row {
-  align-self: stretch;
-  display: grid;
-  grid-template-columns: 1fr auto 1fr;
+  align-self: center;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  gap: 14px;
+}
+
+#ucs-params-right {
+  display: flex;
+  flex-direction: column;
   align-items: center;
   gap: 10px;
 }
 
-#ucs-gameplay {
-  grid-column: 2;
-  justify-self: center;
-}
-
-.ucs-secret-santa {
-  grid-column: 3;
-  justify-self: start;
-}
-
 .ucs-draft-order {
-  grid-column: 1;
-  justify-self: end;
-  align-self: start;
   display: flex;
   flex-direction: column;
   align-items: center;
