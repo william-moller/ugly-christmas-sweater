@@ -547,8 +547,10 @@ class Game extends \Bga\GameFramework\Table
         $counts = [];
         foreach (array_keys($this->loadPlayersBasicInfos()) as $pid) {
             $counts[$pid] = [
-                'hand' => $this->cards->countCardInLocation(self::LOC_HAND, (int) $pid),
-                'pile' => $this->cards->countCardInLocation($this->pileLoc((int) $pid)),
+                // Cast to int: the Deck component returns counts as strings, and a "0" is truthy on
+                // the client — an exhausted pile must serialise as JSON 0 so the UI collapses it to empty.
+                'hand' => (int) $this->cards->countCardInLocation(self::LOC_HAND, (int) $pid),
+                'pile' => (int) $this->cards->countCardInLocation($this->pileLoc((int) $pid)),
             ];
         }
         return $counts;
