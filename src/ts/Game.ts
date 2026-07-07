@@ -1734,44 +1734,136 @@ export class Game {
     // ===================================================================================
 
     /**
-     * Show the round's scoring summary and, for an active player, a Continue button. Rendered from the
-     * state args so it survives a page refresh. Clicking Continue acknowledges and waits for the others.
+     * Show the end-of-round scoring summary as a modal overlay (like the opponent-knitting popin), to
+     * EVERY player simultaneously (RoundReview makes everyone active). Per player: each started sweater
+     * (complete or not) with its per-component breakdown, plus their revealed Secret Santa(s) yes/no. The
+     * Okay button acknowledges — once all players click, the next round deals. Rendered from the state
+     * args, so it survives a refresh. A player who already acknowledged (non-active, e.g. F5 while
+     * waiting) doesn't see it again.
      */
-    public showRoundReview(args: RoundReviewArgs, isCurrentPlayerActive: boolean, onContinue: () => void) {
-        this.renderRoundResult(args);
-        const sb = this.bga.statusBar;
-        sb.removeActionButtons();
-        if (isCurrentPlayerActive) {
-            sb.addActionButton(_('Continue'), () => {
-                sb.removeActionButtons();
-                sb.setTitle(_('Waiting for other players…'));
-                onContinue();
-            }, { color: 'primary' });
-        }
+    public showRoundReview(detail: RoundReviewArgs, isCurrentPlayerActive: boolean, onContinue: () => void) {
+        if (!isCurrentPlayerActive) { this.hideRoundSummary(); return; }
+        this.bga.statusBar.removeActionButtons();
+        this.renderRoundSummary(detail, () => {
+            this.hideRoundSummary();
+            this.bga.statusBar.setTitle(_('Waiting for other players…'));
+            onContinue();
+        });
     }
 
-    /** Tear down the round-review screen when leaving the state (next round is about to be dealt). */
+    /** Tear down the summary overlay when leaving RoundReview (next round is about to be dealt). */
     public endRoundReview() {
         this.bga.statusBar.removeActionButtons();
-        document.getElementById('ucs-round-result')?.remove();
+        this.hideRoundSummary();
     }
 
-    /** Render (or replace) the between-round results panel from a round summary. */
-    private renderRoundResult(args: RoundReviewArgs) {
-        document.getElementById('ucs-round-result')?.remove();
-        const rows = (args.breakdown || []).map((b) =>
-            `<tr><td class="ucs-rr-name">${b.player_name}</td>`
-            + `<td>${b.sweaters}</td><td>${b.runs}</td><td class="ucs-rr-score">${b.score}</td></tr>`
-        ).join('');
-        const html = `
-            <div id="ucs-round-result" class="ucs-zone">
-                <div class="ucs-zone-label">${_('Round')} ${args.round} — ${_('results')}</div>
-                <table class="ucs-result-table">
-                    <tr><th>${_('Player')}</th><th>${_('Sweaters')}</th><th>${_('Runs')}</th><th>${_('Total')}</th></tr>
-                    ${rows}
-                </table>
-            </div>`;
-        this.bga.gameArea.getElement().insertAdjacentHTML('beforeend', html);
+    private hideRoundSummary() {
+        document.getElementById('ucs-score-popin')?.remove();
+    }
+
+    /**
+     * Build the scoring-summary modal. `onOkay` (if given) wires the Okay button; without it the button
+     * just closes the overlay (used for the final round, which has no RoundReview acknowledgement gate).
+     */
+    private renderRoundSummary(detail: RoundScoreDetail, onOkay?: () => void) {
+        this.hideRoundSummary();
+        const overlay = document.createElement('div');
+        overlay.id = 'ucs-score-popin';
+        overlay.className = 'ucs-popin ucs-score-popin';
+
+        const backdrop = document.createElement('div');
+        backdrop.className = 'ucs-popin-backdrop';
+        overlay.appendChild(backdrop);
+
+        const box = document.createElement('div');
+        box.className = 'ucs-popin-box ucs-score-box';
+        const fadTitle = detail.fad?.title ? ` · ${_('Fad')}: ${detail.fad.title}` : '';
+        box.innerHTML = `<div class="ucs-popin-head"><span>${_('Round')} ${detail.round} — ${_('Scoring')}${fadTitle}</span></div>`;
+
+        const body = document.createElement('div');
+        body.className = 'ucs-score-body';
+        (detail.players || []).forEach((p) => body.appendChild(this.renderScorePlayer(p)));
+        box.appendChild(body);
+
+        const foot = document.createElement('div');
+        foot.className = 'ucs-score-foot';
+        const okay = document.createElement('button');
+        okay.className = 'ucs-score-okay';
+        okay.textContent = _('Okay');
+        okay.onclick = () => { if (onOkay) onOkay(); else this.hideRoundSummary(); };
+        foot.appendChild(okay);
+        box.appendChild(foot);
+
+        overlay.appendChild(box);
+        this.bga.gameArea.getElement().appendChild(overlay);
+    }
+
+    /** One player's block in the scoring summary: their sweaters' breakdowns + Secret Santa result(s). */
+    private renderScorePlayer(p: PlayerScoreDetail): HTMLElement {
+        const el = document.createElement('div');
+        el.className = 'ucs-score-player';
+        el.style.setProperty('--player-color', p.color ? `#${p.color}` : '#888');
+
+        el.insertAdjacentHTML('beforeend',
+            `<div class="ucs-score-pname"><span class="ucs-score-pn">${p.player_name}</span>`
+            + `<span class="ucs-score-ptot">${_('Total')}: ${p.score} <small>(+${p.roundTotal})</small></span></div>`);
+
+        const sweaters = document.createElement('div');
+        sweaters.className = 'ucs-score-sweaters';
+        if (!p.sweaters.length) sweaters.innerHTML = `<div class="ucs-empty">${_('No sweaters')}</div>`;
+        p.sweaters.forEach((s) => sweaters.appendChild(this.renderScoreSweater(s)));
+        el.appendChild(sweaters);
+
+        (p.secretSantas || []).forEach((ss) => {
+            const yn = ss.satisfied ? _('Yes') : _('No');
+            el.insertAdjacentHTML('beforeend',
+                `<div class="ucs-score-santa ${ss.satisfied ? 'ucs-santa-yes' : 'ucs-santa-no'}">`
+                + `<span class="ucs-santa-label">${_('Secret Santa')}: ${ss.name}</span>`
+                + `<span class="ucs-santa-res">${yn} (+${ss.points})</span></div>`);
+        });
+        return el;
+    }
+
+    /** A single sweater in the summary: mini silhouette + its scoring lines; gold-bordered if it meets SS. */
+    private renderScoreSweater(s: SweaterScore): HTMLElement {
+        const wrap = document.createElement('div');
+        wrap.className = 'ucs-score-sweater' + (s.ss ? ' ucs-ss-gold' : '');
+
+        const build = document.createElement('div');
+        build.className = 'ucs-build ucs-score-build';
+        if (s.complete) build.classList.add('ucs-build-complete');
+        const filled = new Set<string>();
+        (s.cards || []).forEach((card) => {
+            const el = createCardElement(card, this.material);
+            const slot = (card.slot as string) ?? faceOf(card, this.material).slot ?? null;
+            if (slot) { el.style.gridArea = slot; el.classList.add(`ucs-slot-${slot}`); filled.add(slot); }
+            else el.classList.add('ucs-floating');
+            build.appendChild(el);
+        });
+        if (filled.size > 0) {
+            (['L', 'R', 'B'] as const).forEach((sl) => { if (!filled.has(sl)) build.appendChild(this.makeEmptySlot(sl)); });
+        }
+        wrap.appendChild(build);
+
+        const lines = document.createElement('ul');
+        lines.className = 'ucs-score-lines';
+        const li = (txt: string, cls = '') => {
+            const l = document.createElement('li');
+            if (cls) l.className = cls;
+            l.textContent = txt;
+            lines.appendChild(l);
+        };
+        if (!s.complete) {
+            li(_('Incomplete — 0'), 'ucs-line-zero');
+        } else {
+            li(`${_('Completed')} +${s.parts.build}`);
+            if (s.parts.run) li(`${_('Consecutive values')} +${s.parts.run}`);
+            if (s.parts.fad) li(`${_('Fad')} +${s.parts.fad}`);
+            if (s.parts.nonfad) li(`${_('All one colour/icon')} +${s.parts.nonfad}`);
+        }
+        li(`${_('Sweater total')}: ${s.total}`, 'ucs-line-total');
+        wrap.appendChild(lines);
+        return wrap;
     }
 
     // ===================================================================================
@@ -1962,14 +2054,16 @@ export class Game {
     }
 
     /**
-     * A round was scored. The clienttranslate message auto-logs; the review panel itself is rendered
-     * from the RoundReview state args (refresh-safe), but render it here too so the summary appears the
-     * instant scoring resolves (also covers the final round, which has no RoundReview state).
+     * A round was scored. Non-final rounds show the scoring-summary overlay from the RoundReview state
+     * (all players, Okay = acknowledge → next round). The FINAL round has no RoundReview state, so show
+     * the summary here with a close-only Okay before the game moves to the end screen.
      */
     async notif_roundScored(args: NotifRoundScored) {
-        // The draft phase is over and we're moving to the next round — the "last trick" banner is spent.
+        // The draft phase is over and we're moving on — the "last trick" banner is spent.
         this.showHandEndBanner(false);
-        this.renderRoundResult(args);
+        if (args.round >= this.gamedatas.totalRounds) {
+            this.renderRoundSummary(args); // final round: no acknowledgement gate, Okay just closes it
+        }
     }
 
     /** The hand's end was triggered mid-draft (a player completed their Nth sweater): show the banner

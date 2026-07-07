@@ -33,7 +33,7 @@ class RoundReview extends GameState
     /** Re-served on refresh so the review screen (built from the stashed summary) survives an F5. */
     public function getArgs(): array
     {
-        return (array) ($this->game->globals->get('roundResult') ?? ['round' => 0, 'breakdown' => []]);
+        return (array) ($this->game->globals->get('roundResult') ?? ['round' => 0, 'players' => []]);
     }
 
     #[PossibleAction]

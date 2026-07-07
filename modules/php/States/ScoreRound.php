@@ -22,16 +22,14 @@ class ScoreRound extends GameState
 
         $round = (int) $this->game->globals->get('roundNo');
 
-        // Per-player summary of the round just played (built while the round's knitting builds are
-        // still in place). Stashed in globals so the review screen survives a page refresh (it is
-        // re-served via RoundReview::getArgs), and sent now for the immediate render + log line.
-        $breakdown = $this->game->roundBreakdown();
-        $this->game->globals->set('roundResult', ['round' => $round, 'breakdown' => $breakdown]);
+        // Full per-player, per-sweater scoring detail for the summary overlay (built while the round's
+        // knitting builds are still in place, after patches are assigned). Stashed in globals so the
+        // review screen survives a page refresh (re-served via RoundReview::getArgs), and sent now for
+        // the immediate render + the round-scored log line.
+        $detail = $this->game->roundScoreDetail();
+        $this->game->globals->set('roundResult', $detail);
 
-        $this->notify->all('roundScored', clienttranslate('Round ${round} scored'), [
-            'round'     => $round,
-            'breakdown' => $breakdown,
-        ]);
+        $this->notify->all('roundScored', clienttranslate('Round ${round} scored'), $detail);
 
         // After the final round, end the game (Express: after its single round). Otherwise pause on a
         // shared round-review screen — every player clicks Continue before the next round is dealt.

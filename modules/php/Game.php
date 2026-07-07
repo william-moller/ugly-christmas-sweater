@@ -1337,34 +1337,27 @@ class Game extends \Bga\GameFramework\Table
             if ($s['runs'] > 0)     $this->playerStats->inc('runs_scored',  $s['runs'],     (int) $pid);
         }
 
-        // TODO: foreach player, add VP_SECRET_SANTA per completed sweater satisfying their Secret Santa
-        //       (and inc the 'secret_santas' / 'fad_objectives' stats once that scoring is finalised).
-        $this->globals->set('appliedPublic', '[]');
-    }
-
-    /**
-     * Per-player summary of the round just played, for the between-round review screen (see the
-     * RoundReview state). Must be called while the round's knitting builds are still in place (i.e. in
-     * ScoreRound, before NewRound wipes them). `score` is the cumulative total after this round's
-     * public + Secret-Santa points have been applied.
-     *
-     * @return list<array{player_id:int,player_name:string,sweaters:int,runs:int,score:int}>
-     */
-    public function roundBreakdown(): array
-    {
-        $scores = $this->getCollectionFromDb("SELECT `player_id`, `player_score` FROM `player`");
-        $rows = [];
-        foreach ($this->loadPlayersBasicInfos() as $pid => $info) {
-            $s = $this->roundSweaterStats((int) $pid);
-            $rows[] = [
-                'player_id'   => (int) $pid,
-                'player_name' => $info['player_name'],
-                'sweaters'    => $s['sweaters'],
-                'runs'        => $s['runs'],
-                'score'       => (int) ($scores[$pid]['player_score'] ?? 0),
-            ];
+        // Secret Santa: +VP_SECRET_SANTA per Secret Santa card whose colour+icon request is met by at
+        // least one COMPLETED sweater (scores once per card, not per sweater). Hidden all round; revealed
+        // and applied now (the summary shows the yes/no + which sweater satisfied it).
+        foreach (array_keys($this->loadPlayersBasicInfos()) as $pid) {
+            $pid = (int) $pid;
+            $builds = $this->playerBuilds($pid); // completed-orientation pieces, keyed buildNo => slot => card
+            foreach ($this->playerSecretSantas($pid) as $ss) {
+                foreach ($builds as $bySlot) {
+                    if (isset($bySlot[Material::SLOT_LEFT], $bySlot[Material::SLOT_RIGHT], $bySlot[Material::SLOT_BOTTOM])
+                        && $this->sweaterMatchesNeeds(
+                            [$bySlot[Material::SLOT_LEFT], $bySlot[Material::SLOT_RIGHT], $bySlot[Material::SLOT_BOTTOM]],
+                            $ss['needs']
+                        )) {
+                        $this->bga->playerScore->inc($pid, Material::VP_SECRET_SANTA);
+                        $this->playerStats->inc('secret_santas', 1, $pid);
+                        break; // scores once per Secret Santa card
+                    }
+                }
+            }
         }
-        return $rows;
+        $this->globals->set('appliedPublic', '[]');
     }
 
     /** Completed-sweater stats for a player's current knitting area: count of sweaters and of runs. */
@@ -1392,6 +1385,185 @@ class Game extends \Bga\GameFramework\Table
             }
         }
         return ['sweaters' => $sweaters, 'runs' => $runs];
+    }
+
+    /** A player's revealed Secret Santa objectives: [['id'=>int,'name'=>str,'needs'=>[3 requirements]]]. */
+    public function playerSecretSantas(int $playerId): array
+    {
+        $out = [];
+        foreach ($this->secretSantas->getCardsInLocation(self::LOC_HAND, $playerId) as $c) {
+            $def = Material::secretSantas()[(int) $c['type_arg']] ?? null;
+            if ($def) {
+                $out[] = ['id' => (int) $c['type_arg'], 'name' => $def['name'], 'needs' => $def['needs']];
+            }
+        }
+        return $out;
+    }
+
+    /** True when a piece satisfies a single Secret Santa requirement ("color:x" / "icon:y"); orientation ignored. */
+    private function pieceMatchesNeed(array $card, string $need): bool
+    {
+        [$kind, $val] = array_pad(explode(':', $need, 2), 2, '');
+        if ($kind === 'color') return $card['type'] === $val;
+        if ($kind === 'icon')  return $this->effectiveIcon($card) === $val;
+        return false;
+    }
+
+    /**
+     * True when a completed sweater's 3 pieces cover all 3 Secret Santa needs — a perfect matching where
+     * each distinct piece satisfies one distinct need (each piece may count toward EITHER its colour or
+     * its icon). Brute-forces the 3! assignments.
+     */
+    public function sweaterMatchesNeeds(array $three, array $needs): bool
+    {
+        if (count($three) !== 3 || count($needs) !== 3) return false;
+        foreach ([[0, 1, 2], [0, 2, 1], [1, 0, 2], [1, 2, 0], [2, 0, 1], [2, 1, 0]] as $p) {
+            $ok = true;
+            for ($i = 0; $i < 3; $i++) {
+                if (!$this->pieceMatchesNeed($three[$p[$i]], $needs[$i])) { $ok = false; break; }
+            }
+            if ($ok) return true;
+        }
+        return false;
+    }
+
+    /**
+     * Decompose a completed sweater's public VP into its components for the scoring summary:
+     * ['build'=>+2, 'run'=>+2 consecutive, 'fad'=>+3 per Fad objective met, 'nonfad'=>+1 all-one-non-Fad].
+     * Mirrors publicSweaterScore exactly, so the parts always sum to that total. All zeros if incomplete.
+     */
+    public function sweaterParts(array $bySlot, ?array $fad): array
+    {
+        $parts = ['build' => 0, 'run' => 0, 'fad' => 0, 'nonfad' => 0];
+        if (!isset($bySlot[Material::SLOT_LEFT], $bySlot[Material::SLOT_RIGHT], $bySlot[Material::SLOT_BOTTOM])) {
+            return $parts; // incomplete sweater never scores
+        }
+        $cards  = [$bySlot[Material::SLOT_LEFT], $bySlot[Material::SLOT_RIGHT], $bySlot[Material::SLOT_BOTTOM]];
+        $parts['build'] = Material::VP_SWEATER;
+
+        $values = array_map(fn($c) => $this->effectiveValue($c), $cards);
+        sort($values);
+        if ($values[1] === $values[0] + 1 && $values[2] === $values[1] + 1) {
+            $parts['run'] = Material::VP_RUN;
+        }
+
+        $colors = array_map(fn($c) => $c['type'], $cards);
+        $icons  = array_map(fn($c) => $this->effectiveIcon($c), $cards);
+        $allSameColor = count(array_unique($colors)) === 1;
+        $allSameIcon  = !in_array(null, $icons, true) && count(array_unique($icons)) === 1;
+
+        if ($fad !== null && !empty($fad['clash'])) {
+            $allDiffColor = count(array_unique($colors)) === 3;
+            $allDiffIcon  = !in_array(null, $icons, true) && count(array_unique($icons)) === 3;
+            if ($allDiffColor && $allDiffIcon) $parts['fad'] += Material::VP_FAD;
+            if ($allSameColor || $allSameIcon) $parts['nonfad'] += Material::VP_NONFAD_MATCH;
+        } else {
+            $fadColor = null;
+            $fadIcon  = null;
+            foreach ($fad['objectives'] ?? [] as $obj) {
+                if ($obj['match'] === 'color') $fadColor = $obj['value'];
+                if ($obj['match'] === 'icon')  $fadIcon  = $obj['value'];
+            }
+            if ($fadColor !== null && $allSameColor && $colors[0] === $fadColor) $parts['fad'] += Material::VP_FAD;
+            if ($fadIcon  !== null && $allSameIcon  && $icons[0]  === $fadIcon)  $parts['fad'] += Material::VP_FAD;
+            if (($allSameColor && $colors[0] !== $fadColor) || ($allSameIcon && $icons[0] !== $fadIcon)) {
+                $parts['nonfad'] += Material::VP_NONFAD_MATCH;
+            }
+        }
+        return $parts;
+    }
+
+    /**
+     * Full end-of-round scoring detail for the summary overlay (RoundReview / final round). For every
+     * player: cumulative score, each sweater they STARTED (complete or not) with a per-component
+     * breakdown + whether it satisfies their Secret Santa (gold border), and their revealed Secret
+     * Santa(s) with satisfied yes/no + points. Call at scoring time — knitting still in place, patches
+     * already assigned. Knitting is public and Secret Santas are revealed at round end, so this is safe.
+     */
+    public function roundScoreDetail(): array
+    {
+        $express  = $this->isExpress();
+        $roundFad = $express ? null : $this->activeFad();
+        $scores   = $this->getCollectionFromDb("SELECT `player_id`, `player_score` FROM `player`");
+
+        $players = [];
+        foreach ($this->loadPlayersBasicInfos() as $pid => $info) {
+            $pid = (int) $pid;
+            $claimedByBuild = $express ? $this->claimedFadByBuild($pid) : [];
+
+            // Group ALL knitting cards by build (incomplete builds + floating patches included).
+            $rawByBuild = [];
+            foreach ($this->getCardsWithExtras(self::LOC_KNITTING, $pid) as $c) {
+                $rawByBuild[(int) $c['buildNo']][] = $c;
+            }
+            ksort($rawByBuild);
+
+            $ssList = $this->playerSecretSantas($pid);
+
+            $sweaters = [];
+            $roundTotal = 0;
+            $ssSatisfied = array_fill(0, count($ssList), false);
+            foreach ($rawByBuild as $buildNo => $cards) {
+                $bySlot = [];
+                foreach ($cards as $c) {
+                    if ($c['slot'] !== null) $bySlot[$c['slot']] = $c;
+                }
+                $complete = isset($bySlot[Material::SLOT_LEFT], $bySlot[Material::SLOT_RIGHT], $bySlot[Material::SLOT_BOTTOM]);
+                $fad   = $express ? ($claimedByBuild[$buildNo] ?? null) : $roundFad;
+                $parts = $this->sweaterParts($bySlot, $fad);
+                $total = $parts['build'] + $parts['run'] + $parts['fad'] + $parts['nonfad'];
+                $roundTotal += $total;
+
+                $satisfiesSS = false;
+                if ($complete) {
+                    $three = [$bySlot[Material::SLOT_LEFT], $bySlot[Material::SLOT_RIGHT], $bySlot[Material::SLOT_BOTTOM]];
+                    foreach ($ssList as $i => $ss) {
+                        if ($this->sweaterMatchesNeeds($three, $ss['needs'])) {
+                            $ssSatisfied[$i] = true;
+                            $satisfiesSS = true;
+                        }
+                    }
+                }
+
+                $sweaters[] = [
+                    'buildNo'  => (int) $buildNo,
+                    'complete' => $complete,
+                    'cards'    => array_values($cards),
+                    'parts'    => $parts,
+                    'total'    => $total,
+                    'ss'       => $satisfiesSS,
+                ];
+            }
+
+            $secretSantas = [];
+            foreach ($ssList as $i => $ss) {
+                $satisfied = $ssSatisfied[$i] ?? false;
+                if ($satisfied) $roundTotal += Material::VP_SECRET_SANTA;
+                $secretSantas[] = [
+                    'id'        => $ss['id'],
+                    'name'      => $ss['name'],
+                    'needs'     => $ss['needs'],
+                    'satisfied' => $satisfied,
+                    'points'    => $satisfied ? Material::VP_SECRET_SANTA : 0,
+                ];
+            }
+
+            $players[] = [
+                'player_id'    => $pid,
+                'player_name'  => $info['player_name'],
+                'color'        => $info['player_color'] ?? '',
+                'score'        => (int) ($scores[$pid]['player_score'] ?? 0),
+                'roundTotal'   => $roundTotal,
+                'sweaters'     => $sweaters,
+                'secretSantas' => $secretSantas,
+            ];
+        }
+
+        return [
+            'round'   => (int) $this->globals->get('roundNo'),
+            'fad'     => $roundFad,
+            'players' => $players,
+        ];
     }
 
     public function getGameProgression()

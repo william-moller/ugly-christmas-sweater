@@ -112,20 +112,52 @@ interface DraftCardArgs {
     draftableIds: number[];
 }
 
-/** One player's line on the between-round review screen. */
-interface RoundResultRow {
-    player_id: number;
-    player_name: string;
-    sweaters: number; // completed sweaters this round
-    runs: number;     // of those, how many were three-consecutive-number runs
-    score: number;    // cumulative total after this round
+/** Per-component public VP for one completed sweater (parts sum to its public total). */
+interface SweaterScoreParts {
+    build: number;   // +2 completed
+    run: number;     // +2 three consecutive values
+    fad: number;     // +3 per Fad objective met (0/3/6)
+    nonfad: number;  // +1 all one colour/icon that is NOT the Fad
 }
 
-/** RoundReview state args (re-served on refresh from the `roundResult` global). */
-interface RoundReviewArgs {
-    round: number;
-    breakdown: RoundResultRow[];
+/** One started sweater in the round-score summary (complete or not). */
+interface SweaterScore {
+    buildNo: number;
+    complete: boolean;
+    cards: SweaterCard[];   // the placed pieces (for rendering the silhouette)
+    parts: SweaterScoreParts;
+    total: number;          // public total for this sweater
+    ss: boolean;            // satisfies this player's Secret Santa (→ gold border)
 }
+
+/** One of a player's revealed Secret Santa objectives at round end. */
+interface SecretSantaResult {
+    id: number;
+    name: string;
+    needs: string[];        // 3 requirements, "color:x" / "icon:y"
+    satisfied: boolean;
+    points: number;         // 3 if satisfied, else 0
+}
+
+/** One player's full breakdown in the round-score summary. */
+interface PlayerScoreDetail {
+    player_id: number;
+    player_name: string;
+    color: string;
+    score: number;          // cumulative total after this round
+    roundTotal: number;     // points earned this round (public + Secret Santa)
+    sweaters: SweaterScore[];
+    secretSantas: SecretSantaResult[];
+}
+
+/** Full end-of-round scoring detail — RoundReview state args (re-served on refresh) and roundScored notif. */
+interface RoundScoreDetail {
+    round: number;
+    fad: { title?: string; objectives?: any[]; clash?: boolean } | null;
+    players: PlayerScoreDetail[];
+}
+
+type RoundReviewArgs = RoundScoreDetail;
 
 /** Placement choices submitted alongside a draft. A patch's value/icon are NOT chosen here. */
 interface DraftPlacement {
@@ -182,10 +214,7 @@ interface NotifGameplayRevealed {
     gameplay: GameplayState; // the round-parameter decks after revealing the new round's cards
 }
 
-interface NotifRoundScored {
-    round: number;
-    breakdown: RoundResultRow[];
-}
+type NotifRoundScored = RoundScoreDetail;
 
 interface NotifFadClaimed {
     player_id: number;
