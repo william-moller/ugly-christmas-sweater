@@ -2,9 +2,10 @@ import { Game } from "../Game";
 
 /**
  * Client handler for the AssignPatches (round-end) state. Each player with patch(es) in a completed
- * sweater assigns a value + icon to each, simultaneously. The value/icon pickers live in the action bar
- * (the patch being assigned is highlighted in the player's knitting area); each assignment is sent via
- * actAssignPatch. Non-active players (none to assign) just wait.
+ * sweater assigns a value + icon to each, simultaneously. Every pending patch glows and gets an "Assign
+ * <Colour> Patch" action button; clicking one focuses that patch — the board dims except that sweater,
+ * the Fad, and the Secret Santa, and a value/icon picker popover opens under the card (Confirm sends
+ * actAssignPatch). See Game.beginAssignPatches / renderAssign. Non-active players (none to assign) wait.
  */
 export class AssignPatches {
     constructor(private game: Game, private bga: Bga<UglyChristmasSweaterPlayer, UglyChristmasSweaterGamedatas>) {

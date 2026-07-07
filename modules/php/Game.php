@@ -303,6 +303,8 @@ class Game extends \Bga\GameFramework\Table
         //    Draft Order cards are unassigned (the leader just holds the "1" card).
         $this->globals->set('trickIndex', 0);
         $this->globals->set('draftOrderCards', []);
+        // Fresh hand: the "last trick / draft phase" banner hasn't been announced yet this round.
+        $this->globals->set('handEndAnnounced', 0);
         $this->gamestate->changeActivePlayer((int) $this->globals->get('leaderId'));
     }
 
@@ -490,6 +492,10 @@ class Game extends \Bga\GameFramework\Table
         $result["draftOrderCards"] = $this->globals->get('draftOrderCards') ?: [];
         $result["express"]     = $this->isExpress();
         $result["totalRounds"] = $this->totalRounds();
+        // True once this hand's end has been triggered (a player completed their Nth sweater, or hands
+        // are exhausted): the client shows the "last trick & draft phase" banner. Live-computed so an F5
+        // during the final draft phase restores it; falls back to false once the next round is dealt.
+        $result["handEndTriggered"] = $this->isRoundOver();
 
         // Studio-only client affordances (DEBUG button). Always false in production.
         $result["isStudio"] = $this->getBgaEnvironment() === 'studio';

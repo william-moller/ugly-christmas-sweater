@@ -18,6 +18,11 @@ const ICON_GLYPH: { [icon: string]: string } = {
 /** Human-readable orientation label. */
 const SLOT_LABEL: { [slot: string]: string } = { L: 'L', R: 'R', B: 'B' };
 
+/** Glyph for an icon name (falls back to the raw name if unknown) — used by pickers/read-outs. */
+export function iconGlyph(icon: string): string {
+    return ICON_GLYPH[icon] ?? icon;
+}
+
 /** Resolve a card row to its static face via the material map. */
 export function faceOf(card: SweaterCard, material: UcsMaterial): CardFace {
     const key = `${card.type}_${card.type_arg}`;

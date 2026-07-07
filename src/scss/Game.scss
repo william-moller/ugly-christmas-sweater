@@ -89,6 +89,20 @@ html {
     padding: 8px;
 }
 
+// Red banner shown across the top of the table once the hand's end is triggered (a player completed
+// their Nth sweater / hands exhausted) — flags the last trick + draft phase. Toggled from Game.ts.
+.ucs-hand-end-banner {
+    background: #d32020;
+    color: #000;
+    font-weight: 800;
+    text-align: center;
+    padding: 8px 12px;
+    border-radius: 8px;
+    border: 2px solid #000;
+    letter-spacing: 0.3px;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
+}
+
 .ucs-zone {
     background: rgba(0, 0, 0, 0.04);
     border-radius: 8px;
@@ -817,6 +831,82 @@ html {
     0%, 100% { box-shadow: 0 0 4px 1px rgba(255, 215, 0, 0.6); }
     50%      { box-shadow: 0 0 10px 3px rgba(255, 215, 0, 0.9); }
 }
+
+/* Every patch I still owe a round-end assignment glows (each also gets an "Assign … Patch" button). */
+.ucs-card.ucs-assign-glow {
+    outline: 3px solid #ffd54a;
+    outline-offset: 1px;
+}
+
+/* Focus dim: an overlay darkens the whole play area (#ucs-table) while the focused sweater, the Fad,
+   and the Secret Santa are lifted above it (.ucs-assign-lift) so the player can weigh how to score. */
+#ucs-assign-dim {
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.55);
+    z-index: 900;
+    border-radius: 8px;
+}
+.ucs-assign-lift {
+    position: relative;
+    z-index: 901;
+}
+
+/* Value/icon picker popover shown under the focused patch's sweater. */
+.ucs-assign-pop {
+    position: absolute;
+    top: calc(100% + 6px);
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 902;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 8px 10px;
+    background: #2b2b2b;
+    border: 2px solid #ffd54a;
+    border-radius: 10px;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.6);
+    white-space: nowrap;
+}
+.ucs-assign-row {
+    display: flex;
+    gap: 4px;
+    justify-content: center;
+}
+.ucs-assign-opt {
+    min-width: 26px;
+    height: 30px;
+    padding: 0 6px;
+    font-weight: 700;
+    font-size: 15px;
+    color: #fff;
+    background: #4a4a4a;
+    border: 1px solid #666;
+    border-radius: 6px;
+    cursor: pointer;
+}
+.ucs-assign-opt:hover { background: #5c5c5c; }
+.ucs-assign-opt.ucs-assign-icon {
+    font-size: 18px;
+    min-width: 34px;
+}
+.ucs-assign-opt.ucs-assign-chosen {
+    background: #2ecc71;
+    border-color: #27ae60;
+    color: #06240f;
+}
+.ucs-assign-confirm {
+    margin-top: 2px;
+    padding: 6px 10px;
+    font-weight: 800;
+    color: #06240f;
+    background: #2ecc71;
+    border: 1px solid #27ae60;
+    border-radius: 6px;
+    cursor: pointer;
+}
+.ucs-assign-confirm:hover { background: #43d883; }
 
 /* Between-round review screen (RoundReview state). */
 #ucs-round-result {

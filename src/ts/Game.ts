@@ -2,7 +2,7 @@ import { PlayCard } from "./States/PlayCard";
 import { DraftCard } from "./States/DraftCard";
 import { RoundReview } from "./States/RoundReview";
 import { AssignPatches } from "./States/AssignPatches";
-import { createCardElement, cardTooltip, cardLogChip, faceOf, isPatch, cardFaceInner } from "./CardView";
+import { createCardElement, cardTooltip, cardLogChip, faceOf, isPatch, cardFaceInner, iconGlyph } from "./CardView";
 import { BgaAnimations, BgaCards } from "./libs";
 
 type CardMapT = { [cardId: number]: SweaterCard };
@@ -32,10 +32,12 @@ export class Game {
     private patchSlot: string | null = null;
     private floatingPatchSlot: string | null = null;
 
-    // Round-end patch assignment (AssignPatches state): a queue of my patch card ids still to assign,
-    // and the value/icon being chosen for the head of the queue.
+    // Round-end patch assignment (AssignPatches state): the patch card ids I still have to assign (all
+    // glow + get an action button), the one I'm currently focused on (value/icon popover + dim), and the
+    // value/icon chosen for that focused patch.
     private onAssignPatch: ((cardId: number, value: number, icon: string) => void) | null = null;
-    private assignQueue: number[] = [];
+    private assignPending: number[] = [];
+    private assignFocusId: number | null = null;
     private assignValue: number | null = null;
     private assignIcon: string | null = null;
 
@@ -87,6 +89,9 @@ export class Game {
 
         this.bga.gameArea.getElement().insertAdjacentHTML('beforeend', `
             <div id="ucs-table">
+                <div id="ucs-hand-end-banner" class="ucs-hand-end-banner" style="display:none">
+                    ${_('Last trick and draft phase of this hand — the round ends after this draft.')}
+                </div>
                 <div id="ucs-upper">
                     <div id="ucs-my-area" class="ucs-zone"></div>
                     <div id="ucs-center-stack">
@@ -171,6 +176,10 @@ export class Game {
         requestAnimationFrame(() => this.positionDraftOrder(false));
         setTimeout(() => this.positionDraftOrder(false), 400);
         window.addEventListener('resize', () => this.positionDraftOrder(false));
+
+        // Restore the "last trick & draft phase" banner if this hand's end is already triggered (e.g. an
+        // F5 mid-final-draft). Live-computed server-side, so it's absent again once the next round deals.
+        this.showHandEndBanner(!!gamedatas.handEndTriggered);
 
         this.setupNotifications();
         this.maybeAddDebugButton();
@@ -314,11 +323,11 @@ export class Game {
         row.appendChild(this.gameplayPileEl('perfectfit', 'Perfect Fit', gp?.perfectfit));
         row.appendChild(this.gameplayPileEl('trendyyarn', 'Trendy Yarn', gp?.trendyyarn));
         // Express shows a DISPLAY of claimable Fads (players+1); Casual shows the single revealed Fad.
-        if (this.gamedatas.express) {
-            row.appendChild(this.fadDisplayEl(gp?.express));
-        } else {
-            row.appendChild(this.gameplayPileEl('fad', 'Fads', gp?.fad));
-        }
+        const fadEl = this.gamedatas.express
+            ? this.fadDisplayEl(gp?.express)
+            : this.gameplayPileEl('fad', 'Fads', gp?.fad);
+        fadEl.id = 'ucs-fad-zone'; // hook for the round-end assignment dim (kept readable above the overlay)
+        row.appendChild(fadEl);
         zone.appendChild(row);
     }
 
@@ -946,6 +955,8 @@ export class Game {
             .forEach((buildNo) => {
                 const build = document.createElement('div');
                 build.className = 'ucs-build';
+                build.id = `ucs-build-${playerId}-${buildNo}`;
+                build.dataset.buildNo = String(buildNo);
                 if (this.isBuildComplete(builds[buildNo])) build.classList.add('ucs-build-complete');
                 // Express: a sweater that has claimed a Fad is locked — it can't be altered, and the
                 // claimed Fad is shown on it. Locked builds draw no draft targets (guards below).
@@ -963,9 +974,10 @@ export class Game {
                     } else {
                         el.classList.add('ucs-floating'); // a floating patch — orientation not set yet
                     }
-                    if (Number(card.id) === this.assignQueue[0]) {
-                        el.classList.add('ucs-assigning'); // the patch being assigned right now
-                    }
+                    // Round-end assignment: every patch I still owe an assignment glows; the one I'm
+                    // focused on (popover open) gets a stronger "assigning" treatment.
+                    if (this.assignPending.includes(Number(card.id))) el.classList.add('ucs-assign-glow');
+                    if (Number(card.id) === this.assignFocusId) el.classList.add('ucs-assigning');
                     this.attachTooltip(el, card);
                     build.appendChild(el);
                 });
@@ -1574,51 +1586,147 @@ export class Game {
     /** Begin assigning value+icon to my patches that sit in completed sweaters (round-end). */
     public beginAssignPatches(cardIds: number[], onAssign: (cardId: number, value: number, icon: string) => void) {
         this.onAssignPatch = onAssign;
-        this.assignQueue = [...cardIds];
+        this.assignPending = [...cardIds];
+        this.assignFocusId = null;
         this.assignValue = null;
         this.assignIcon = null;
-        this.renderAssignPanel();
+        this.renderAssign();
     }
 
     public endAssignPatches() {
         this.onAssignPatch = null;
-        this.assignQueue = [];
+        this.assignPending = [];
+        this.assignFocusId = null;
         this.assignValue = null;
         this.assignIcon = null;
+        this.setAssignDim(false);
         this.bga.statusBar.removeActionButtons();
         this.renderKnitting(this.myId);
     }
 
-    /** Value/icon pickers for the patch at the head of my assignment queue (highlighted in my area). */
-    private renderAssignPanel() {
+    /**
+     * Round-end patch assignment UI. Overview: one blue "Assign <Colour> Patch" button per patch I still
+     * owe (each such patch glows in my area). Focused (a button clicked): the board dims except that
+     * sweater + the Fad + my Secret Santa, and a value(1-12)/icon picker popover opens under the card;
+     * Confirm (shown once both are chosen) sends the assignment and returns to the overview.
+     */
+    private renderAssign() {
         const sb = this.bga.statusBar;
         sb.removeActionButtons();
-        this.renderKnitting(this.myId); // highlights assignQueue[0]
+        this.renderKnitting(this.myId); // (re)draw the glow / focus classes on my patches
 
-        if (!this.onAssignPatch || this.assignQueue.length === 0) {
+        if (!this.onAssignPatch || this.assignPending.length === 0) {
+            this.setAssignDim(false);
             sb.setTitle(_('Waiting for other players…'));
             return;
         }
-        const cardId = this.assignQueue[0];
-        sb.setTitle(_('Assign a value and icon to your patch (highlighted)'));
-        for (let v = 1; v <= 12; v++) {
-            sb.addActionButton(String(v), () => { this.assignValue = v; this.renderAssignPanel(); },
-                { color: this.assignValue === v ? 'primary' : 'secondary' });
+
+        if (this.assignFocusId == null) {
+            this.setAssignDim(false);
+            sb.setTitle(_('Assign a value and icon to each of your patch cards'));
+            this.assignPending.forEach((cardId) => {
+                const card = this.gamedatas.knitting[cardId];
+                const colour = card ? faceOf(card, this.material).color : '';
+                const label = colour
+                    ? _('Assign ${colour} Patch').replace('${colour}', this.capitalize(colour))
+                    : _('Assign Patch');
+                sb.addActionButton(label, () => this.focusAssign(cardId), { color: 'primary' });
+            });
+            return;
         }
+
+        this.setAssignDim(true);
+        sb.setTitle(_('Choose a value and icon for the highlighted patch, then Confirm'));
+        this.renderAssignPopover(this.assignFocusId);
+        sb.addActionButton(_('Back'), () => this.focusAssign(null), { color: 'secondary' });
+    }
+
+    /** Focus (cardId) or unfocus (null) a pending patch — resets the in-progress value/icon choice. */
+    private focusAssign(cardId: number | null) {
+        this.assignFocusId = cardId;
+        this.assignValue = null;
+        this.assignIcon = null;
+        this.renderAssign();
+    }
+
+    /** Draw the value/icon picker + Confirm popover directly beneath the focused patch's sweater. */
+    private renderAssignPopover(cardId: number) {
+        const card = this.gamedatas.knitting[cardId];
+        if (!card) return;
+        const buildNo = Number(card.buildNo ?? 0);
+        const build = document.getElementById(`ucs-build-${this.myId}-${buildNo}`);
+        if (!build) return;
+        build.classList.add('ucs-assign-lift'); // keep this sweater above the dim overlay
+
+        const pop = document.createElement('div');
+        pop.className = 'ucs-assign-pop';
+
+        const valRow = document.createElement('div');
+        valRow.className = 'ucs-assign-row';
+        for (let v = 1; v <= 12; v++) {
+            const b = document.createElement('button');
+            b.className = 'ucs-assign-opt' + (this.assignValue === v ? ' ucs-assign-chosen' : '');
+            b.textContent = String(v);
+            b.onclick = () => { this.assignValue = v; this.renderAssign(); };
+            valRow.appendChild(b);
+        }
+
+        const iconRow = document.createElement('div');
+        iconRow.className = 'ucs-assign-row';
         this.material.icons.forEach((ic) => {
-            sb.addActionButton(ic, () => { this.assignIcon = ic; this.renderAssignPanel(); },
-                { color: this.assignIcon === ic ? 'primary' : 'secondary' });
+            const b = document.createElement('button');
+            b.className = 'ucs-assign-opt ucs-assign-icon' + (this.assignIcon === ic ? ' ucs-assign-chosen' : '');
+            b.innerHTML = iconGlyph(ic);
+            b.title = ic;
+            b.onclick = () => { this.assignIcon = ic; this.renderAssign(); };
+            iconRow.appendChild(b);
         });
+
+        pop.appendChild(valRow);
+        pop.appendChild(iconRow);
+
         if (this.assignValue != null && this.assignIcon != null) {
-            const v = this.assignValue, ic = this.assignIcon, cb = this.onAssignPatch;
-            sb.addActionButton(_('Confirm'), () => {
-                this.assignQueue.shift();
+            const v = this.assignValue, ic = this.assignIcon, cb = this.onAssignPatch!;
+            const confirm = document.createElement('button');
+            confirm.className = 'ucs-assign-confirm';
+            confirm.textContent = _('Confirm');
+            confirm.onclick = () => {
+                this.assignPending = this.assignPending.filter((id) => id !== cardId);
+                this.assignFocusId = null;
                 this.assignValue = null;
                 this.assignIcon = null;
                 cb(cardId, v, ic);
-                this.renderAssignPanel();
-            }, { color: 'primary' });
+                this.renderAssign();
+            };
+            pop.appendChild(confirm);
         }
+
+        build.appendChild(pop);
+    }
+
+    /**
+     * Toggle the round-end assignment focus dim: a fixed overlay darkens the whole table while the Fad
+     * card and my Secret Santa (and, via renderAssignPopover, the focused sweater) are lifted above it so
+     * the player can weigh how to score. `.ucs-assign-lift` is cleared each call and re-applied for the
+     * current focus (the focused sweater is re-lifted by renderAssignPopover, which runs after this).
+     */
+    private setAssignDim(on: boolean) {
+        document.querySelectorAll('.ucs-assign-lift').forEach((el) => el.classList.remove('ucs-assign-lift'));
+        let overlay = document.getElementById('ucs-assign-dim');
+        if (!on) { overlay?.remove(); return; }
+        const table = document.getElementById('ucs-table');
+        if (!overlay && table) {
+            overlay = document.createElement('div');
+            overlay.id = 'ucs-assign-dim';
+            table.appendChild(overlay);
+        }
+        document.getElementById('ucs-fad-zone')?.classList.add('ucs-assign-lift');
+        document.getElementById('ucs-secret-santa')?.classList.add('ucs-assign-lift');
+    }
+
+    /** Capitalise the first letter (colour name → button label). */
+    private capitalize(s: string): string {
+        return s ? s.charAt(0).toUpperCase() + s.slice(1) : s;
     }
 
     // ===================================================================================
@@ -1859,6 +1967,20 @@ export class Game {
      * instant scoring resolves (also covers the final round, which has no RoundReview state).
      */
     async notif_roundScored(args: NotifRoundScored) {
+        // The draft phase is over and we're moving to the next round — the "last trick" banner is spent.
+        this.showHandEndBanner(false);
         this.renderRoundResult(args);
+    }
+
+    /** The hand's end was triggered mid-draft (a player completed their Nth sweater): show the banner
+     * for the remaining drafts of this last trick. It's hidden again on notif_roundScored / a new round. */
+    async notif_handEnding(_args: unknown) {
+        this.showHandEndBanner(true);
+    }
+
+    /** Toggle the red "last trick & draft phase of this hand" banner across the top of the table. */
+    private showHandEndBanner(show: boolean) {
+        const el = document.getElementById('ucs-hand-end-banner');
+        if (el) el.style.display = show ? 'block' : 'none';
     }
 }

@@ -103,6 +103,16 @@ class DraftCard extends GameState
             $this->game->refreshPublicScore($activePlayerId);
         }
 
+        // If this placement just triggered the end of the hand (someone completed their Nth sweater —
+        // Casual 3 / Express 4), announce it ONCE so every client shows the "last trick & draft phase"
+        // banner for the remaining drafts. It's cleared when the next round is dealt (setupRound).
+        if ($this->game->isRoundOver()
+            && (int) $this->game->globals->get('handEndAnnounced') !== 1
+        ) {
+            $this->game->globals->set('handEndAnnounced', 1);
+            $this->notify->all('handEnding', '', []);
+        }
+
         // Each draft-order entry is exactly ONE pick. The order ranks the CARDS played this trick (one
         // entry per card, owner = who played it — see Game::resolveTrickToDraftOrder), so a player who
         // played 2 cards in a 2-player trick simply appears twice: they may end up drafting twice in a
