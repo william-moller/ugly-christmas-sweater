@@ -54,6 +54,11 @@ class AssignPatches extends GameState
         $playerId = (int) $this->game->getCurrentPlayerId();
         $this->game->assignPatch($card_id, $playerId, $value, $icon);
 
+        // Assigning a patch can raise the sweater's public value (run / Fad / icon bonuses that were held
+        // back while the patch was wild — see publicSweaterScore), so refresh the official score now rather
+        // than leaving the panel stale until scoreRound. The appliedPublic delta keeps the total correct.
+        $this->game->refreshPublicScore($playerId);
+
         // Carry the now-assigned card row so every client re-renders the patch with its value/icon.
         $this->notify->all('patchAssigned', clienttranslate('${player_name} sets a patch to ${card_label}'), [
             'player_id'   => $playerId,
