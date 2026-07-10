@@ -31,8 +31,21 @@ interface UcsMaterial {
     sweaters: { [key: string]: CardFace };
     fads: { [id: number]: any };
     secretSantas: { [id: number]: any };
+    bonus: { [id: number]: any };   // the 4 Bonus / Special Ability cards (optional expansion)
     colors: string[];
     icons: string[];
+}
+
+/** A player's revealed Bonus / Special Ability card (optional expansion; public). */
+interface BonusCardState {
+    id: number;          // deck card id
+    bonusId: number;     // which of the 4 (Material::bonusCards / BONUS_* constant)
+    owner: number;       // owning player id
+    used: boolean;       // a one-shot that has been spent
+    key: string | null;  // 'littlebrothers' | 'tina' | 'maria' | 'billy'
+    name: string;
+    text: string;
+    kind: string;        // 'objective' | 'oneshot'
 }
 
 interface UglyChristmasSweaterPlayer extends Player {
@@ -90,6 +103,7 @@ interface UglyChristmasSweaterGamedatas extends Gamedatas<UglyChristmasSweaterPl
     trick: CardMap;                // cards played this trick
     knitting: CardMap;             // all players' knitting-area cards (location_arg = player id)
     gameplay: GameplayState;       // the three round-parameter decks (Perfect Fit / Trendy Yarn / Fad)
+    bonus: BonusCardState[];       // each player's revealed Bonus card (optional expansion; [] when Off)
     counts: { [playerId: number]: PlayerCounts };
     material: UcsMaterial;
     roundNo: number;
@@ -212,6 +226,22 @@ interface NotifHandUpdate {
 
 interface NotifGameplayRevealed {
     gameplay: GameplayState; // the round-parameter decks after revealing the new round's cards
+}
+
+/** Public start-of-round deal (rounds 2-3): the freshly reshuffled board. Knitting is wiped (empty). */
+interface NotifNewRound {
+    round: number;
+    pool: SweaterCard[];                                 // the new draft pool (carry-over cards + fresh)
+    gameplay: GameplayState;                             // this round's revealed parameters
+    counts: { [playerId: number]: PlayerCounts };        // resynced hidden-pile/hand counts
+    knitting: SweaterCard[];                             // all players' knitting — empty at round start
+    leaderId: number;                                    // holder of the "1" card, leads the first trick
+}
+
+/** Private start-of-round deal: the receiving player's new hand + freshly dealt Secret Santa(s). */
+interface NotifNewRoundPrivate {
+    hand: SweaterCard[];
+    secretSanta: SweaterCard[];
 }
 
 type NotifRoundScored = RoundScoreDetail;

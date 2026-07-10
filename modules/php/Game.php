@@ -30,6 +30,8 @@ class Game extends \Bga\GameFramework\Table
     public $gameplayCards;
     /** @var \Bga\GameFramework\Components\Deck\Deck Secret Santa objectives. */
     public $secretSantas;
+    /** @var \Bga\GameFramework\Components\Deck\Deck Bonus / Special Ability cards (optional expansion). */
+    public $bonusCards;
 
     /**
      * When true, the game routes to the GameStopped dead-end instead of actually ending, so a finished
@@ -49,6 +51,13 @@ class Game extends \Bga\GameFramework\Table
     const MODE_CASUAL  = 0;
     const MODE_EXPRESS = 1;
 
+    /** Bonus cards option (gameoptions.jsonc id 102): deal 1 Special Ability card per player when On. */
+    const OPT_BONUS  = 102;
+    const BONUS_OFF  = 0;
+    const BONUS_ON   = 1;
+    const LOC_BONUS_BOX  = 'box';  // undealt bonus cards
+    const LOC_BONUS_USED = 'used'; // a one-shot bonus card that has been spent (arg = owner)
+
     /** Displayed Fads (Express) live here in the gameplayCards deck; claimed ones move to `claimed_fad`. */
     const LOC_FAD_DISPLAY = 'seen_fad';   // reuse the seen stack as the Express fad display
     const LOC_FAD_CLAIMED = 'claimed_fad'; // arg = player who claimed it
@@ -63,6 +72,11 @@ class Game extends \Bga\GameFramework\Table
 
     const HAND_SIZE = 9; // hand is refilled up to this each trick
 
+    // Multiplier used at game end to fold the two final tie-breakers into player_score_aux
+    // (#1 fewest unbuilt sweaters, #2 most Fad points). Must exceed any achievable Fad-point total.
+    // See EndScore::onEnteringState and scoreRound.
+    const TIEBREAK_K = 1000;
+
     public function __construct()
     {
         parent::__construct();
@@ -71,6 +85,7 @@ class Game extends \Bga\GameFramework\Table
         $this->cards         = $this->deckFactory->createDeck('card');
         $this->gameplayCards = $this->deckFactory->createDeck('gameplay_card');
         $this->secretSantas  = $this->deckFactory->createDeck('secret_santa');
+        $this->bonusCards    = $this->deckFactory->createDeck('bonus_card');
 
         // On Studio, never truly end a table — keep it open to inspect final scoring/tableaus.
         if ($this->getBgaEnvironment() === 'studio') {
@@ -107,6 +122,12 @@ class Game extends \Bga\GameFramework\Table
     public function isExpress(): bool
     {
         return ((int) ($this->bga->tableOptions->get(self::OPT_MODE) ?? self::MODE_CASUAL)) === self::MODE_EXPRESS;
+    }
+
+    /** True when the Bonus / Special Ability cards option is On (gameoptions.jsonc id 102). Defaults Off. */
+    public function bonusEnabled(): bool
+    {
+        return ((int) ($this->bga->tableOptions->get(self::OPT_BONUS) ?? self::BONUS_OFF)) === self::BONUS_ON;
     }
 
     /** Rounds in the game: Express = 1, Casual = 3. */
@@ -168,6 +189,12 @@ class Game extends \Bga\GameFramework\Table
         $this->cards->createCards(Material::sweaterDeckRows(), self::LOC_SOURCE);
         $this->createGameplayCards();
         $this->createSecretSantas();
+        // Bonus / Special Ability cards (optional expansion): create + deal 1 face-up per player, once,
+        // for the whole game. Only when the option is On.
+        if ($this->bonusEnabled()) {
+            $this->createBonusCards();
+            $this->dealBonusCards(array_keys($players));
+        }
 
         // --- Globals --------------------------------------------------------------------------
         $playerIds = array_keys($players);
@@ -183,8 +210,8 @@ class Game extends \Bga\GameFramework\Table
         foreach (array_keys($players) as $pid) {
             $this->initStat('player', 'sweaters_built', 0, (int) $pid);
             $this->initStat('player', 'runs_scored', 0, (int) $pid);
-            $this->initStat('player', 'fad_objectives', 0, (int) $pid); // TODO: increment once Fad scoring is finalised
-            $this->initStat('player', 'secret_santas', 0, (int) $pid);  // TODO: increment once Secret Santa is dealt/scored
+            $this->initStat('player', 'fad_objectives', 0, (int) $pid); // incremented in scoreRound
+            $this->initStat('player', 'secret_santas', 0, (int) $pid);  // incremented in scoreRound
         }
 
         // --- Deal the first round and start ---------------------------------------------------
@@ -245,6 +272,50 @@ class Game extends \Bga\GameFramework\Table
         }
     }
 
+    /** Create the 4 Bonus / Special Ability cards (optional expansion) into the box, shuffled. */
+    public function createBonusCards(): void
+    {
+        $rows = [];
+        foreach (Material::bonusCards() as $bonus) {
+            $rows[] = ['type' => 'bonus', 'type_arg' => $bonus['id'], 'nbr' => 1];
+        }
+        if ($rows) {
+            $this->bonusCards->createCards($rows, self::LOC_BONUS_BOX);
+            $this->bonusCards->shuffle(self::LOC_BONUS_BOX);
+        }
+    }
+
+    /** Deal one Bonus card face-up to each player (owned = location 'hand', arg = player_id). */
+    public function dealBonusCards(array $playerIds): void
+    {
+        foreach ($playerIds as $pid) {
+            // pickCards moves the top card of the box to this player's owned face-up slot.
+            $this->bonusCards->pickCards(1, self::LOC_BONUS_BOX, (int) $pid);
+        }
+    }
+
+    /** Every player's revealed Bonus card (public; owned face-up). [] when the option is Off. */
+    public function bonusState(): array
+    {
+        $out = [];
+        foreach ([self::LOC_HAND, self::LOC_BONUS_USED] as $loc) {
+            foreach ($this->bonusCards->getCardsInLocation($loc) as $c) {
+                $def = Material::bonusCards()[(int) $c['type_arg']] ?? null;
+                $out[] = [
+                    'id'       => (int) $c['id'],
+                    'bonusId'  => (int) $c['type_arg'],
+                    'owner'    => (int) $c['location_arg'],
+                    'used'     => $loc === self::LOC_BONUS_USED,
+                    'key'      => $def['key']  ?? null,
+                    'name'     => $def['name'] ?? '',
+                    'text'     => $def['text'] ?? '',
+                    'kind'     => $def['kind'] ?? '',
+                ];
+            }
+        }
+        return $out;
+    }
+
     /** UPSERT dynamic per-card extras into card_meta. $fields = ['col' => int|string|null, ...]. */
     public function setCardMeta(int $cardId, array $fields): void
     {
@@ -274,16 +345,32 @@ class Game extends \Bga\GameFramework\Table
      */
     public function setupRound(): void
     {
-        // 1) Gather every sweater card, shuffle. (Between rounds, the 4 carried-over draft pool
-        //    cards should be kept aside per the rules — TODO: implement carry-over; for now reshuffle all.)
+        // 1) Carry-over: per the rules, the 4 most-recent Trade Area cards become the next round's Draft
+        //    Pool (EndTrickCleanup already rotated them into LOC_DRAFTPOOL before the round ended, so
+        //    whatever sits in the draft pool now IS the carry-over). Keep those cards; reshuffle everything
+        //    else into the deal source. On round 1 (called from setupNewGame) the pool is empty, so this
+        //    sweeps the whole deck and we deal a fresh pool below — the original behaviour.
+        $carryIds = array_map(fn($c) => (int) $c['id'], $this->cards->getCardsInLocation(self::LOC_DRAFTPOOL));
         $this->cards->moveAllCardsInLocation(null, self::LOC_SOURCE);
         $this->cards->shuffle(self::LOC_SOURCE);
 
-        // 2) Four face-up cards to the draft pool.
-        $pool = $this->cards->pickCardsForLocation(4, self::LOC_SOURCE, self::LOC_DRAFTPOOL);
+        // Wipe all per-card dynamic extras so last round's build/slot/wild data can't bleed into a
+        // re-dealt card this round (e.g. a fresh floating patch inheriting a stale wild value). Rows are
+        // re-created via setCardMeta as cards are played/placed. Carried pool cards need no meta.
+        static::DbQuery('DELETE FROM `card_meta`');
+
+        // 2) Seat the draft pool. Carry-over rounds re-seat the kept cards into slots 0..N; round 1 deals
+        //    4 fresh face-up cards from the shuffled source.
         $slot = 0;
-        foreach ($pool as $c) {
-            $this->cards->moveCard($c['id'], self::LOC_DRAFTPOOL, $slot++);
+        if ($carryIds) {
+            foreach ($carryIds as $cid) {
+                $this->cards->moveCard($cid, self::LOC_DRAFTPOOL, $slot++);
+            }
+        } else {
+            $pool = $this->cards->pickCardsForLocation(4, self::LOC_SOURCE, self::LOC_DRAFTPOOL);
+            foreach ($pool as $c) {
+                $this->cards->moveCard($c['id'], self::LOC_DRAFTPOOL, $slot++);
+            }
         }
 
         // 3) Deal personal piles + draw opening hands.
@@ -471,6 +558,8 @@ class Game extends \Bga\GameFramework\Table
         $result["trick"]     = $this->getCardsWithExtras(self::LOC_TRICK);
         $result["knitting"]  = $this->getCardsWithExtras(self::LOC_KNITTING);
         $result["gameplay"] = $this->getGameplayState();
+        // Bonus / Special Ability cards (optional expansion): every player's revealed card ([] when Off).
+        $result["bonus"] = $this->bonusEnabled() ? $this->bonusState() : [];
 
         // Counts of hidden piles (for display) — per player.
         $result["counts"] = $this->publicCounts();
@@ -480,6 +569,7 @@ class Game extends \Bga\GameFramework\Table
             "sweaters"     => Material::sweaters(),
             "fads"         => Material::fads(),
             "secretSantas" => Material::secretSantas(),
+            "bonus"        => Material::bonusCards(),
             "colors"       => Material::COLORS,
             "icons"        => Material::ICONS,
         ];
@@ -1357,6 +1447,53 @@ class Game extends \Bga\GameFramework\Table
                 }
             }
         }
+
+        // Tie-breaker + Fad tracking. Per player, walk this round's builds and accumulate:
+        //   - player_fad_points : total Fad VP scored (final tie-break #2 = most Fad points)
+        //   - fad_objectives stat : how many Fad objectives were met this round
+        //   - player_score_aux  : -(unbuilt sweaters this round), accumulated across rounds
+        //                         (final tie-break #1 = fewest unbuilt sweaters). An "unbuilt sweater"
+        //                         is any build a player started but did not complete (incl. a lone patch).
+        $express  = $this->isExpress();
+        $roundFad = $express ? null : $this->activeFad();
+        foreach (array_keys($this->loadPlayersBasicInfos()) as $pid) {
+            $pid = (int) $pid;
+            $claimedByBuild = $express ? $this->claimedFadByBuild($pid) : [];
+
+            $byBuild = [];
+            foreach ($this->getCardsWithExtras(self::LOC_KNITTING, $pid) as $c) {
+                $byBuild[(int) $c['buildNo']][] = $c;
+            }
+
+            $fadVp = 0;
+            $fadObjectives = 0;
+            $unbuilt = 0;
+            foreach ($byBuild as $buildNo => $cards) {
+                $bySlot = [];
+                foreach ($cards as $c) {
+                    if ($c['slot'] !== null) $bySlot[$c['slot']] = $c;
+                }
+                if (!isset($bySlot[Material::SLOT_LEFT], $bySlot[Material::SLOT_RIGHT], $bySlot[Material::SLOT_BOTTOM])) {
+                    $unbuilt++;
+                    continue;
+                }
+                $fad   = $express ? ($claimedByBuild[$buildNo] ?? null) : $roundFad;
+                $parts = $this->sweaterParts($bySlot, $fad);
+                if ($parts['fad'] > 0) {
+                    $fadVp         += $parts['fad'];
+                    $fadObjectives += intdiv($parts['fad'], Material::VP_FAD);
+                }
+            }
+
+            if ($fadVp > 0) {
+                static::DbQuery("UPDATE `player` SET `player_fad_points` = `player_fad_points` + $fadVp WHERE `player_id` = $pid");
+                $this->playerStats->inc('fad_objectives', $fadObjectives, $pid);
+            }
+            if ($unbuilt > 0) {
+                static::DbQuery("UPDATE `player` SET `player_score_aux` = `player_score_aux` - $unbuilt WHERE `player_id` = $pid");
+            }
+        }
+
         $this->globals->set('appliedPublic', '[]');
     }
 

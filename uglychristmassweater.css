@@ -598,6 +598,27 @@ html {
   background: #2c3e50;
 }
 
+.ucs-bonus-card {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #5a2d82;
+  background: #f0e6f7;
+  border: 1px solid #c9a8e0;
+  cursor: help;
+}
+.ucs-bonus-card .ucs-bonus-icon {
+  font-size: 12px;
+}
+.ucs-bonus-card.ucs-bonus-used {
+  opacity: 0.5;
+  text-decoration: line-through;
+}
+
 .ucs-knitting {
   display: flex;
   flex-wrap: wrap;

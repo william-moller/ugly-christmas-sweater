@@ -27,11 +27,17 @@ class EndScore extends \Bga\GameFramework\States\GameState
      * The onEnteringState method of state `EndScore` is called just before the end of the game.
      */
     public function onEnteringState() {
-        // Final tie-breakers (gameinfos "tie_breaker_description"):
-        //   #1 fewest unbuilt sweaters  -> player_score_aux
-        //   #2 most total Fad points    -> player_fad_points (already tracked per round)
-        // TODO: track unbuilt-sweater counts across rounds and set player_score_aux here.
-        //   e.g. UPDATE player SET player_score_aux = -(total unbuilt sweaters)
+        // BGA ranks players by player_score, then player_score_aux only — it has no third sort column.
+        // We want a TWO-level tie-break (gameinfos "tie_breaker_description"):
+        //   #1 fewest unbuilt sweaters   (scoreRound accumulated -(unbuilt) into player_score_aux)
+        //   #2 most total Fad points     (scoreRound accumulated player_fad_points)
+        // Fold both into player_score_aux as a composite so higher = better on both keys at once:
+        //   aux := (-unbuilt) * K + fadPoints,  where at this point aux already holds (-unbuilt).
+        // K just needs to exceed any achievable Fad-point total (a few dozen), so #1 always dominates
+        // #2 and #2 only separates players tied on #1.
+        static::DbQuery(
+            "UPDATE `player` SET `player_score_aux` = `player_score_aux` * " . Game::TIEBREAK_K . " + `player_fad_points`"
+        );
 
         // On Studio, stop instead of ending so the finished table stays open for inspection.
         if ($this->game->preventEndGame) {

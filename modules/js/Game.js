@@ -358,6 +358,7 @@ class Game {
                     <div class="ucs-player-header">
                         <span class="ucs-order-badge" id="ucs-order-${player.id}"></span>
                         <span class="ucs-player-name">${mine ? _('Your Knitting Area') : player.name}</span>
+                        <span class="ucs-bonus-card" id="ucs-bonus-${player.id}"></span>
                         ${mine ? '' : `<div class="ucs-draw-pile ucs-oppo-pile" id="ucs-pile-${player.id}"></div>`}
                     </div>
                     <div class="ucs-knitting" id="ucs-knitting-${player.id}"></div>
@@ -690,7 +691,29 @@ class Game {
             this.renderOrderBadge(Number(player.id));
             this.renderKnitting(Number(player.id));
             this.renderOppoSummary(Number(player.id));
+            this.renderBonus(Number(player.id));
         });
+    }
+    /**
+     * A player's revealed Bonus / Special Ability card (optional expansion). Placeholder chip: the card's
+     * name with its rules text as a tooltip, greyed once a one-shot has been spent. Empty when the option
+     * is Off or this player has no bonus card. (Effects are implemented separately; this is display only.)
+     */
+    renderBonus(playerId) {
+        const el = document.getElementById(`ucs-bonus-${playerId}`);
+        if (!el)
+            return;
+        const card = (this.gamedatas.bonus ?? []).find((b) => b.owner === playerId);
+        if (!card) {
+            el.style.display = 'none';
+            el.innerHTML = '';
+            return;
+        }
+        el.style.display = '';
+        el.classList.toggle('ucs-bonus-used', !!card.used);
+        el.innerHTML = `<span class="ucs-bonus-icon">🎁</span><span class="ucs-bonus-name">${card.name}</span>`;
+        if (card.text)
+            this.bga.gameui.addTooltipHtml?.(el.id, `<b>${card.name}</b><br>${card.text}`);
     }
     /**
      * The compact abstraction shown for an opponent on small screens (the side column collapses to
@@ -2215,6 +2238,40 @@ class Game {
     async notif_gameplayRevealed(args) {
         this.gamedatas.gameplay = args.gameplay;
         this.renderGameplay();
+    }
+    /**
+     * Public: a new round (2-3) was dealt. Replace the public board wholesale from the fresh deal — new
+     * draft pool, revealed parameters, resynced counts, and a wiped knitting area — then re-render. The
+     * receiving player's own hand + Secret Santa arrive privately in notif_newRoundPrivate.
+     */
+    async notif_newRound(args) {
+        const pool = {};
+        args.pool.forEach((c) => (pool[Number(c.id)] = c));
+        this.gamedatas.draftpool = pool;
+        this.gamedatas.trick = {};
+        const knit = {};
+        args.knitting.forEach((c) => (knit[Number(c.id)] = c));
+        this.gamedatas.knitting = knit;
+        this.gamedatas.gameplay = args.gameplay;
+        this.gamedatas.counts = args.counts;
+        this.gamedatas.roundNo = args.round;
+        this.gamedatas.leaderId = args.leaderId;
+        this.gamedatas.draftOrderCards = [];
+        this.draftOrder = [];
+        this.showHandEndBanner(false);
+        this.hideDraftOrder();
+        this.renderAll();
+    }
+    /** Private: my new hand + freshly dealt Secret Santa(s) for the new round. */
+    async notif_newRoundPrivate(args) {
+        const hand = {};
+        args.hand.forEach((c) => (hand[Number(c.id)] = c));
+        this.gamedatas.hand = hand;
+        const ss = {};
+        args.secretSanta.forEach((c) => (ss[Number(c.id)] = c));
+        this.gamedatas.secretSanta = ss;
+        this.renderHand();
+        this.renderSecretSanta();
     }
     /**
      * Express: a player claimed a Fad. The Fad moves from the display onto their (now locked) sweater;

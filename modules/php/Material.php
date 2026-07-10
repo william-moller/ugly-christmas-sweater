@@ -279,6 +279,55 @@ class Material
     }
 
     // ==============================================================================================
+    //  BONUS / SPECIAL ABILITY CARDS (4 — optional Kickstarter mini-expansion)
+    // ==============================================================================================
+
+    /**
+     * The 4 Special Ability cards. One is dealt face-up to each player at game start (2-4 players → 2-4
+     * of the 4 used); they persist for the whole game. Each is either an 'objective' (a passive VP bonus,
+     * like a Secret Santa) or a 'oneshot' (a once-per-game triggered effect, discarded after use).
+     *
+     * ⚠️ RULES / TEXT PENDING (2026-07-09): 'name' and 'text' below are working placeholders from the
+     * CLAUDE.md summary — the publisher's exact card wording is being confirmed. The EFFECTS are not yet
+     * implemented; this table only backs the option, deal/reveal, and client display. In particular the
+     * Little Brothers objective CONDITION is unknown ('objectiveNeeds' left null until confirmed).
+     *
+     * Format: ['id'=>int, 'key'=>string, 'name'=>clienttranslate('...'), 'kind'=>'objective'|'oneshot',
+     *          'text'=>clienttranslate('...'), 'objectiveNeeds'=>mixed|null (objective cards only)].
+     */
+    const BONUS_LITTLE_BROTHERS = 1;
+    const BONUS_TINA            = 2;
+    const BONUS_MARIA           = 3;
+    const BONUS_BILLY           = 4;
+
+    public static function bonusCards(): array
+    {
+        return [
+            self::BONUS_LITTLE_BROTHERS => [
+                'id' => self::BONUS_LITTLE_BROTHERS, 'key' => 'littlebrothers', 'kind' => 'objective',
+                'name' => clienttranslate('The Little Brothers Colour Coordinate'),
+                'text' => clienttranslate('Objective (3 VP). Colour-coordination requirement — exact condition pending.'),
+                'objectiveNeeds' => null, // TODO: fill in once the publisher confirms the exact condition
+            ],
+            self::BONUS_TINA => [
+                'id' => self::BONUS_TINA, 'key' => 'tina', 'kind' => 'oneshot',
+                'name' => clienttranslate('Tina Can Tink'),
+                'text' => clienttranslate('One-time: at round end, before scoring, move or swap one placed piece.'),
+            ],
+            self::BONUS_MARIA => [
+                'id' => self::BONUS_MARIA, 'key' => 'maria', 'kind' => 'oneshot',
+                'name' => clienttranslate('Mixed-up Maria'),
+                'text' => clienttranslate('One-time: place a card into a slot that does not match its orientation.'),
+            ],
+            self::BONUS_BILLY => [
+                'id' => self::BONUS_BILLY, 'key' => 'billy', 'kind' => 'oneshot',
+                'name' => clienttranslate("Billy's a Brute"),
+                'text' => clienttranslate('One-time: when another player tops the draft order, you draft first and the contested card is discarded.'),
+            ],
+        ];
+    }
+
+    // ==============================================================================================
     //  Helpers
     // ==============================================================================================
 

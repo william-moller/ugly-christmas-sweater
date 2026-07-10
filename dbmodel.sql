@@ -97,6 +97,25 @@ CREATE TABLE IF NOT EXISTS `secret_santa` (
 
 
 -- =====================================================================
+-- bonus_card : the 4 "Special Ability" cards (optional Kickstarter expansion, gameoptions id 102)
+-- A Deck:  $this->bonusCards = $this->deckFactory->createDeck('bonus_card');
+--   card_type_arg  = bonus card id 1..4 (maps to Material::bonusCards / BONUS_* constants)
+--   card_location  = 'box' (undealt) | 'hand' (owned, face-up) | 'used' (one-shot spent)
+--   card_location_arg = owning player_id when 'hand' or 'used'
+-- Dealt 1 face-up per player at game start when the option is On; persist for the whole game.
+-- =====================================================================
+CREATE TABLE IF NOT EXISTS `bonus_card` (
+  `card_id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `card_type` VARCHAR(8) NOT NULL DEFAULT 'bonus',
+  `card_type_arg` INT NOT NULL,
+  `card_location` VARCHAR(12) NOT NULL DEFAULT 'box',
+  `card_location_arg` INT NOT NULL DEFAULT 0,
+  PRIMARY KEY (`card_id`),
+  KEY `idx_bonus_owner` (`card_location`, `card_location_arg`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 AUTO_INCREMENT=1;
+
+
+-- =====================================================================
 -- player table extensions
 -- player_score      (built-in) = cumulative VP across rounds (the winner metric)
 -- player_score_aux  (built-in) = tie-break #1, set at game end = -(unbuilt sweaters)  [higher is better]
