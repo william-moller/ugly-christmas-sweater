@@ -9,6 +9,7 @@ use Bga\GameFramework\States\GameState;
 use Bga\GameFramework\States\PossibleAction;
 use Bga\GameFramework\UserException;
 use Bga\Games\UglyChristmasSweater\Game;
+use Bga\Games\UglyChristmasSweater\Material;
 
 /**
  * Draft phase. In draft order, the active player takes a card from the draft pool and places it into
@@ -36,7 +37,7 @@ class DraftCard extends GameState
         $forcedCardId = $this->game->forcedDraft($activePlayerId);
         if ($forcedCardId !== null) {
             // build_no 0 = new sweater; a regular card uses its printed slot, a patch simply floats.
-            return $this->actDraftCard($forcedCardId, 0, '', '', $activePlayerId, $args);
+            return $this->actDraftCard($forcedCardId, 0, '', '', 0, $activePlayerId, $args);
         }
 
         // Reset the active player's clock each turn (standard BGA courtesy; pattern from crybaby).
@@ -56,20 +57,58 @@ class DraftCard extends GameState
 
     #[PossibleAction]
     public function actDraftCard(
-        int $card_id, int $build_no, string $slot, string $floating_patch_slot,
+        int $card_id, int $build_no, string $slot, string $floating_patch_slot, int $use_maria,
         int $activePlayerId, array $args
     ) {
         if (!in_array($card_id, $args['draftableIds'])) {
             throw new UserException(clienttranslate('That card is not in the draft pool'));
         }
 
-        // $slot = the drafted card's orientation (only used for a patch added to an existing sweater);
-        // $floating_patch_slot = the orientation to give a floating patch already in the target sweater.
-        // Empty string means "not supplied". A patch never picks value/icon here (deferred to scoring).
+        // Billy's a Brute (bonus): this drafter's turn is the "draft first & discard" one — the chosen
+        // pool card is discarded (reshuffled next round) instead of entering their knitting area.
+        $billyDiscardIndex = (int) $this->game->globals->get('billyDiscardIndex');
+        if ($billyDiscardIndex >= 0 && (int) $this->game->globals->get('draftIndex') === $billyDiscardIndex) {
+            $label = $this->game->cardLabel($card_id);
+            $this->game->cards->moveCard($card_id, Game::LOC_DISCARD, 0);
+            $this->game->setCardMeta($card_id, [
+                'trick_order' => null, 'build_no' => null, 'slot' => null, 'wild_value' => null, 'wild_icon' => null,
+            ]);
+            $this->game->globals->set('billyDiscardIndex', -1); // consumed
+            $this->notify->all('cardDiscarded', clienttranslate('${player_name} drafts and discards ${card_label} (Billy\'s a Brute)'), [
+                'player_id'   => $activePlayerId,
+                'player_name' => $this->game->getPlayerNameById($activePlayerId),
+                'card_id'     => $card_id,
+                'card_label'  => $label,
+            ]);
+            return NextDrafter::class;
+        }
+
+        // Mixed-up Maria (bonus): a regular card may be placed in any orientation ($slot), ignoring its
+        // printed one. Validate ownership + that it's a numbered card + a real slot; consume after placing.
+        $mariaSlot = null;
+        if ($use_maria === 1) {
+            if (!$this->game->hasBonus($activePlayerId, Material::BONUS_MARIA)) {
+                throw new UserException(clienttranslate('You do not have Mixed-up Maria to use'));
+            }
+            $card = $this->game->cards->getCard($card_id);
+            if (((int) $card['type_arg']) === Material::PATCH_VALUE) {
+                throw new UserException(clienttranslate('Mixed-up Maria only applies to a numbered card'));
+            }
+            if (!in_array($slot, Material::SLOTS, true)) {
+                throw new UserException(clienttranslate('Choose an orientation (L, R or B) for the card'));
+            }
+            $mariaSlot = $slot;
+        }
+
+        // $slot = the drafted card's orientation (only used for a patch added to an existing sweater,
+        // or as the Maria-chosen orientation for a regular card); $floating_patch_slot = the orientation
+        // to give a floating patch already in the target sweater. '' = not supplied. A patch never picks
+        // value/icon here (deferred to scoring).
         $placement = $this->game->placeDraftedCard(
             $card_id, $activePlayerId, $build_no,
             $slot !== '' ? $slot : null,
             $floating_patch_slot !== '' ? $floating_patch_slot : null,
+            $mariaSlot,
         );
 
         // The card row lets every client render the placement; replaced_card_id tells them to drop a
@@ -84,6 +123,16 @@ class DraftCard extends GameState
             'floating_patch'   => $placement['floating_patch_id'] !== null
                 ? $this->game->cardForNotif($placement['floating_patch_id']) : null,
         ]);
+
+        // Mixed-up Maria: consume the card now that the off-orientation placement succeeded.
+        if ($mariaSlot !== null) {
+            $this->game->markBonusUsed(Material::BONUS_MARIA);
+            $this->notify->all('bonusUsed', clienttranslate('${player_name} uses Mixed-up Maria'), [
+                'player_id'   => $activePlayerId,
+                'player_name' => $this->game->getPlayerNameById($activePlayerId),
+                'bonus'       => $this->game->bonusState(),
+            ]);
+        }
 
         // Update the player's live public score (a newly completed sweater is worth public points
         // immediately; a "place over" may also change/break an already-scored sweater).
@@ -129,6 +178,7 @@ class DraftCard extends GameState
         $choice = $this->getRandomZombieChoice($args['draftableIds']);
         // Abandoned player: starting a new sweater (build_no 0) is always legal — a regular card lands
         // at its printed slot, a patch floats; no floating-patch orientation is needed for a new build.
-        return $this->actDraftCard($choice, 0, '', '', $playerId, $args);
+        // use_maria = 0: never spend a bonus on a zombie's forced move.
+        return $this->actDraftCard($choice, 0, '', '', 0, $playerId, $args);
     }
 }

@@ -651,6 +651,17 @@ html {
     min-height: var(--ucs-card-h);
 }
 
+// Tina Can Tink (bonus): my placed pieces become clickable to move/swap; the chosen one/two glow.
+.ucs-tina-selectable {
+    cursor: pointer;
+    outline: 2px dashed #2e86de;
+    outline-offset: 2px;
+}
+.ucs-tina-chosen {
+    outline: 3px solid #2e86de;
+    box-shadow: 0 0 8px rgba(46, 134, 222, 0.7);
+}
+
 // ---- Opponents' compact knitting: small colour+number chips, sweaters in a single row -----------
 .ucs-knitting-compact {
     flex-wrap: nowrap; // sweaters in a single left-to-right row (area width to be set once specified)

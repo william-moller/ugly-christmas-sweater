@@ -37,7 +37,9 @@ class ResolveTrick extends GameState
             'orderCards' => $this->game->globals->get('draftOrderCards') ?: [],
         ]);
 
+        // Route through BillyChoice (bonus): it lets a Billy owner draft-and-discard first, then begins
+        // the draft. When the option is Off / no trigger, it passes straight through to DraftCard.
         $this->game->gamestate->changeActivePlayer($order[0]);
-        return DraftCard::class;
+        return BillyChoice::class;
     }
 }

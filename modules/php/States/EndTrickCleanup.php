@@ -71,9 +71,10 @@ class EndTrickCleanup extends GameState
         }
 
         if ($this->game->isRoundOver()) {
-            // Patches in completed sweaters get their value/icon assigned (AssignPatches) before scoring;
-            // that state skips straight to ScoreRound when there are none.
-            return AssignPatches::class;
+            // Round end: TinaTink (bonus) lets a Tina owner move/swap a piece before scoring, then flows to
+            // AssignPatches (patch value/icon assignment) → ScoreRound. Each step passes straight through
+            // when it has nothing to do (no Tina owner / no patches).
+            return TinaTink::class;
         }
 
         // The "1" Draft card holder leads the next trick.

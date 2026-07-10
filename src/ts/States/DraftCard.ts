@@ -22,6 +22,7 @@ export class DraftCard {
                 build_no: placement.build_no,
                 slot: placement.slot,
                 floating_patch_slot: placement.floating_patch_slot,
+                use_maria: placement.use_maria ?? 0,
             });
         });
     }

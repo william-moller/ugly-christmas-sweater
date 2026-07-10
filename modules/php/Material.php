@@ -49,6 +49,7 @@ class Material
     const VP_FAD           = 3; // per Fad objective met (a sweater can meet both objectives)
     const VP_NONFAD_MATCH  = 1; // sweater all-one-colour or all-one-icon that is NOT the active Fad
     const VP_SECRET_SANTA  = 3; // a completed sweater satisfying your Secret Santa
+    const VP_BONUS_OBJECTIVE = 3; // The Little Brothers Colour Coordinate bonus objective (once per game)
 
     // ==============================================================================================
     //  SWEATER DECK (52 cards = 48 numbered + 4 patches)
@@ -287,10 +288,11 @@ class Material
      * of the 4 used); they persist for the whole game. Each is either an 'objective' (a passive VP bonus,
      * like a Secret Santa) or a 'oneshot' (a once-per-game triggered effect, discarded after use).
      *
-     * ⚠️ RULES / TEXT PENDING (2026-07-09): 'name' and 'text' below are working placeholders from the
-     * CLAUDE.md summary — the publisher's exact card wording is being confirmed. The EFFECTS are not yet
-     * implemented; this table only backs the option, deal/reveal, and client display. In particular the
-     * Little Brothers objective CONDITION is unknown ('objectiveNeeds' left null until confirmed).
+     * EFFECTS (2026-07-09): all four are implemented from Will's exact card text — Little Brothers in
+     * scoreRound (littleBrothersSatisfied), Maria in placeDraftedCard/actDraftCard, Tina in the TinaTink
+     * state, Billy in the BillyChoice state. 'name'/'text' are the displayed strings (final art may retitle).
+     * The Little Brothers colour requirement is encoded directly in littleBrothersSatisfied (two sweaters:
+     * {1 green,2 red} + {1 red,2 green}), so 'objectiveNeeds' stays null here.
      *
      * Format: ['id'=>int, 'key'=>string, 'name'=>clienttranslate('...'), 'kind'=>'objective'|'oneshot',
      *          'text'=>clienttranslate('...'), 'objectiveNeeds'=>mixed|null (objective cards only)].
@@ -306,8 +308,8 @@ class Material
             self::BONUS_LITTLE_BROTHERS => [
                 'id' => self::BONUS_LITTLE_BROTHERS, 'key' => 'littlebrothers', 'kind' => 'objective',
                 'name' => clienttranslate('The Little Brothers Colour Coordinate'),
-                'text' => clienttranslate('Objective (3 VP). Colour-coordination requirement — exact condition pending.'),
-                'objectiveNeeds' => null, // TODO: fill in once the publisher confirms the exact condition
+                'text' => clienttranslate('Objective (3 VP): build one sweater of 1 green + 2 red cards and another of 1 red + 2 green cards.'),
+                'objectiveNeeds' => null, // condition encoded in Game::littleBrothersSatisfied
             ],
             self::BONUS_TINA => [
                 'id' => self::BONUS_TINA, 'key' => 'tina', 'kind' => 'oneshot',

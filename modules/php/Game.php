@@ -316,6 +316,74 @@ class Game extends \Bga\GameFramework\Table
         return $out;
     }
 
+    /**
+     * The (unused) holder of a bonus card type: ['cardId'=>int,'owner'=>int], or null if it was never
+     * dealt (fewer players than cards, or the option is Off) or has already been spent.
+     */
+    public function bonusHolder(int $bonusId): ?array
+    {
+        foreach ($this->bonusCards->getCardsInLocation(self::LOC_HAND) as $c) {
+            if ((int) $c['type_arg'] === $bonusId) {
+                return ['cardId' => (int) $c['id'], 'owner' => (int) $c['location_arg']];
+            }
+        }
+        return null;
+    }
+
+    /** The player holding an unused copy of $bonusId, or null. */
+    public function bonusOwner(int $bonusId): ?int
+    {
+        return $this->bonusHolder($bonusId)['owner'] ?? null;
+    }
+
+    /** True when $playerId holds an unused $bonusId card. */
+    public function hasBonus(int $playerId, int $bonusId): bool
+    {
+        return $this->bonusOwner($bonusId) === $playerId;
+    }
+
+    /** Mark a bonus card spent (move to 'used'); no-op if not held. The caller emits the notification. */
+    public function markBonusUsed(int $bonusId): void
+    {
+        $h = $this->bonusHolder($bonusId);
+        if ($h !== null) {
+            $this->bonusCards->moveCard($h['cardId'], self::LOC_BONUS_USED, $h['owner']);
+        }
+    }
+
+    /**
+     * The Little Brothers Colour Coordinate objective: satisfied when the player has TWO distinct COMPLETED
+     * sweaters this round — one of {1 green, 2 red} and another of {1 red, 2 green} (orientation and
+     * value/icon ignored; a patch counts as its fixed colour). Worth VP_SECRET_SANTA (3 VP), once per game.
+     */
+    public function littleBrothersSatisfied(int $playerId): bool
+    {
+        $reqA = [Material::COLOR_GREEN, Material::COLOR_RED,   Material::COLOR_RED];   sort($reqA);
+        $reqB = [Material::COLOR_RED,   Material::COLOR_GREEN, Material::COLOR_GREEN]; sort($reqB);
+
+        $sweaters = []; // sorted colour triple for each completed sweater
+        foreach ($this->playerBuilds($playerId) as $bySlot) {
+            if (!isset($bySlot[Material::SLOT_LEFT], $bySlot[Material::SLOT_RIGHT], $bySlot[Material::SLOT_BOTTOM])) {
+                continue;
+            }
+            $cols = [
+                $bySlot[Material::SLOT_LEFT]['type'],
+                $bySlot[Material::SLOT_RIGHT]['type'],
+                $bySlot[Material::SLOT_BOTTOM]['type'],
+            ];
+            sort($cols);
+            $sweaters[] = $cols;
+        }
+        // Need one sweater matching reqA and a DIFFERENT sweater matching reqB.
+        foreach ($sweaters as $i => $a) {
+            if ($a !== $reqA) continue;
+            foreach ($sweaters as $j => $b) {
+                if ($j !== $i && $b === $reqB) return true;
+            }
+        }
+        return false;
+    }
+
     /** UPSERT dynamic per-card extras into card_meta. $fields = ['col' => int|string|null, ...]. */
     public function setCardMeta(int $cardId, array $fields): void
     {
@@ -392,6 +460,7 @@ class Game extends \Bga\GameFramework\Table
         $this->globals->set('draftOrderCards', []);
         // Fresh hand: the "last trick / draft phase" banner hasn't been announced yet this round.
         $this->globals->set('handEndAnnounced', 0);
+        $this->globals->set('billyDiscardIndex', -1); // no Billy discard pending (bonus)
         $this->gamestate->changeActivePlayer((int) $this->globals->get('leaderId'));
     }
 
@@ -936,7 +1005,7 @@ class Game extends \Bga\GameFramework\Table
      */
     public function placeDraftedCard(
         int $cardId, int $playerId, int $buildNo = 0,
-        ?string $slot = null, ?string $floatingPatchSlot = null
+        ?string $slot = null, ?string $floatingPatchSlot = null, ?string $mariaSlot = null
     ): array {
         $card    = $this->cards->getCard($cardId);
         $isPatch = ((int) $card['type_arg']) === Material::PATCH_VALUE;
@@ -975,6 +1044,10 @@ class Game extends \Bga\GameFramework\Table
                 }
                 $resolvedSlot = $slot;
             }
+        } else if ($mariaSlot !== null) {
+            // Mixed-up Maria (bonus): a regular card may be placed in ANY chosen orientation, ignoring
+            // its printed slot. (Validity of $mariaSlot is enforced by the caller before we get here.)
+            $resolvedSlot = $mariaSlot;
         } else {
             $face         = Material::sweater($card['type'], (int) $card['type_arg']);
             $resolvedSlot = $face['slot'];
@@ -1025,6 +1098,52 @@ class Game extends \Bga\GameFramework\Table
             'floating_patch_id'   => $floatingId,
             'floating_patch_slot' => $floatingResolved,
         ];
+    }
+
+    /**
+     * Tina Can Tink (bonus): relocate ONE placed piece to an empty (build, slot) in the player's knitting.
+     * $targetBuild <= 0 opens a brand-new sweater. Orientation rules are relaxed here (the whole point of
+     * the card is a free re-arrange before scoring); only "don't stack two pieces in one slot" is enforced.
+     */
+    public function tinaMove(int $playerId, int $cardId, int $targetBuild, string $targetSlot): void
+    {
+        $mine = $this->getCardsWithExtras(self::LOC_KNITTING, $playerId);
+        $byId = [];
+        foreach ($mine as $c) {
+            $byId[(int) $c['id']] = $c;
+        }
+        if (!isset($byId[$cardId])) {
+            throw new \Bga\GameFramework\UserException(clienttranslate('That is not one of your sweater pieces'));
+        }
+        if (!in_array($targetSlot, Material::SLOTS, true)) {
+            throw new \Bga\GameFramework\UserException(clienttranslate('Choose an orientation (L, R or B)'));
+        }
+        $buildNos = array_map(fn($c) => (int) $c['buildNo'], $mine);
+        $resolvedBuild = $targetBuild > 0 ? $targetBuild : (empty($buildNos) ? 1 : max($buildNos) + 1);
+
+        foreach ($mine as $c) {
+            if ((int) $c['id'] !== $cardId && (int) $c['buildNo'] === $resolvedBuild && $c['slot'] === $targetSlot) {
+                throw new \Bga\GameFramework\UserException(clienttranslate('That orientation is already filled'));
+            }
+        }
+        $this->setCardMeta($cardId, ['build_no' => $resolvedBuild, 'slot' => $targetSlot]);
+    }
+
+    /** Tina Can Tink (bonus): swap the (build, slot) of two placed pieces in the player's knitting. */
+    public function tinaSwap(int $playerId, int $cardA, int $cardB): void
+    {
+        $mine = $this->getCardsWithExtras(self::LOC_KNITTING, $playerId);
+        $byId = [];
+        foreach ($mine as $c) {
+            $byId[(int) $c['id']] = $c;
+        }
+        if ($cardA === $cardB || !isset($byId[$cardA], $byId[$cardB])) {
+            throw new \Bga\GameFramework\UserException(clienttranslate('Choose two different sweater pieces to swap'));
+        }
+        $a = $byId[$cardA];
+        $b = $byId[$cardB];
+        $this->setCardMeta($cardA, ['build_no' => (int) $b['buildNo'], 'slot' => $b['slot']]);
+        $this->setCardMeta($cardB, ['build_no' => (int) $a['buildNo'], 'slot' => $a['slot']]);
     }
 
     /**
@@ -1491,6 +1610,16 @@ class Game extends \Bga\GameFramework\Table
             }
             if ($unbuilt > 0) {
                 static::DbQuery("UPDATE `player` SET `player_score_aux` = `player_score_aux` - $unbuilt WHERE `player_id` = $pid");
+            }
+        }
+
+        // Bonus objective — The Little Brothers Colour Coordinate (+3 VP, once per game). Awarded the first
+        // round its two-sweater colour requirement is met by completed sweaters, then the card is spent.
+        if ($this->bonusEnabled()) {
+            $lbOwner = $this->bonusOwner(Material::BONUS_LITTLE_BROTHERS);
+            if ($lbOwner !== null && $this->littleBrothersSatisfied($lbOwner)) {
+                $this->bga->playerScore->inc($lbOwner, Material::VP_BONUS_OBJECTIVE);
+                $this->markBonusUsed(Material::BONUS_LITTLE_BROTHERS);
             }
         }
 

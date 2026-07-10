@@ -46,6 +46,7 @@ class DraftCard {
                 build_no: placement.build_no,
                 slot: placement.slot,
                 floating_patch_slot: placement.floating_patch_slot,
+                use_maria: placement.use_maria ?? 0,
             });
         });
     }
@@ -100,6 +101,50 @@ class AssignPatches {
     }
     onLeavingState() {
         this.game.endAssignPatches();
+    }
+}
+
+/**
+ * Client handler for the BillyChoice (bonus) state. Only the Billy owner is active, and only when another
+ * player leads the draft — they may play Billy's a Brute (draft & discard first) or pass. Everyone else
+ * waits. See Game.beginBillyChoice.
+ */
+class BillyChoice {
+    constructor(game, bga) {
+        this.game = game;
+        this.bga = bga;
+    }
+    onEnteringState(_args, isCurrentPlayerActive) {
+        // Only the (unused) Billy owner is ever meant to act here; guard against the pass-through case
+        // where the normal first drafter is briefly the active player.
+        if (!isCurrentPlayerActive || !this.game.myUnusedBonus('billy')) {
+            return;
+        }
+        this.game.beginBillyChoice(() => this.bga.actions.performAction('actBillyActivate', {}), () => this.bga.actions.performAction('actBillySkip', {}));
+    }
+    onLeavingState() {
+        this.game.endBillyChoice();
+    }
+}
+
+/**
+ * Client handler for the TinaTink (bonus, round-end) state. Only the Tina owner is active; they may move
+ * one placed piece, swap two placed pieces, or pass, before scoring. Everyone else waits. The interactive
+ * flow (clicking pieces in the knitting area + choosing a target) lives in Game.beginTinaTink.
+ */
+class TinaTink {
+    constructor(game, bga) {
+        this.game = game;
+        this.bga = bga;
+    }
+    onEnteringState(_args, isCurrentPlayerActive) {
+        if (!isCurrentPlayerActive || !this.game.myUnusedBonus('tina')) {
+            return;
+        }
+        this.game.beginTinaTink((cardId, buildNo, slot) => this.bga.actions.performAction('actTinaMove', { card_id: cardId, build_no: buildNo, slot }), (cardA, cardB) => this.bga.actions.performAction('actTinaSwap', { card_a: cardA, card_b: cardB }), () => this.bga.actions.performAction('actTinaSkip', {}));
+    }
+    onLeavingState() {
+        this.game.endTinaTink();
     }
 }
 
@@ -261,6 +306,20 @@ class Game {
         this.pendingBuildNo = null;
         this.patchSlot = null;
         this.floatingPatchSlot = null;
+        // Mixed-up Maria (bonus): when active, a regular card is placed via a self-contained action-bar
+        // sub-flow (pick target build + any orientation) rather than its printed slot.
+        this.mariaActive = false;
+        this.mariaBuildNo = null;
+        this.mariaSlot = null;
+        // Tina Can Tink (bonus, round end): move one piece or swap two. Mode + click selections.
+        this.onTinaMove = null;
+        this.onTinaSwap = null;
+        this.onTinaSkip = null;
+        this.tinaMode = null;
+        this.tinaSelA = null;
+        this.tinaSelB = null;
+        this.tinaBuildNo = null;
+        this.tinaSlot = null;
         // Round-end patch assignment (AssignPatches state): the patch card ids I still have to assign (all
         // glow + get an action button), the one I'm currently focused on (value/icon popover + dim), and the
         // value/icon chosen for that focused patch.
@@ -298,6 +357,8 @@ class Game {
         this.bga.states.register('DraftCard', new DraftCard(this, bga));
         this.bga.states.register('RoundReview', new RoundReview(this, bga));
         this.bga.states.register('AssignPatches', new AssignPatches(this, bga));
+        this.bga.states.register('BillyChoice', new BillyChoice(this, bga));
+        this.bga.states.register('TinaTink', new TinaTink(this, bga));
     }
     /*
         setup: build the game UI from current game state ("gamedatas" = the result of Game::getAllDatas).
@@ -1636,6 +1697,13 @@ class Game {
         this.pendingBuildNo = null;
         this.patchSlot = null;
         this.floatingPatchSlot = null;
+        this.mariaActive = false;
+        this.mariaBuildNo = null;
+        this.mariaSlot = null;
+    }
+    /** True when I hold an unused bonus card of the given key ('littlebrothers'|'tina'|'maria'|'billy'). */
+    myUnusedBonus(key) {
+        return (this.gamedatas.bonus ?? []).some((b) => b.owner === this.myId && b.key === key && !b.used);
     }
     /** A pool card was clicked: select it and open the placement panel. */
     selectDraft(cardId) {
@@ -1683,8 +1751,23 @@ class Game {
             this.renderDraftPool();
             this.renderPlacementPanel();
         }, { color: 'alert' });
+        // Mixed-up Maria (bonus): offer to place a regular card in any orientation via its own sub-flow.
+        const mariaToggle = () => {
+            if (!patch && this.myUnusedBonus('maria')) {
+                sb.addActionButton(_('Use Mixed-up Maria'), () => {
+                    this.mariaActive = true;
+                    this.mariaBuildNo = null;
+                    this.mariaSlot = null;
+                    this.renderPlacementPanel();
+                }, { color: 'secondary' });
+            }
+        };
         // ---- Regular card: placement is driven by the in-area click targets (renderKnitting). ----
         if (!patch) {
+            if (this.mariaActive) {
+                this.renderMariaPanel(card);
+                return;
+            }
             const { builds, floating, buildNos } = this.myBuilds();
             // Choosing the sweater: the (clickable, freely-changeable) targets in my area do it; the
             // action bar offers New + Cancel until a position is picked.
@@ -1695,6 +1778,7 @@ class Game {
                 else {
                     sb.setTitle(_('Click a slot in your sweaters to place — or:'));
                     sb.addActionButton(_('+ New sweater'), () => this.placeDraftTarget(0), { color: 'primary' });
+                    mariaToggle();
                     cancelBtn();
                     return;
                 }
@@ -1714,12 +1798,13 @@ class Game {
                 return;
             }
             // Ready: act immediately if the preference is "Off", else show Submit (position still editable).
-            if (this.confirmMode() === 0) {
+            if (this.confirmMode() === 0 && !this.myUnusedBonus('maria')) {
                 this.submitDraft(buildNo);
                 return;
             }
             sb.setTitle(_('Click a different slot to change, or submit'));
             sb.addActionButton(_('Submit'), () => this.submitDraft(buildNo), { color: 'primary' });
+            mariaToggle();
             cancelBtn();
             return;
         }
@@ -1794,6 +1879,162 @@ class Game {
         this.bga.statusBar.removeActionButtons();
         this.renderKnitting(this.myId);
         cb(id, placement);
+    }
+    // ===================================================================================
+    //  Bonus / Special Ability cards — Mixed-up Maria (placement), Billy's a Brute, Tina Can Tink
+    // ===================================================================================
+    /** Mixed-up Maria: a self-contained action-bar sub-flow to place a regular card in any orientation. */
+    renderMariaPanel(card) {
+        const sb = this.bga.statusBar;
+        sb.removeActionButtons();
+        this.renderKnitting(this.myId);
+        sb.setTitle(_('Mixed-up Maria: choose a sweater and any orientation'));
+        const { buildNos } = this.myBuilds();
+        sb.addActionButton(_('+ New sweater'), () => { this.mariaBuildNo = 0; this.renderPlacementPanel(); }, { color: this.mariaBuildNo === 0 ? 'primary' : 'secondary' });
+        buildNos.forEach((b) => sb.addActionButton(`${_('Sweater')} ${b}`, () => { this.mariaBuildNo = b; this.renderPlacementPanel(); }, { color: this.mariaBuildNo === b ? 'primary' : 'secondary' }));
+        ['L', 'R', 'B'].forEach((s) => sb.addActionButton(s, () => { this.mariaSlot = s; this.renderPlacementPanel(); }, { color: this.mariaSlot === s ? 'primary' : 'secondary' }));
+        if (this.mariaBuildNo != null && this.mariaSlot) {
+            sb.addActionButton(_('Submit'), () => this.submitMariaDraft(), { color: 'primary' });
+        }
+        sb.addActionButton(_('Cancel Maria'), () => {
+            this.mariaActive = false;
+            this.mariaBuildNo = null;
+            this.mariaSlot = null;
+            this.renderPlacementPanel();
+        }, { color: 'alert' });
+    }
+    submitMariaDraft() {
+        if (this.selectedDraftId == null || !this.onDraftComplete || this.mariaBuildNo == null || !this.mariaSlot)
+            return;
+        const placement = {
+            build_no: this.mariaBuildNo,
+            slot: this.mariaSlot, // the chosen (any) orientation for this regular card
+            floating_patch_slot: '',
+            use_maria: 1,
+        };
+        const id = this.selectedDraftId;
+        const cb = this.onDraftComplete;
+        this.clearDraftSelection();
+        this.renderDraftPool();
+        this.bga.statusBar.removeActionButtons();
+        this.renderKnitting(this.myId);
+        cb(id, placement);
+    }
+    /** Billy's a Brute: two-button prompt for the owner to draft-and-discard first, or pass. */
+    beginBillyChoice(onActivate, onPass) {
+        const sb = this.bga.statusBar;
+        sb.removeActionButtons();
+        sb.setTitle(_('Play Billy\'s a Brute to draft (and discard) first, or pass'));
+        sb.addActionButton(_('Play Billy\'s a Brute'), () => onActivate(), { color: 'primary' });
+        sb.addActionButton(_('Pass'), () => onPass(), { color: 'secondary' });
+    }
+    endBillyChoice() {
+        this.bga.statusBar.removeActionButtons();
+    }
+    /** Tina Can Tink: begin the round-end move/swap flow (owner only). */
+    beginTinaTink(onMove, onSwap, onSkip) {
+        this.onTinaMove = onMove;
+        this.onTinaSwap = onSwap;
+        this.onTinaSkip = onSkip;
+        this.tinaMode = null;
+        this.tinaSelA = null;
+        this.tinaSelB = null;
+        this.tinaBuildNo = null;
+        this.tinaSlot = null;
+        this.renderTinaPanel();
+    }
+    endTinaTink() {
+        this.onTinaMove = null;
+        this.onTinaSwap = null;
+        this.onTinaSkip = null;
+        this.tinaMode = null;
+        this.tinaSelA = null;
+        this.tinaSelB = null;
+        this.tinaBuildNo = null;
+        this.tinaSlot = null;
+        this.clearTinaSelectableUI();
+        this.bga.statusBar.removeActionButtons();
+    }
+    renderTinaPanel() {
+        const sb = this.bga.statusBar;
+        sb.removeActionButtons();
+        this.renderKnitting(this.myId);
+        if (this.tinaMode === null) {
+            sb.setTitle(_('Play Tina Can Tink: move a piece, swap two pieces, or pass'));
+            sb.addActionButton(_('Move a piece'), () => { this.tinaMode = 'move'; this.tinaSelA = null; this.renderTinaPanel(); }, { color: 'primary' });
+            sb.addActionButton(_('Swap two pieces'), () => { this.tinaMode = 'swap'; this.tinaSelA = null; this.tinaSelB = null; this.renderTinaPanel(); }, { color: 'primary' });
+            sb.addActionButton(_('Pass'), () => this.onTinaSkip?.(), { color: 'secondary' });
+            return;
+        }
+        this.attachTinaClickHandlers();
+        if (this.tinaMode === 'move') {
+            if (this.tinaSelA == null) {
+                sb.setTitle(_('Click the piece to move'));
+            }
+            else {
+                sb.setTitle(_('Choose where to move it'));
+                const { buildNos } = this.myBuilds();
+                sb.addActionButton(_('+ New sweater'), () => { this.tinaBuildNo = 0; this.renderTinaPanel(); }, { color: this.tinaBuildNo === 0 ? 'primary' : 'secondary' });
+                buildNos.forEach((b) => sb.addActionButton(`${_('Sweater')} ${b}`, () => { this.tinaBuildNo = b; this.renderTinaPanel(); }, { color: this.tinaBuildNo === b ? 'primary' : 'secondary' }));
+                ['L', 'R', 'B'].forEach((s) => sb.addActionButton(s, () => { this.tinaSlot = s; this.renderTinaPanel(); }, { color: this.tinaSlot === s ? 'primary' : 'secondary' }));
+                if (this.tinaBuildNo != null && this.tinaSlot) {
+                    sb.addActionButton(_('Confirm move'), () => this.onTinaMove?.(this.tinaSelA, this.tinaBuildNo, this.tinaSlot), { color: 'primary' });
+                }
+            }
+        }
+        else { // swap
+            if (this.tinaSelA == null)
+                sb.setTitle(_('Click the first piece to swap'));
+            else if (this.tinaSelB == null)
+                sb.setTitle(_('Click the second piece to swap'));
+            else {
+                sb.setTitle(_('Swap these two pieces?'));
+                sb.addActionButton(_('Confirm swap'), () => this.onTinaSwap?.(this.tinaSelA, this.tinaSelB), { color: 'primary' });
+            }
+        }
+        sb.addActionButton(_('Back'), () => {
+            this.tinaMode = null;
+            this.tinaSelA = null;
+            this.tinaSelB = null;
+            this.tinaBuildNo = null;
+            this.tinaSlot = null;
+            this.renderTinaPanel();
+        }, { color: 'secondary' });
+    }
+    /** Make my placed knitting pieces clickable for Tina selection (highlight the chosen one/two). */
+    attachTinaClickHandlers() {
+        this.clearTinaSelectableUI();
+        this.cardArray(this.gamedatas.knitting)
+            .filter((c) => Number(c.location_arg) === this.myId)
+            .forEach((c) => {
+            const el = document.getElementById(`ucs-card-${c.id}`);
+            if (!el)
+                return;
+            el.classList.add('ucs-tina-selectable');
+            if (Number(c.id) === this.tinaSelA || Number(c.id) === this.tinaSelB)
+                el.classList.add('ucs-tina-chosen');
+            el.onclick = (e) => { e.preventDefault(); e.stopPropagation(); this.tinaClickPiece(Number(c.id)); };
+        });
+    }
+    tinaClickPiece(id) {
+        if (this.tinaMode === 'move') {
+            this.tinaSelA = id;
+        }
+        else if (this.tinaMode === 'swap') {
+            if (this.tinaSelA == null)
+                this.tinaSelA = id;
+            else if (id === this.tinaSelA)
+                this.tinaSelA = null;
+            else
+                this.tinaSelB = id;
+        }
+        this.renderTinaPanel();
+    }
+    clearTinaSelectableUI() {
+        document.querySelectorAll('.ucs-tina-selectable').forEach((el) => {
+            el.classList.remove('ucs-tina-selectable', 'ucs-tina-chosen');
+            el.onclick = null;
+        });
     }
     // ===================================================================================
     //  Round-end patch assignment — called by the AssignPatches state handler
@@ -2272,6 +2513,36 @@ class Game {
         this.gamedatas.secretSanta = ss;
         this.renderHand();
         this.renderSecretSanta();
+    }
+    /** Re-render every player's Bonus card chip from gamedatas.bonus. */
+    refreshBonusChips() {
+        Object.values(this.gamedatas.players).forEach((p) => this.renderBonus(Number(p.id)));
+    }
+    /** A bonus card was spent (Maria / Billy / Tina) or an objective scored (Little Brothers). */
+    async notif_bonusUsed(args) {
+        this.gamedatas.bonus = args.bonus ?? this.gamedatas.bonus;
+        this.refreshBonusChips();
+    }
+    /** Round scoring may have spent the Little Brothers objective — refresh the chips. */
+    async notif_bonusUpdate(args) {
+        this.gamedatas.bonus = args.bonus ?? this.gamedatas.bonus;
+        this.refreshBonusChips();
+    }
+    /** Billy's a Brute: a drafted card was discarded — drop it from the pool. */
+    async notif_cardDiscarded(args) {
+        delete this.gamedatas.draftpool[Number(args.card_id)];
+        this.renderDraftPool();
+    }
+    /** Tina Can Tink: a player re-arranged their knitting — replace their pieces and re-render. */
+    async notif_tinaResolved(args) {
+        // Drop this player's existing knitting entries, then load the fresh ones.
+        Object.values(this.gamedatas.knitting)
+            .filter((c) => Number(c.location_arg) === Number(args.player_id))
+            .forEach((c) => { delete this.gamedatas.knitting[Number(c.id)]; });
+        args.knitting.forEach((c) => (this.gamedatas.knitting[Number(c.id)] = c));
+        this.gamedatas.bonus = args.bonus ?? this.gamedatas.bonus;
+        this.renderKnitting(Number(args.player_id));
+        this.renderBonus(Number(args.player_id));
     }
     /**
      * Express: a player claimed a Fad. The Fad moves from the display onto their (now locked) sweater;

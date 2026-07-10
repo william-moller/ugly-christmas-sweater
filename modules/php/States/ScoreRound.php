@@ -20,6 +20,11 @@ class ScoreRound extends GameState
     {
         $this->game->scoreRound();
 
+        // Bonus cards: a scored Little Brothers objective was just spent — refresh the chips.
+        if ($this->game->bonusEnabled()) {
+            $this->notify->all('bonusUpdate', '', ['bonus' => $this->game->bonusState()]);
+        }
+
         $round = (int) $this->game->globals->get('roundNo');
 
         // Full per-player, per-sweater scoring detail for the summary overlay (built while the round's

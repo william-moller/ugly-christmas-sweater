@@ -178,6 +178,17 @@ interface DraftPlacement {
     build_no: number;            // 0 = start a new sweater; otherwise an existing build number
     slot: string;                // patch added to an existing sweater: its chosen orientation; else ''
     floating_patch_slot: string; // orientation for a floating patch already in the target sweater, else ''
+    use_maria?: number;          // 1 = Mixed-up Maria: place this regular card in `slot` (any orientation)
+}
+
+/** BillyChoice state args — the Billy owner deciding whether to draft-and-discard first. */
+interface BillyChoiceArgs {
+    // no server args needed; the client reads the owner + bonus state from gamedatas
+}
+
+/** TinaTink state args — the Tina owner deciding whether to move/swap a piece before scoring. */
+interface TinaTinkArgs {
+    owner: number | null;
 }
 
 interface AssignPatchesArgs {
@@ -242,6 +253,29 @@ interface NotifNewRound {
 interface NotifNewRoundPrivate {
     hand: SweaterCard[];
     secretSanta: SweaterCard[];
+}
+
+/** A bonus card was spent / an objective scored — carries the refreshed public bonus state. */
+interface NotifBonusUsed {
+    player_id?: number;
+    player_name?: string;
+    bonus: BonusCardState[];
+}
+
+/** Billy's a Brute: a drafted card was discarded (removed from the pool) instead of kept. */
+interface NotifCardDiscarded {
+    player_id: number;
+    player_name: string;
+    card_id: number;
+    card_label: string;
+}
+
+/** Tina Can Tink: a player re-arranged their knitting — carries their full new knitting + bonus state. */
+interface NotifTinaResolved {
+    player_id: number;
+    player_name: string;
+    knitting: SweaterCard[];
+    bonus: BonusCardState[];
 }
 
 type NotifRoundScored = RoundScoreDetail;
