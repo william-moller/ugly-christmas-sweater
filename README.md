@@ -7,6 +7,8 @@ A [Board Game Arena](https://boardgamearena.com) adaptation of the licensed card
 - **Official rulebook (PDF):** https://boardgamegeek.com/filepage/186495/ugly-christmas-sweaters-rulebook-10
 - A local copy is included at [`docs/ugly-christmas-sweater-rules.pdf`](docs/ugly-christmas-sweater-rules.pdf).
 
-## Status
+## Development
 
-Early scaffolding — no game code yet. See [`CLAUDE.md`](CLAUDE.md) for current state, the planned BGA project setup, and development notes. Shared BGA-wide development guidance lives one directory up (outside this repo).
+See [`CLAUDE.md`](CLAUDE.md) for the doc index (rules, architecture, project facts). For the state of
+the code, ask git (`git log`). Shared BGA-wide development guidance lives one directory up (outside
+this repo).

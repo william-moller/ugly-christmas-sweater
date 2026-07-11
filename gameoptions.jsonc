@@ -50,8 +50,6 @@
 
   // Bonus cards (optional Kickstarter mini-expansion — the 4 "Special Ability" cards). When On, one is
   // dealt face-up to each player at game start and persists all game. Read in Game::bonusEnabled.
-  // NOTE (2026-07-09): the deal/reveal/display are wired; the individual card EFFECTS are pending the
-  // publisher's exact card text (see Material::bonusCards).
   "102": {
     "name": "Bonus cards",
     "values": {
