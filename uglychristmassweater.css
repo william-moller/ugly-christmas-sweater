@@ -44,6 +44,48 @@ html {
   background: transparent;
 }
 
+:root {
+  --ucs-panel-bg: rgba(0, 0, 0, 0.04);
+  --ucs-panel-bg-soft: rgba(0, 0, 0, 0.03);
+  --ucs-panel-bg-strong: rgba(0, 0, 0, 0.06);
+  --ucs-hairline: rgba(0, 0, 0, 0.25);
+  --ucs-hairline-soft: rgba(0, 0, 0, 0.3);
+  --ucs-hairline-strong: rgba(0, 0, 0, 0.35);
+  --ucs-slot-bg: rgba(255, 255, 255, 0.05);
+  --ucs-slot-ink: rgba(0, 0, 0, 0.32);
+  --ucs-mini-bg: rgba(255, 255, 255, 0.25);
+  --ucs-frame: #000;
+  --ucs-heading-ink: #000;
+  --ucs-btn-bg: #fff;
+  --ucs-btn-bg-hover: #f0f0f0;
+  --ucs-btn-ink: #1a1a1a;
+  --ucs-btn-border: rgba(0, 0, 0, 0.3);
+  --ucs-oppo-bg: #dcecc8;
+  --ucs-oppo-ink: #1c2b16;
+}
+
+html[data-theme=dark] {
+  --ucs-panel-bg: rgba(255, 255, 255, 0.07);
+  --ucs-panel-bg-soft: rgba(255, 255, 255, 0.05);
+  --ucs-panel-bg-strong: rgba(255, 255, 255, 0.1);
+  --ucs-hairline: rgba(255, 255, 255, 0.25);
+  --ucs-hairline-soft: rgba(255, 255, 255, 0.3);
+  --ucs-hairline-strong: rgba(255, 255, 255, 0.4);
+  --ucs-slot-bg: rgba(255, 255, 255, 0.06);
+  --ucs-slot-ink: rgba(255, 255, 255, 0.42);
+  --ucs-mini-bg: rgba(255, 255, 255, 0.1);
+  --ucs-frame: rgba(255, 255, 255, 0.75);
+  --ucs-heading-ink: #f2f2f2;
+  --ucs-btn-bg: #3a3f45;
+  --ucs-btn-bg-hover: #4a5058;
+  --ucs-btn-ink: #f2f2f2;
+  --ucs-btn-border: rgba(255, 255, 255, 0.3);
+  --ucs-oppo-bg: #2e3b26;
+  --ucs-oppo-ink: #e8f0dd;
+  background: radial-gradient(circle at 50% 38%, #274618 0%, #16290f 72%), #16290f;
+  background-attachment: fixed;
+}
+
 #ucs-table {
   --ucs-card-w: 64px;
   --ucs-card-h: 90px;
@@ -67,7 +109,7 @@ html {
 }
 
 .ucs-zone {
-  background: rgba(0, 0, 0, 0.04);
+  background: var(--ucs-panel-bg);
   border-radius: 8px;
   padding: 6px 8px;
 }
@@ -251,8 +293,8 @@ html {
 }
 
 .ucs-pile-empty {
-  background: rgba(0, 0, 0, 0.06);
-  border: 2px dashed rgba(0, 0, 0, 0.25);
+  background: var(--ucs-panel-bg-strong);
+  border: 2px dashed var(--ucs-hairline);
   box-shadow: none;
 }
 
@@ -464,15 +506,16 @@ html {
 .ucs-choice,
 .ucs-build-btn {
   cursor: pointer;
-  border: 1px solid rgba(0, 0, 0, 0.3);
+  border: 1px solid var(--ucs-btn-border);
   border-radius: 5px;
-  background: #fff;
+  background: var(--ucs-btn-bg);
+  color: var(--ucs-btn-ink);
   padding: 3px 8px;
   font-size: 13px;
 }
 .ucs-choice:hover,
 .ucs-build-btn:hover {
-  background: #f0f0f0;
+  background: var(--ucs-btn-bg-hover);
 }
 .ucs-choice:disabled,
 .ucs-build-btn:disabled {
@@ -533,7 +576,7 @@ html {
   border: 2px solid var(--player-color, #888);
   border-radius: 8px;
   padding: 6px;
-  background: rgba(0, 0, 0, 0.03);
+  background: var(--ucs-panel-bg-soft);
 }
 
 .ucs-me {
@@ -544,7 +587,8 @@ html {
 
 .ucs-oppo {
   cursor: pointer;
-  background: #dcecc8;
+  background: var(--ucs-oppo-bg);
+  color: var(--ucs-oppo-ink);
   transition: box-shadow 0.12s ease, transform 0.12s ease;
 }
 .ucs-oppo:hover {
@@ -579,7 +623,7 @@ html {
 }
 
 .ucs-me .ucs-player-name {
-  color: #000;
+  color: var(--ucs-heading-ink);
 }
 
 .ucs-order-badge {
@@ -651,9 +695,9 @@ html {
   justify-items: center;
   gap: 2px;
   padding: 2px;
-  border: 1px dashed rgba(0, 0, 0, 0.3);
+  border: 1px dashed var(--ucs-hairline-soft);
   border-radius: 4px;
-  background: rgba(255, 255, 255, 0.25);
+  background: var(--ucs-mini-bg);
   flex: 0 0 auto;
 }
 
@@ -669,8 +713,8 @@ html {
 }
 
 .ucs-mini-empty {
-  border: 1px dotted rgba(0, 0, 0, 0.35);
-  background: rgba(255, 255, 255, 0.05);
+  border: 1px dotted var(--ucs-hairline-strong);
+  background: var(--ucs-slot-bg);
   box-shadow: none;
 }
 
@@ -704,7 +748,7 @@ html {
   gap: 0 3px;
   padding: 3px;
   border-radius: 6px;
-  border: 1px dashed rgba(0, 0, 0, 0.25);
+  border: 1px dashed var(--ucs-hairline);
 }
 
 .ucs-build-complete {
@@ -748,9 +792,9 @@ html {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(0, 0, 0, 0.06);
+  background: var(--ucs-panel-bg-strong);
   box-shadow: none;
-  color: rgba(0, 0, 0, 0.45);
+  color: var(--ucs-slot-ink);
 }
 .ucs-ghost.ucs-target-option {
   background: rgba(255, 213, 74, 0.16);
@@ -779,10 +823,10 @@ html {
 }
 
 .ucs-slot-empty {
-  background: rgba(255, 255, 255, 0.05);
-  border: 2px dotted rgba(0, 0, 0, 0.35);
+  background: var(--ucs-slot-bg);
+  border: 2px dotted var(--ucs-hairline-strong);
   box-shadow: none;
-  color: rgba(0, 0, 0, 0.28);
+  color: var(--ucs-slot-ink);
 }
 
 .ucs-build-new {
@@ -935,7 +979,7 @@ html {
 }
 
 #ucs-trade-area {
-  border: 3px solid #000;
+  border: 3px solid var(--ucs-frame);
 }
 
 #ucs-trade-area.ucs-trade-has-order {
