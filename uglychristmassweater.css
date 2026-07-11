@@ -626,22 +626,6 @@ html[data-theme=dark] {
   color: var(--ucs-heading-ink);
 }
 
-.ucs-order-badge {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
-  font-size: 12px;
-  font-weight: bold;
-  color: #fff;
-  background: transparent;
-}
-.ucs-order-badge.ucs-has-order {
-  background: #2c3e50;
-}
-
 .ucs-bonus-card {
   display: inline-flex;
   align-items: center;

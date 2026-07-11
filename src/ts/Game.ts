@@ -64,9 +64,6 @@ export class Game {
     private confirmAbort: AbortController | null = null;
     private confirming = false; // true while a play/draft is awaiting Confirm (hides draft targets)
 
-    // Current draft order (player ids, best-first) for the order badges.
-    private draftOrder: number[] = [];
-
     // Draft Order cards (physical cards numbered 1..N, N = player count). They live in a stack left of
     // Round Parameters, deal out onto the ranked Trade Area cards while drafting, then all return home
     // once the trick's drafting is done. `draftOrderEls[k-1]` is card "k"; `draftOrderCardIds` is the
@@ -158,7 +155,6 @@ export class Game {
                 <div class="ucs-player-table ${mine ? 'ucs-me' : 'ucs-oppo'}" id="ucs-player-${player.id}"
                      style="--player-color:#${player.color}" data-player-id="${player.id}">
                     <div class="ucs-player-header">
-                        <span class="ucs-order-badge" id="ucs-order-${player.id}"></span>
                         <span class="ucs-player-name">${mine ? _('Your Knitting Area') : player.name}</span>
                         <span class="ucs-bonus-card" id="ucs-bonus-${player.id}"></span>
                         ${mine ? '' : `<div class="ucs-draw-pile ucs-oppo-pile" id="ucs-pile-${player.id}"></div>`}
@@ -507,7 +503,6 @@ export class Game {
 
     private renderPlayers() {
         Object.values(this.gamedatas.players).forEach((player) => {
-            this.renderOrderBadge(Number(player.id));
             this.renderKnitting(Number(player.id));
             this.renderOppoSummary(Number(player.id));
             this.renderBonus(Number(player.id));
@@ -618,19 +613,6 @@ export class Game {
     private closePopin() {
         const popin = document.getElementById('ucs-popin');
         if (popin) popin.style.display = 'none';
-    }
-
-    private renderOrderBadge(playerId: number) {
-        const el = document.getElementById(`ucs-order-${playerId}`);
-        if (!el) return;
-        const idx = this.draftOrder.indexOf(playerId);
-        if (idx >= 0) {
-            el.textContent = String(idx + 1);
-            el.classList.add('ucs-has-order');
-        } else {
-            el.textContent = '';
-            el.classList.remove('ucs-has-order');
-        }
     }
 
     // ===================================================================================
@@ -2151,12 +2133,8 @@ export class Game {
         this.renderKnitting(args.player_id);
     }
 
-    /** The trick resolved into a draft order; show the order badges and deal the Draft Order cards. */
+    /** The trick resolved into a draft order; deal the Draft Order cards onto the Trade Area. */
     async notif_draftOrder(args: NotifDraftOrder) {
-        this.draftOrder = args.order.map(Number);
-        this.gamedatas.players && Object.values(this.gamedatas.players).forEach(
-            (p) => this.renderOrderBadge(Number(p.id))
-        );
         this.dealDraftOrder(args.orderCards ?? []);
     }
 
@@ -2184,7 +2162,6 @@ export class Game {
             for (let i = 0; i < drew; i++) this.animateOpponentDraw(pid);
         });
         this.gamedatas.counts = args.counts;
-        this.draftOrder = [];
         this.renderDraftPool();
         this.renderTradeArea();
         this.renderPlayers();
@@ -2271,7 +2248,6 @@ export class Game {
         this.gamedatas.roundNo = args.round;
         this.gamedatas.leaderId = args.leaderId;
         this.gamedatas.draftOrderCards = [];
-        this.draftOrder = [];
         this.showHandEndBanner(false);
         this.hideDraftOrder();
         this.renderAll();
