@@ -598,6 +598,56 @@ export class Game {
         setTimeout(() => ghost.remove(), 650);
     }
 
+    /**
+     * FLIP-move a card element into place from a source rectangle: the destination element is already
+     * rendered at its final spot, so we offset it back to `from` (translate + scale, transform-origin
+     * top-left) then transition to identity — it appears to fly in from `from`. Deltas are divided by
+     * the tabletop scale (same as animateTradeToPool) so it's correct under any transform BGA applies;
+     * the scale factors are viewport ratios (scale-independent). Resolves when the motion ends (or
+     * immediately when animations are off), so a promise notification can await the flight.
+     */
+    private flipCardFrom(
+        el: HTMLElement | null,
+        from: { left: number; top: number; width: number; height: number } | null,
+        durationSec: number,
+    ): Promise<void> {
+        if (!el || !from || !this.bga.gameui.bgaAnimationsActive?.()) return Promise.resolve();
+        const table = document.getElementById('ucs-table');
+        const tScale = (table && table.offsetWidth) ? table.getBoundingClientRect().width / table.offsetWidth : 1;
+        const now = el.getBoundingClientRect();
+        if (!now.width || !from.width) return Promise.resolve();
+        const dx = (from.left - now.left) / tScale;
+        const dy = (from.top - now.top) / tScale;
+        const sx = from.width / now.width;
+        const sy = from.height / now.height;
+        // Nothing meaningful to animate (e.g. an F5 left the card already in place) — skip.
+        if (Math.abs(dx) < 1 && Math.abs(dy) < 1 && Math.abs(sx - 1) < 0.03 && Math.abs(sy - 1) < 0.03) {
+            return Promise.resolve();
+        }
+        el.style.transformOrigin = 'top left';
+        el.style.transition = 'none';
+        el.style.transform = `translate(${dx}px, ${dy}px) scale(${sx}, ${sy})`;
+        el.style.zIndex = '300'; // ride above sibling cards while in flight (below the popin at 1000)
+        void el.offsetWidth; // force reflow so the starting transform takes effect before the transition
+        return new Promise<void>((resolve) => {
+            requestAnimationFrame(() => {
+                el.style.transition = `transform ${durationSec}s ease`;
+                el.style.transform = '';
+            });
+            setTimeout(() => {
+                el.style.transition = ''; el.style.transform = '';
+                el.style.transformOrigin = ''; el.style.zIndex = '';
+                resolve();
+            }, durationSec * 1000 + 60);
+        });
+    }
+
+    /** A card-sized source rect centred on a host element (used to launch a card out of a player panel). */
+    private cardRectAtCenter(host: HTMLElement, w: number, h: number) {
+        const r = host.getBoundingClientRect();
+        return { left: r.left + r.width / 2 - w / 2, top: r.top + r.height / 2 - h / 2, width: w, height: h };
+    }
+
     /** Open the popin showing one player's Knitting Area at full size (from a click on their table). */
     private openPopin(playerId: number) {
         const popin = document.getElementById('ucs-popin')!;
@@ -2094,6 +2144,12 @@ export class Game {
     /** A card was played into the trade area (its face travels with the notification). */
     async notif_cardPlayed(args: NotifCardPlayed) {
         const id = Number(args.card_id);
+        const mine = Number(args.player_id) === this.myId;
+        // Capture where the card starts BEFORE any DOM changes: my own play launches from its card in
+        // the hand fan; an opponent's play launches from their on-table player panel on the right.
+        const handEl = mine ? document.getElementById(`ucs-hand-${id}-front`) : null;
+        const fromMine = handEl ? handEl.getBoundingClientRect() : null;
+
         this.gamedatas.trick[id] = args.card;
         // If it left my hand, drop it; either way the player's hand count decreases.
         delete this.gamedatas.hand[id];
@@ -2102,17 +2158,33 @@ export class Game {
                 0, this.gamedatas.counts[args.player_id].hand - 1
             );
         }
-        this.renderTradeArea();
         // Only my own hand changes visually; slide the played card out of the fan (other players' plays
         // don't touch my stock). disablePlayable on state-leave clears any lingering selection.
-        if (Number(args.player_id) === this.myId && this.handStock) {
+        if (mine && this.handStock) {
             this.handStock.removeCard(args.card).catch(() => {});
         }
+        this.renderTradeArea();
+
+        // Animate the freshly-rendered Trade Area card in from its origin.
+        const el = document.getElementById(`ucs-card-${id}`);
+        let from: { left: number; top: number; width: number; height: number } | null = fromMine;
+        if (!from && el) {
+            const panel = document.getElementById(`ucs-player-${args.player_id}`);
+            if (panel) {
+                const now = el.getBoundingClientRect();
+                from = this.cardRectAtCenter(panel, now.width, now.height);
+            }
+        }
+        await this.flipCardFrom(el, from, 0.5);
     }
 
     /** A card was drafted from the pool into a player's knitting area (possibly placed over a piece). */
     async notif_cardDrafted(args: NotifCardDrafted) {
         const id = Number(args.card_id);
+        // Capture the card's spot in the Draft Pool BEFORE the re-render — the flight origin.
+        const poolEl = document.getElementById(`ucs-card-${id}`);
+        const from = poolEl ? poolEl.getBoundingClientRect() : null;
+
         delete this.gamedatas.draftpool[id];
         if (args.replaced_card_id != null) {
             delete this.gamedatas.knitting[Number(args.replaced_card_id)];
@@ -2124,6 +2196,11 @@ export class Game {
         }
         this.renderDraftPool();
         this.renderKnitting(args.player_id);
+
+        // Fly the card from the pool into its knitting slot: my own area renders it full-size
+        // (`ucs-card-<id>`); an opponent's inline area renders a compact chip (`ucs-mini-<id>`).
+        const dest = document.getElementById(`ucs-card-${id}`) ?? document.getElementById(`ucs-mini-${id}`);
+        await this.flipCardFrom(dest, from, 0.5);
     }
 
     /** Round-end: a player set a patch's value + icon — re-render it with its chosen face. */
