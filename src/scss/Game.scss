@@ -895,44 +895,25 @@ html[data-theme="dark"] {
     opacity: 0.9;
 }
 
-/* The patch currently being assigned a value/icon at round-end. */
-.ucs-card.ucs-assigning {
-    outline: 3px solid gold;
-    outline-offset: 1px;
-    animation: ucs-pulse 1s ease-in-out infinite;
+/* Every patch I still owe a round-end assignment gets a pulsing gold glow so it's obvious where to
+   look; the inline value/icon picker (.ucs-assign-pop) is attached beside its sweater. */
+@keyframes ucs-assign-glow {
+    0%, 100% { outline-color: #ffd54a; box-shadow: 0 0 6px 2px rgba(255, 213, 74, 0.6); }
+    50%      { outline-color: #ffe487; box-shadow: 0 0 15px 5px rgba(255, 213, 74, 0.95); }
 }
-
-@keyframes ucs-pulse {
-    0%, 100% { box-shadow: 0 0 4px 1px rgba(255, 215, 0, 0.6); }
-    50%      { box-shadow: 0 0 10px 3px rgba(255, 215, 0, 0.9); }
-}
-
-/* Every patch I still owe a round-end assignment glows (each also gets an "Assign … Patch" button). */
 .ucs-card.ucs-assign-glow {
     outline: 3px solid #ffd54a;
     outline-offset: 1px;
+    z-index: 1;
+    animation: ucs-assign-glow 1.2s ease-in-out infinite;
 }
 
-/* Focus dim: an overlay darkens the whole play area (#ucs-table) while the focused sweater, the Fad,
-   and the Secret Santa are lifted above it (.ucs-assign-lift) so the player can weigh how to score. */
-#ucs-assign-dim {
-    position: absolute;
-    inset: 0;
-    background: rgba(0, 0, 0, 0.55);
-    z-index: 900;
-    border-radius: 8px;
-}
-.ucs-assign-lift {
-    position: relative;
-    z-index: 901;
-}
-
-/* Value/icon picker popover shown under the focused patch's sweater. */
+/* Value/icon picker popover, anchored to the right of the patch's sweater (the build is position:
+   relative). It floats over neighbouring zones via a high z-index. */
 .ucs-assign-pop {
     position: absolute;
-    top: calc(100% + 6px);
-    left: 50%;
-    transform: translateX(-50%);
+    top: 0;
+    left: calc(100% + 8px);
     z-index: 902;
     display: flex;
     flex-direction: column;
@@ -942,10 +923,11 @@ html[data-theme="dark"] {
     border: 2px solid #ffd54a;
     border-radius: 10px;
     box-shadow: 0 6px 20px rgba(0, 0, 0, 0.6);
-    white-space: nowrap;
+    width: 208px; // keeps the 1-12 values to two tidy rows beside the sweater
 }
 .ucs-assign-row {
     display: flex;
+    flex-wrap: wrap;
     gap: 4px;
     justify-content: center;
 }
