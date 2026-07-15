@@ -1,22 +1,20 @@
 /*
- * CardView — builds placeholder DOM for a sweater card.
+ * CardView — builds the DOM for a sweater card.
  *
- * The publisher art has not arrived yet, so cards are drawn from data we DO have (colour + value,
- * with a colour-blind-friendly pattern per colour). Icon and orientation are printed on the physical
- * cards and live in Material::FACES once transcribed; until then they render as "?" and the markup is
- * already in place to show them the moment that data exists.
+ * Card faces are the real publisher art, painted from a CSS sprite sheet (img/sweaters.jpg) via the
+ * per-card `.ucs-face-<colour>_<value>` classes (see applyCardFace / faceSpriteClass). The printed art
+ * already carries value, icon and orientation, so the only DOM overlay is a wild-value badge for a
+ * patch that has taken on an identity. The icon glyphs below are still used for that badge, for the
+ * game log chips, and for pickers/read-outs.
  */
 
-/** Unicode glyphs for the four icons (used once Material::FACES is populated). */
+/** Unicode glyphs for the four icons (patch wild-badge, log chips, pickers). */
 const ICON_GLYPH: { [icon: string]: string } = {
     snowman: '☃',     // ☃
-    candycane: '\u{1F36C}', // 🍬 (placeholder glyph)
+    candycane: '\u{1F36C}', // 🍬
     bell: '\u{1F514}',     // 🔔
     tree: '\u{1F384}',     // 🎄
 };
-
-/** Human-readable orientation label. */
-const SLOT_LABEL: { [slot: string]: string } = { L: 'L', R: 'R', B: 'B' };
 
 /** Glyph for an icon name (falls back to the raw name if unknown) — used by pickers/read-outs. */
 export function iconGlyph(icon: string): string {
@@ -36,46 +34,40 @@ export function isPatch(card: SweaterCard, material: UcsMaterial): boolean {
 }
 
 /**
- * The inner face markup for a sweater card, matching the printed card art: the value, the
- * orientation letter on a "Christmas-light" bulb, and the icon all stacked in the TOP-LEFT corner,
- * over the colour + colour-blind pattern. Shared by the custom-DOM zones (createCardElement) and the
- * bga-cards hand (the CardManager's setupFrontDiv) so every card looks identical.
+ * The CSS class that paints a card's face from the sprite sheet (img/sweaters.jpg). Keyed exactly
+ * like faceOf() — `<colour>_<value>`, value 0 = patch — so it resolves the same cell for all 52
+ * cards. Generated positions live in src/scss/_sweater-sprites.scss (scripts/build-sprites.mjs).
+ */
+export function faceSpriteClass(card: SweaterCard): string {
+    return `ucs-face-${card.type}_${card.type_arg}`;
+}
+
+/**
+ * Overlay markup drawn ON TOP of a card's sprite face. The printed art already carries value, icon
+ * and orientation for every numbered card, so numbered cards need no overlay (returns ''). The only
+ * overlay is for a PATCH that has taken on an identity — a value/icon copied during a trick, or
+ * assigned at round-end scoring — shown as a centred badge over the wild patch art.
  */
 export function cardFaceInner(card: SweaterCard, material: UcsMaterial): string {
     const face = faceOf(card, material);
+    if (!face?.patch) return ''; // numbered card — the printed art shows everything
 
-    // A placed patch carries its chosen value/icon on the card row (wildValue / wildIcon); a regular
-    // card uses its printed face. An unresolved patch shows a wild star / placeholder.
     const wildValue = card.wildValue != null && card.wildValue !== '' ? Number(card.wildValue) : null;
     const wildIcon = card.wildIcon != null && card.wildIcon !== '' ? String(card.wildIcon) : null;
+    if (wildValue == null && wildIcon == null) return ''; // unresolved patch — art's own "?" suffices
 
-    // Value: chosen patch value, else printed value, else a wild star for an unresolved patch.
-    const valueLabel = wildValue != null ? String(wildValue) : (face.patch ? '★' : String(face.value));
-
-    // Icon: chosen patch icon or printed icon → glyph; "?" placeholder until art, "✶" for a wild patch.
-    const effIcon = wildIcon ?? face.icon;
-    const iconLabel = effIcon ? (ICON_GLYPH[effIcon] ?? effIcon) : (face.patch ? '✶' : '?');
-
-    // Orientation: prefer the card's placed slot (knitting), else the printed slot, else placeholder.
-    const slotRaw = (card.slot as string) ?? face.slot ?? null;
-    const slotLabel = slotRaw ? (SLOT_LABEL[slotRaw] ?? slotRaw) : (face.patch ? '✶' : '?');
-    const bulbKind = slotRaw ?? 'wild';
-
-    return `
-        <div class="ucs-card-pattern"></div>
-        <div class="ucs-card-corner">
-            <div class="ucs-card-value">${valueLabel}</div>
-            <div class="ucs-bulb ucs-bulb-${bulbKind}" title="orientation">${slotLabel}</div>
-            <div class="ucs-icon-col">${iconLabel}</div>
-        </div>
-    `;
+    const valueLabel = wildValue != null ? String(wildValue) : '';
+    const iconLabel = wildIcon ? (ICON_GLYPH[wildIcon] ?? wildIcon) : '';
+    return `<div class="ucs-wild-badge">${valueLabel}`
+        + (iconLabel ? `<span class="ucs-wild-icon">${iconLabel}</span>` : '')
+        + `</div>`;
 }
 
-/** Add the colour/patch classes and inner face to an element (shared by both render paths). */
+/** Add the sizing + sprite-face classes and any patch overlay (shared by both render paths). */
 export function applyCardFace(el: HTMLElement, card: SweaterCard, material: UcsMaterial): void {
     const face = faceOf(card, material);
-    el.classList.add('ucs-card', `ucs-color-${face.color}`);
-    if (face.patch) {
+    el.classList.add('ucs-card', 'ucs-face', faceSpriteClass(card));
+    if (face?.patch) {
         el.classList.add('ucs-patch');
     }
     el.innerHTML = cardFaceInner(card, material);
@@ -136,7 +128,7 @@ export function cardTooltip(card: SweaterCard, material: UcsMaterial): string {
         return `<strong>${colour} Patch</strong><br>Wild. Starting a new sweater it "floats" (no orientation) `
             + `until a second card joins; its value &amp; icon are chosen at round-end scoring.`;
     }
-    const icon = face.icon ?? '? (pending art)';
-    const slot = face.slot ?? '? (pending art)';
+    const icon = face.icon ?? '?';
+    const slot = face.slot ?? '?';
     return `<strong>${colour} ${face.value}</strong><br>Icon: ${icon}<br>Orientation: ${slot}`;
 }

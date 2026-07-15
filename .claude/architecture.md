@@ -71,7 +71,7 @@ TypeScript + SCSS. **Edit `src/`, never the generated `modules/js/Game.js` or `u
 
 - `src/ts/Game.ts` — the client entry (rollup `input`); holds selection state and all rendering.
 - `src/ts/States/*.ts` — one handler per interactive state (`PlayCard`, `DraftCard`, `RoundReview`, `AssignPatches`, `BillyChoice`, `TinaTink`), imported and registered in `Game.ts`.
-- `src/ts/CardView.ts` — card element/tooltip/log-chip/icon-glyph helpers.
+- `src/ts/CardView.ts` — card element/tooltip/log-chip/icon-glyph helpers. Faces are painted from the CSS sprite sheet via `.ucs-face-<colour>_<value>` (see `faceSpriteClass`); the printed art carries value/icon/orientation, so the only DOM overlay is a patch's wild-value badge.
 - `src/ts/libs.ts` — `BgaAnimations` / `BgaCards` (loaded from BGA at runtime; not bundled).
 - `src/ts/types.d.ts` — gamedatas / notif / args types.
 - `src/scss/Game.scss` — the single stylesheet.
@@ -85,3 +85,15 @@ TypeScript + SCSS are enabled (`package.json`):
 
 After a build, the two generated artifacts must be SFTP-synced manually — see
 [`../../.claude/deploy.md`](../../.claude/deploy.md) (`uploadOnSave` does not cover build output).
+
+### Card-face sprites (`scripts/build-sprites.mjs`, `npm run build:sprites`)
+
+The 52 sweater/patch faces are packed into one CSS sprite (`img/sweaters.jpg`, a 4×13 grid: row =
+colour, col = value 0..12 with 0 = patch) plus a shared `img/card-back.jpg`; the script also emits the
+GENERATED `src/scss/_sweater-sprites.scss` (one `.ucs-face-<colour>_<value>` position class per card).
+Its input is the publisher PNGs (path hard-coded in the script) mapped by the card→file table verified
+against `Material::FACES`. `img/` is **gitignored** (publisher IP), so on a fresh checkout the sprites
+must be regenerated with `npm run build:sprites` before the art will show; the emitted SCSS partial *is*
+committed so the CSS still builds without the art. Uses the `sharp` dev-dependency. The script trims the
+~37.5px print bleed off the 750×1125 PNGs (→ 675×1050, a **bridge card**, ratio **0.643**) so the sweater
+art reaches the card edge; all six `--ucs-card-w/h` contexts in `Game.scss` are kept at that 0.643 ratio.

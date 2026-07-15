@@ -4,7 +4,7 @@ import { RoundReview } from "./States/RoundReview";
 import { AssignPatches } from "./States/AssignPatches";
 import { BillyChoice } from "./States/BillyChoice";
 import { TinaTink } from "./States/TinaTink";
-import { createCardElement, cardTooltip, cardLogChip, faceOf, isPatch, cardFaceInner, iconGlyph } from "./CardView";
+import { createCardElement, cardTooltip, cardLogChip, faceOf, isPatch, cardFaceInner, faceSpriteClass, iconGlyph } from "./CardView";
 import { BgaAnimations, BgaCards } from "./libs";
 
 type CardMapT = { [cardId: number]: SweaterCard };
@@ -240,14 +240,14 @@ export class Game {
             // 64/90 used elsewhere. The inner face content (sized off --ucs-card-w) is matched to this in
             // SCSS (#ucs-my-hand-wrap), and the mobile breakpoint scales the whole fan back down.
             cardWidth: 96,
-            cardHeight: 135,
+            cardHeight: 149, // bridge ratio 0.643 (bleed-trimmed art) + #ucs-my-hand-wrap's --ucs-card-h
             getId: (c: SweaterCard) => `ucs-hand-${c.id}`,
             isCardVisible: () => true,
             setupFrontDiv: (c: SweaterCard, div: HTMLElement) => {
                 // Note: we deliberately do NOT add the `.ucs-card` sizing class here — the stock's own
                 // card-side element handles sizing/positioning; we only paint colour + face.
                 const face = faceOf(c, this.material);
-                div.classList.add('ucs-card-face', `ucs-color-${face.color}`);
+                div.classList.add('ucs-card-face', 'ucs-face', faceSpriteClass(c));
                 if (face.patch) div.classList.add('ucs-patch');
                 div.innerHTML = cardFaceInner(c, this.material);
                 if (!div.id) div.id = `ucs-hand-${c.id}-front`;

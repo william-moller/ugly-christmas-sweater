@@ -43,9 +43,10 @@
 // =====================================================================================
 
 @use "sass:list";
+@use "sweater-sprites"; // GENERATED per-card sprite face classes (scripts/build-sprites.mjs)
 
 $card-w: 64px;
-$card-h: 90px;
+$card-h: 100px; // bridge-card ratio 0.643 (675x1050 after bleed trim); every --ucs-card-h below is w * 1.556
 
 // Per-colour palette + a distinct pattern direction for colour-blind accessibility
 // (the rules require each colour to also carry a unique pattern).
@@ -198,7 +199,9 @@ html[data-theme="dark"] {
     overflow: hidden;
     flex: 0 0 auto;
     user-select: none;
-    background: #555;
+    // background-COLOR (not the shorthand) so it's only a fallback tint behind the sprite's
+    // background-image (.ucs-face) — the shorthand would reset background-image and hide the art.
+    background-color: #555;
 }
 
 // The bga-cards hand paints its front face with `.ucs-card-face` (not `.ucs-card`, whose fixed sizing
@@ -311,13 +314,31 @@ html[data-theme="dark"] {
     box-shadow: 0 1px 2px rgba(0, 0, 0, 0.4), inset 0 0 0 1px rgba(0, 0, 0, 0.25);
 }
 
-.ucs-patch {
-    outline: 2px dashed rgba(255, 255, 255, 0.9);
-    outline-offset: -3px;
+// The patch faces are self-evidently patchwork in the real art, so no dashed outline is needed.
+// When a patch has TAKEN ON a value/icon (copied in a trick, or assigned at scoring), we overlay a
+// centred badge on top of the patch art so its current identity is legible at a glance.
+.ucs-wild-badge {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: calc(var(--ucs-card-w) * 0.04);
+    z-index: 1;
+    pointer-events: none;
+    font-size: calc(var(--ucs-card-w) * 0.34);
+    font-weight: 800;
+    color: #fff;
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.85), 0 0 6px rgba(0, 0, 0, 0.6);
+}
+.ucs-wild-icon {
+    font-size: calc(var(--ucs-card-w) * 0.30);
 }
 
 .ucs-card-back {
-    background: repeating-linear-gradient(45deg, #7a1f1f, #7a1f1f 6px, #5c1414 6px, #5c1414 12px);
+    // The shared publisher back (all sweaters + patches). `cover` so it fills any back-showing box
+    // — piles, draw-fly ghost, gameplay deck — regardless of that element's exact aspect ratio.
+    background: url(img/card-back.jpg) center / cover, #5c1414;
 }
 
 // ---- Draw piles (personal refill source: mine beside the hand, opponents' in their header) --------
@@ -589,7 +610,7 @@ html[data-theme="dark"] {
     flex: 0 0 360px;
     align-self: stretch;
     --ucs-card-w: 74px;
-    --ucs-card-h: 104px;
+    --ucs-card-h: 115px;
 }
 
 #ucs-opponents {
@@ -600,7 +621,7 @@ html[data-theme="dark"] {
     gap: 8px;
     // Opponents are shrunk down (scaled-down live sweaters).
     --ucs-card-w: 40px;
-    --ucs-card-h: 56px;
+    --ucs-card-h: 62px;
 }
 
 .ucs-player-table {
@@ -1009,7 +1030,7 @@ html[data-theme="dark"] {
 // scales with the frame. The mobile breakpoint below scales the whole fan back down.
 #ucs-my-hand-wrap {
     --ucs-card-w: 96px;
-    --ucs-card-h: 135px;
+    --ucs-card-h: 149px;
     // Keep the (attached) hand painting above the Draft Order overlay (#ucs-draftorder-layer, z-index 50)
     // so the dealt rank cards sit BEHIND the fanned hand where they overlap. The floating hand is lifted
     // separately via the HandStock `floatZIndex` option in Game.ts. Stays below the popin (z-index 1000).
@@ -1077,7 +1098,7 @@ html[data-theme="dark"] {
     box-shadow: 0 8px 30px rgba(0, 0, 0, 0.5);
     // Opponent sweaters render large in the close-up.
     --ucs-card-w: 80px;
-    --ucs-card-h: 112px;
+    --ucs-card-h: 124px;
 }
 
 .ucs-popin-head {
@@ -1104,7 +1125,7 @@ html[data-theme="dark"] {
     width: min(1100px, 94vw);
     max-width: 94vw;
     --ucs-card-w: 42px;
-    --ucs-card-h: 59px;
+    --ucs-card-h: 65px;
     border-top-color: #ffd54a;
 }
 .ucs-score-body {

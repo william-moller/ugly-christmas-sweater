@@ -6,5 +6,5 @@
   "privateKeyPath": "C:/Users/Will/.ssh/bga_studio",
   "remotePath": "/<bga-project-name>/",
   "uploadOnSave": true,
-  "ignore": [".git", ".claude", "CLAUDE.md", ".vscode", "docs", ".gitignore", "README.md"]
+  "ignore": [".git", ".claude", "CLAUDE.md", ".vscode", "docs", ".gitignore", "README.md", "scripts", "node_modules"]
 }

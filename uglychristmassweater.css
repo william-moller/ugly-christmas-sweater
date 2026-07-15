@@ -35,6 +35,220 @@
            Consequently, don't hesitate to put as many comments as necessary.
 */
 /********* You can start writing your SCSS below this line: **********/
+.ucs-face {
+  background-image: url(img/sweaters.jpg);
+  background-size: calc(var(--ucs-card-w) * 13) calc(var(--ucs-card-h) * 4);
+  background-repeat: no-repeat;
+}
+
+.ucs-face-green_0 {
+  background-position: calc(var(--ucs-card-w) * 0) calc(var(--ucs-card-h) * 0);
+}
+
+.ucs-face-green_1 {
+  background-position: calc(var(--ucs-card-w) * -1) calc(var(--ucs-card-h) * 0);
+}
+
+.ucs-face-green_2 {
+  background-position: calc(var(--ucs-card-w) * -2) calc(var(--ucs-card-h) * 0);
+}
+
+.ucs-face-green_3 {
+  background-position: calc(var(--ucs-card-w) * -3) calc(var(--ucs-card-h) * 0);
+}
+
+.ucs-face-green_4 {
+  background-position: calc(var(--ucs-card-w) * -4) calc(var(--ucs-card-h) * 0);
+}
+
+.ucs-face-green_5 {
+  background-position: calc(var(--ucs-card-w) * -5) calc(var(--ucs-card-h) * 0);
+}
+
+.ucs-face-green_6 {
+  background-position: calc(var(--ucs-card-w) * -6) calc(var(--ucs-card-h) * 0);
+}
+
+.ucs-face-green_7 {
+  background-position: calc(var(--ucs-card-w) * -7) calc(var(--ucs-card-h) * 0);
+}
+
+.ucs-face-green_8 {
+  background-position: calc(var(--ucs-card-w) * -8) calc(var(--ucs-card-h) * 0);
+}
+
+.ucs-face-green_9 {
+  background-position: calc(var(--ucs-card-w) * -9) calc(var(--ucs-card-h) * 0);
+}
+
+.ucs-face-green_10 {
+  background-position: calc(var(--ucs-card-w) * -10) calc(var(--ucs-card-h) * 0);
+}
+
+.ucs-face-green_11 {
+  background-position: calc(var(--ucs-card-w) * -11) calc(var(--ucs-card-h) * 0);
+}
+
+.ucs-face-green_12 {
+  background-position: calc(var(--ucs-card-w) * -12) calc(var(--ucs-card-h) * 0);
+}
+
+.ucs-face-red_0 {
+  background-position: calc(var(--ucs-card-w) * 0) calc(var(--ucs-card-h) * -1);
+}
+
+.ucs-face-red_1 {
+  background-position: calc(var(--ucs-card-w) * -1) calc(var(--ucs-card-h) * -1);
+}
+
+.ucs-face-red_2 {
+  background-position: calc(var(--ucs-card-w) * -2) calc(var(--ucs-card-h) * -1);
+}
+
+.ucs-face-red_3 {
+  background-position: calc(var(--ucs-card-w) * -3) calc(var(--ucs-card-h) * -1);
+}
+
+.ucs-face-red_4 {
+  background-position: calc(var(--ucs-card-w) * -4) calc(var(--ucs-card-h) * -1);
+}
+
+.ucs-face-red_5 {
+  background-position: calc(var(--ucs-card-w) * -5) calc(var(--ucs-card-h) * -1);
+}
+
+.ucs-face-red_6 {
+  background-position: calc(var(--ucs-card-w) * -6) calc(var(--ucs-card-h) * -1);
+}
+
+.ucs-face-red_7 {
+  background-position: calc(var(--ucs-card-w) * -7) calc(var(--ucs-card-h) * -1);
+}
+
+.ucs-face-red_8 {
+  background-position: calc(var(--ucs-card-w) * -8) calc(var(--ucs-card-h) * -1);
+}
+
+.ucs-face-red_9 {
+  background-position: calc(var(--ucs-card-w) * -9) calc(var(--ucs-card-h) * -1);
+}
+
+.ucs-face-red_10 {
+  background-position: calc(var(--ucs-card-w) * -10) calc(var(--ucs-card-h) * -1);
+}
+
+.ucs-face-red_11 {
+  background-position: calc(var(--ucs-card-w) * -11) calc(var(--ucs-card-h) * -1);
+}
+
+.ucs-face-red_12 {
+  background-position: calc(var(--ucs-card-w) * -12) calc(var(--ucs-card-h) * -1);
+}
+
+.ucs-face-yellow_0 {
+  background-position: calc(var(--ucs-card-w) * 0) calc(var(--ucs-card-h) * -2);
+}
+
+.ucs-face-yellow_1 {
+  background-position: calc(var(--ucs-card-w) * -1) calc(var(--ucs-card-h) * -2);
+}
+
+.ucs-face-yellow_2 {
+  background-position: calc(var(--ucs-card-w) * -2) calc(var(--ucs-card-h) * -2);
+}
+
+.ucs-face-yellow_3 {
+  background-position: calc(var(--ucs-card-w) * -3) calc(var(--ucs-card-h) * -2);
+}
+
+.ucs-face-yellow_4 {
+  background-position: calc(var(--ucs-card-w) * -4) calc(var(--ucs-card-h) * -2);
+}
+
+.ucs-face-yellow_5 {
+  background-position: calc(var(--ucs-card-w) * -5) calc(var(--ucs-card-h) * -2);
+}
+
+.ucs-face-yellow_6 {
+  background-position: calc(var(--ucs-card-w) * -6) calc(var(--ucs-card-h) * -2);
+}
+
+.ucs-face-yellow_7 {
+  background-position: calc(var(--ucs-card-w) * -7) calc(var(--ucs-card-h) * -2);
+}
+
+.ucs-face-yellow_8 {
+  background-position: calc(var(--ucs-card-w) * -8) calc(var(--ucs-card-h) * -2);
+}
+
+.ucs-face-yellow_9 {
+  background-position: calc(var(--ucs-card-w) * -9) calc(var(--ucs-card-h) * -2);
+}
+
+.ucs-face-yellow_10 {
+  background-position: calc(var(--ucs-card-w) * -10) calc(var(--ucs-card-h) * -2);
+}
+
+.ucs-face-yellow_11 {
+  background-position: calc(var(--ucs-card-w) * -11) calc(var(--ucs-card-h) * -2);
+}
+
+.ucs-face-yellow_12 {
+  background-position: calc(var(--ucs-card-w) * -12) calc(var(--ucs-card-h) * -2);
+}
+
+.ucs-face-purple_0 {
+  background-position: calc(var(--ucs-card-w) * 0) calc(var(--ucs-card-h) * -3);
+}
+
+.ucs-face-purple_1 {
+  background-position: calc(var(--ucs-card-w) * -1) calc(var(--ucs-card-h) * -3);
+}
+
+.ucs-face-purple_2 {
+  background-position: calc(var(--ucs-card-w) * -2) calc(var(--ucs-card-h) * -3);
+}
+
+.ucs-face-purple_3 {
+  background-position: calc(var(--ucs-card-w) * -3) calc(var(--ucs-card-h) * -3);
+}
+
+.ucs-face-purple_4 {
+  background-position: calc(var(--ucs-card-w) * -4) calc(var(--ucs-card-h) * -3);
+}
+
+.ucs-face-purple_5 {
+  background-position: calc(var(--ucs-card-w) * -5) calc(var(--ucs-card-h) * -3);
+}
+
+.ucs-face-purple_6 {
+  background-position: calc(var(--ucs-card-w) * -6) calc(var(--ucs-card-h) * -3);
+}
+
+.ucs-face-purple_7 {
+  background-position: calc(var(--ucs-card-w) * -7) calc(var(--ucs-card-h) * -3);
+}
+
+.ucs-face-purple_8 {
+  background-position: calc(var(--ucs-card-w) * -8) calc(var(--ucs-card-h) * -3);
+}
+
+.ucs-face-purple_9 {
+  background-position: calc(var(--ucs-card-w) * -9) calc(var(--ucs-card-h) * -3);
+}
+
+.ucs-face-purple_10 {
+  background-position: calc(var(--ucs-card-w) * -10) calc(var(--ucs-card-h) * -3);
+}
+
+.ucs-face-purple_11 {
+  background-position: calc(var(--ucs-card-w) * -11) calc(var(--ucs-card-h) * -3);
+}
+
+.ucs-face-purple_12 {
+  background-position: calc(var(--ucs-card-w) * -12) calc(var(--ucs-card-h) * -3);
+}
+
 html {
   background: radial-gradient(circle at 50% 38%, #5ca338 0%, #4c8c2b 72%), #4c8c2b;
   background-attachment: fixed;
@@ -88,7 +302,7 @@ html[data-theme=dark] {
 
 #ucs-table {
   --ucs-card-w: 64px;
-  --ucs-card-h: 90px;
+  --ucs-card-h: 100px;
   position: relative;
   display: flex;
   flex-direction: column;
@@ -148,7 +362,7 @@ html[data-theme=dark] {
   overflow: hidden;
   flex: 0 0 auto;
   user-select: none;
-  background: #555;
+  background-color: #555;
 }
 
 .ucs-card-face {
@@ -270,13 +484,27 @@ html[data-theme=dark] {
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.4), inset 0 0 0 1px rgba(0, 0, 0, 0.25);
 }
 
-.ucs-patch {
-  outline: 2px dashed rgba(255, 255, 255, 0.9);
-  outline-offset: -3px;
+.ucs-wild-badge {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: calc(var(--ucs-card-w) * 0.04);
+  z-index: 1;
+  pointer-events: none;
+  font-size: calc(var(--ucs-card-w) * 0.34);
+  font-weight: 800;
+  color: #fff;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.85), 0 0 6px rgba(0, 0, 0, 0.6);
+}
+
+.ucs-wild-icon {
+  font-size: calc(var(--ucs-card-w) * 0.3);
 }
 
 .ucs-card-back {
-  background: repeating-linear-gradient(45deg, #7a1f1f, #7a1f1f 6px, #5c1414 6px, #5c1414 12px);
+  background: url(img/card-back.jpg) center/cover, #5c1414;
 }
 
 .ucs-draw-pile {
@@ -559,7 +787,7 @@ html[data-theme=dark] {
   flex: 0 0 360px;
   align-self: stretch;
   --ucs-card-w: 74px;
-  --ucs-card-h: 104px;
+  --ucs-card-h: 115px;
 }
 
 #ucs-opponents {
@@ -569,7 +797,7 @@ html[data-theme=dark] {
   flex-direction: column;
   gap: 8px;
   --ucs-card-w: 40px;
-  --ucs-card-h: 56px;
+  --ucs-card-h: 62px;
 }
 
 .ucs-player-table {
@@ -973,7 +1201,7 @@ html[data-theme=dark] {
 
 #ucs-my-hand-wrap {
   --ucs-card-w: 96px;
-  --ucs-card-h: 135px;
+  --ucs-card-h: 149px;
   position: relative;
   z-index: 100;
 }
@@ -1027,7 +1255,7 @@ html[data-theme=dark] {
   border-top: 4px solid var(--player-color, #888);
   box-shadow: 0 8px 30px rgba(0, 0, 0, 0.5);
   --ucs-card-w: 80px;
-  --ucs-card-h: 112px;
+  --ucs-card-h: 124px;
 }
 
 .ucs-popin-head {
@@ -1054,7 +1282,7 @@ html[data-theme=dark] {
   width: min(1100px, 94vw);
   max-width: 94vw;
   --ucs-card-w: 42px;
-  --ucs-card-h: 59px;
+  --ucs-card-h: 65px;
   border-top-color: #ffd54a;
 }
 

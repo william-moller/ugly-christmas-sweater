@@ -1,0 +1,58 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>UCS sprite preview</title>
+<style>
+  body { font-family: system-ui, sans-serif; background: #4c8c2b; color: #fff; padding: 16px; }
+  h2 { margin: 18px 0 8px; }
+  .grid { display: flex; flex-wrap: wrap; gap: 14px; }
+  .cell { text-align: center; font-size: 12px; }
+  /* --- mirrors the generated sprite CSS, but points at the sheet by relative path --- */
+  :root { --ucs-card-w: 96px; --ucs-card-h: 149px; }   /* bridge card 0.643 (bleed-trimmed) */
+  .ucs-card { width: var(--ucs-card-w); height: var(--ucs-card-h); border-radius: 6px;
+              overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,.4); background-color: #555; position: relative; }
+  .ucs-face { background-image: url(../img/sweaters.jpg);
+              background-size: calc(var(--ucs-card-w) * 13) calc(var(--ucs-card-h) * 4);
+              background-repeat: no-repeat; }
+  .ucs-card-back { background: url(../img/card-back.jpg) center / cover, #5c1414; }
+  .ucs-wild-badge { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+              font-weight: 800; color: #fff; font-size: calc(var(--ucs-card-w) * .34);
+              text-shadow: 0 1px 3px rgba(0,0,0,.85); }
+</style>
+</head>
+<body>
+<h1>Ugly Christmas Sweater — sprite wiring preview</h1>
+<p>Each card is drawn exactly as the game will draw it: <code>.ucs-card.ucs-face.ucs-face-&lt;colour&gt;_&lt;value&gt;</code>.
+Verify colour/value/orientation match the label. Last row: the shared back + a wild-patch badge example.</p>
+<div id="root"></div>
+<script>
+  const COLORS = ['green','red','yellow','purple'];
+  const root = document.getElementById('root');
+  const style = document.createElement('style');
+  let css = '';
+  for (let r = 0; r < 4; r++) for (let v = 0; v <= 12; v++)
+    css += `.ucs-face-${COLORS[r]}_${v}{background-position:calc(var(--ucs-card-w)*${-v}) calc(var(--ucs-card-h)*${-r});}\n`;
+  style.textContent = css; document.head.appendChild(style);
+
+  for (const c of COLORS) {
+    const h = document.createElement('h2'); h.textContent = c.toUpperCase(); root.appendChild(h);
+    const g = document.createElement('div'); g.className = 'grid';
+    for (let v = 0; v <= 12; v++) {
+      const cell = document.createElement('div'); cell.className = 'cell';
+      const card = document.createElement('div'); card.className = `ucs-card ucs-face ucs-face-${c}_${v}`;
+      const lbl = document.createElement('div'); lbl.textContent = v === 0 ? `${c} patch` : `${c} ${v}`;
+      cell.appendChild(card); cell.appendChild(lbl); g.appendChild(cell);
+    }
+    root.appendChild(g);
+  }
+  // Shared card back
+  const h = document.createElement('h2'); h.textContent = 'CARD BACK'; root.appendChild(h);
+  const g = document.createElement('div'); g.className = 'grid';
+  const back = document.createElement('div'); back.className = 'ucs-card ucs-card-back';
+  const b1 = document.createElement('div'); b1.className = 'cell'; b1.appendChild(back);
+  const bl = document.createElement('div'); bl.textContent = 'card back'; b1.appendChild(bl); g.appendChild(b1);
+  root.appendChild(g);
+</script>
+</body>
+</html>
