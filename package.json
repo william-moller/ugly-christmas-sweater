@@ -8,6 +8,7 @@
       "build:scss": "sass --no-source-map src/scss/Game.scss uglychristmassweater.css",
       "build:sprites": "node scripts/build-sprites.mjs",
       "clean:remote": "node scripts/clean-remote.mjs",
+      "deploy": "node scripts/deploy.mjs",
       "watch:ts": "rollup -c -w",
       "watch:scss": "sass --watch src/scss/Game.scss uglychristmassweater.css",
       "watch": "npm run watch:ts & npm run watch:scss",
