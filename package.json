@@ -7,6 +7,7 @@
       "build:ts": "rollup -c",
       "build:scss": "sass --no-source-map src/scss/Game.scss uglychristmassweater.css",
       "build:sprites": "node scripts/build-sprites.mjs",
+      "clean:remote": "node scripts/clean-remote.mjs",
       "watch:ts": "rollup -c -w",
       "watch:scss": "sass --watch src/scss/Game.scss uglychristmassweater.css",
       "watch": "npm run watch:ts & npm run watch:scss",
@@ -19,6 +20,7 @@
       "rollup": "^4.53.3",
       "sass": "^1.71.0",
       "sharp": "^0.35.3",
+      "ssh2-sftp-client": "^12.1.1",
       "tslib": "^2.8.1",
       "typescript": "^6.0.3"
    }
