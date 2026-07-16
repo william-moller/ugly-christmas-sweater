@@ -34,15 +34,12 @@ const COLORS = ['green', 'red', 'yellow', 'purple']; // row order
 const COLS = 13;                 // value 0..12 (0 = patch)
 const ROWS = COLORS.length;
 
-// --- The verified card -> source-file map (basename, no extension) --------------------------------
-// value 0 = the colour's Patch card. All 48 numbered entries cross-check vs Material::FACES.
-const MAP = {
-    green:  { 0: 'PANDA Patches3', 1: 'bells9', 2: 'bells8', 3: 'bells7', 4: 'snowman9', 5: 'snowman8', 6: 'snowman7', 7: 'candycane9', 8: 'candycane8', 9: 'candycane7', 10: 'trees9', 11: 'trees8', 12: 'trees7' },
-    red:    { 0: 'PANDA Patches',  1: 'trees10', 2: 'trees11', 3: 'trees12', 4: 'bells10', 5: 'bells11', 6: 'bells12', 7: 'snowman10', 8: 'snowman11', 9: 'snowman12', 10: 'candycane10', 11: 'candycane11', 12: 'candycane12' },
-    yellow: { 0: 'PANDA Patches4', 1: 'snowman4', 2: 'snowman5', 3: 'snowman6', 4: 'candycane4', 5: 'candycane5', 6: 'candycane6', 7: 'trees4', 8: 'trees5', 9: 'trees6', 10: 'bells4', 11: 'bells5', 12: 'bells6' },
-    purple: { 0: 'PANDA Patches2', 1: 'candycane3', 2: 'candycane2', 3: 'candycane', 4: 'trees3', 5: 'trees2', 6: 'trees', 7: 'bells3', 8: 'bells2', 9: 'bells', 10: 'snowman3', 11: 'snowman2', 12: 'snowman' },
-};
-const BACK_SRC = 'PANDA Patches5';
+// --- Card -> source-file naming -------------------------------------------------------------------
+// The source art was renamed to systematic names (scripts/rename-art.mjs), so the file for each face
+// is computed, not looked up: value 0 = the colour's Patch card, 1..12 zero-padded. The card->art
+// decode itself was cross-checked against Material::FACES (icon+slot) when the map was first built.
+const faceSrc = (color, v) => `sweater-${color}-${v === 0 ? 'patch' : String(v).padStart(2, '0')}`;
+const BACK_SRC = 'sweater-back';
 
 const src = (base) => join(ART_DIR, `${base}.png`);
 const cell = (base) => sharp(src(base)).extract(TRIM).resize(CELL_W, CELL_H, { fit: 'fill' })
@@ -54,9 +51,7 @@ async function main() {
     for (let r = 0; r < ROWS; r++) {
         const color = COLORS[r];
         for (let v = 0; v < COLS; v++) {
-            const base = MAP[color][v];
-            if (!base) throw new Error(`No source for ${color}_${v}`);
-            composites.push({ input: await cell(base), left: v * CELL_W, top: r * CELL_H });
+            composites.push({ input: await cell(faceSrc(color, v)), left: v * CELL_W, top: r * CELL_H });
         }
     }
     await sharp({ create: { width: COLS * CELL_W, height: ROWS * CELL_H, channels: 3, background: '#ffffff' } })

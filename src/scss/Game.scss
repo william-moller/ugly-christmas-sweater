@@ -44,6 +44,7 @@
 
 @use "sass:list";
 @use "sweater-sprites"; // GENERATED per-card sprite face classes (scripts/build-sprites.mjs)
+@use "secondary-sprites"; // GENERATED Stage-2 card faces (scripts/build-secondary-sprites.mjs)
 
 $card-w: 64px;
 $card-h: 100px; // bridge-card ratio 0.643 (675x1050 after bleed trim); every --ucs-card-h below is w * 1.556
@@ -447,30 +448,11 @@ html[data-theme="dark"] {
     justify-content: center;
     gap: 2px;
     text-align: center;
-    padding: 2px;
-    background: #444;
-    &.ucs-gp-none { background: #777; }
-    &.ucs-gp-fad { background: #2c3e50; }
-}
-.ucs-gp-kind {
-    font-size: 9px;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-    opacity: 0.85;
-    z-index: 1;
-}
-.ucs-gp-big {
-    font-size: 30px;
-    font-weight: 800;
-    line-height: 1;
-    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
-    z-index: 1;
-}
-.ucs-gp-fad-title {
-    font-size: 11px;
-    font-weight: 700;
-    padding: 0 3px;
-    z-index: 1;
+    // background-COLOR (not the shorthand) so it's only a fallback tint behind the sprite art
+    // (.ucs-art2 background-image) — the shorthand would reset background-image and hide the card.
+    background-color: #444;
+    &.ucs-gp-none { background-color: #777; }
+    &.ucs-gp-fad { background-color: #2c3e50; }
 }
 .ucs-gp-deck {
     display: flex;
@@ -1369,12 +1351,7 @@ html[data-theme="dark"] {
 .ucs-draftorder-card {
     position: absolute;
     pointer-events: none; // purely a marker — never intercept clicks on the cards beneath
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: #fff;                 // placeholder look until the real Draft Order art arrives
-    color: #111;
-    border: 2px solid #111;
+    background-color: #fff;          // fallback tint behind the sprite art (.ucs-art2 background-image)
     border-radius: 6px;
     box-shadow: 0 2px 5px rgba(0, 0, 0, 0.35);
     box-sizing: border-box;
@@ -1383,11 +1360,6 @@ html[data-theme="dark"] {
 .ucs-draftorder-card.ucs-draftorder-out {
     // Lifted look while dealt onto a trade card or parked at the leader.
     box-shadow: 0 5px 14px rgba(0, 0, 0, 0.5);
-}
-.ucs-draftorder-num {
-    font-weight: 900;
-    font-size: calc(var(--ucs-card-w) * 0.6);
-    line-height: 1;
 }
 
 // Secret Santa (my private objective card(s)) — rendered as a normal card turned 90°.
@@ -1406,18 +1378,9 @@ html[data-theme="dark"] {
     flex: 0 0 auto;
 }
 .ucs-santa-card {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 4px;
     box-sizing: border-box;
-    background: repeating-linear-gradient(45deg, #7a1f1f, #7a1f1f 6px, #5c1414 6px, #5c1414 12px);
-    color: #fff;
+    background-color: #5c1414; // fallback tint behind the sprite art (.ucs-art2 background-image)
+    // The publisher art is drawn to be read in landscape, so the portrait card face is turned 90°.
     transform: rotate(90deg);
-}
-.ucs-santa-name {
-    font-size: 10px;
-    font-weight: 700;
-    text-align: center;
 }
 

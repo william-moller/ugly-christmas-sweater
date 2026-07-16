@@ -5,10 +5,11 @@
 <title>UCS sprite preview</title>
 <style>
   body { font-family: system-ui, sans-serif; background: #4c8c2b; color: #fff; padding: 16px; }
-  h2 { margin: 18px 0 8px; }
-  .grid { display: flex; flex-wrap: wrap; gap: 14px; }
-  .cell { text-align: center; font-size: 12px; }
-  /* --- mirrors the generated sprite CSS, but points at the sheet by relative path --- */
+  h2 { margin: 22px 0 8px; border-bottom: 1px solid rgba(255,255,255,.3); padding-bottom: 4px; }
+  .grid { display: flex; flex-wrap: wrap; gap: 14px; align-items: flex-start; }
+  .cell { text-align: center; font-size: 12px; width: var(--ucs-card-w); }
+  .cell.wide { width: auto; }
+  /* --- mirrors the generated sprite CSS, but points at the sheets by relative path --- */
   :root { --ucs-card-w: 96px; --ucs-card-h: 149px; }   /* bridge card 0.643 (bleed-trimmed) */
   .ucs-card { width: var(--ucs-card-w); height: var(--ucs-card-h); border-radius: 6px;
               overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,.4); background-color: #555; position: relative; }
@@ -16,43 +17,96 @@
               background-size: calc(var(--ucs-card-w) * 13) calc(var(--ucs-card-h) * 4);
               background-repeat: no-repeat; }
   .ucs-card-back { background: url(../img/card-back.jpg) center / cover, #5c1414; }
-  .ucs-wild-badge { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
-              font-weight: 800; color: #fff; font-size: calc(var(--ucs-card-w) * .34);
-              text-shadow: 0 1px 3px rgba(0,0,0,.85); }
+  /* secondary sheet: 8 cols x 7 rows */
+  .ucs-art2 { background-image: url(../img/secondary.jpg);
+              background-size: calc(var(--ucs-card-w) * 8) calc(var(--ucs-card-h) * 7);
+              background-repeat: no-repeat; }
+  /* mirrors the game's .ucs-santa-slot: reserve the rotated (landscape) footprint so the card isn't clipped */
+  .rot-cell { width: var(--ucs-card-h); }
+  .santa-slot { width: var(--ucs-card-h); height: var(--ucs-card-w); display: flex;
+                align-items: center; justify-content: center; margin: 0 auto; }
+  .santa-slot .ucs-card { transform: rotate(90deg); }
 </style>
 </head>
 <body>
 <h1>Ugly Christmas Sweater — sprite wiring preview</h1>
-<p>Each card is drawn exactly as the game will draw it: <code>.ucs-card.ucs-face.ucs-face-&lt;colour&gt;_&lt;value&gt;</code>.
-Verify colour/value/orientation match the label. Last row: the shared back + a wild-patch badge example.</p>
+<p>Each card is drawn exactly as the game draws it (same CSS classes, real sprite sheets). Verify each
+card matches its label. Secret Santa cards are shown once upright and once rotated 90° (their in-game orientation).</p>
 <div id="root"></div>
 <script>
-  const COLORS = ['green','red','yellow','purple'];
   const root = document.getElementById('root');
   const style = document.createElement('style');
   let css = '';
+
+  // ---- Sweaters (img/sweaters.jpg, 13 cols x 4 rows) ----
+  const COLORS = ['green','red','yellow','purple'];
   for (let r = 0; r < 4; r++) for (let v = 0; v <= 12; v++)
     css += `.ucs-face-${COLORS[r]}_${v}{background-position:calc(var(--ucs-card-w)*${-v}) calc(var(--ucs-card-h)*${-r});}\n`;
+
+  // ---- Secondary (img/secondary.jpg, 8 cols x 7 rows) — order MUST match build-secondary-sprites.mjs ----
+  const COLS = 8;
+  const SECONDARY = [
+    ['ucs-gp-perfectfit-1','Perfect Fit 1'], ['ucs-gp-perfectfit-2','Perfect Fit 2'],
+    ['ucs-gp-perfectfit-3','Perfect Fit 3'], ['ucs-gp-perfectfit-4','Perfect Fit 4'],
+    ['ucs-gp-perfectfit-5','Perfect Fit 5'], ['ucs-gp-perfectfit-6','Perfect Fit 6'],
+    ['ucs-gp-perfectfit-back','PF back'],
+    ['ucs-gp-trendyyarn-yellow','Trendy Yarn yellow'], ['ucs-gp-trendyyarn-green','Trendy Yarn green'],
+    ['ucs-gp-trendyyarn-red','Trendy Yarn red'], ['ucs-gp-trendyyarn-purple','Trendy Yarn purple'],
+    ['ucs-gp-trendyyarn-back','TY back'],
+    ['ucs-gp-fad-1','Fad 1: Yellow / Bells'], ['ucs-gp-fad-2','Fad 2: Yellow / Snowmen'],
+    ['ucs-gp-fad-3','Fad 3: Purple / Snowmen'], ['ucs-gp-fad-4','Fad 4: Purple / Bells'],
+    ['ucs-gp-fad-5','Fad 5: Red / Candy Cane'], ['ucs-gp-fad-6','Fad 6: Red / Trees'],
+    ['ucs-gp-fad-7','Fad 7: Green / Trees'], ['ucs-gp-fad-8','Fad 8: Green / Candy Cane'],
+    ['ucs-gp-fad-9','Fad 9: Clash'], ['ucs-gp-fad-10','Fad 10: Clash'], ['ucs-gp-fad-back','Fad back'],
+    ['ucs-santa-1','1 Aunt Jo Ann'], ['ucs-santa-2','2 Baby Bro Mads'], ['ucs-santa-3','3 Boisterous Barley'],
+    ['ucs-santa-4','4 Aunt Bleu'], ['ucs-santa-5','5 Indiana Alex'], ['ucs-santa-6','6 Cousin Veny'],
+    ['ucs-santa-7','7 Spoon'], ['ucs-santa-8','8 Auntie Jennifer'], ['ucs-santa-9','9 Grandpa Tony'],
+    ['ucs-santa-10','10 Brainy Bytes Bryan'], ['ucs-santa-11','11 Sister Rain'], ['ucs-santa-12','12 Lovely Leia'],
+    ['ucs-santa-13','13 Uncle Phil'], ['ucs-santa-14','14 Ravishing Rosemary'], ['ucs-santa-15','15 Cousin Rami'],
+    ['ucs-santa-16','16 Auntie Jaimie'], ['ucs-santa-back','Santa back'],
+    ['ucs-bonus-1','Little Brothers'], ['ucs-bonus-2','Tina'], ['ucs-bonus-3','Maria'], ['ucs-bonus-4','Billy'],
+    ['ucs-bonus-back','Bonus back'],
+    ['ucs-draftorder-1','Draft Order 1'], ['ucs-draftorder-2','Draft Order 2'],
+    ['ucs-draftorder-3','Draft Order 3'], ['ucs-draftorder-4','Draft Order 4'],
+    ['ucs-scoreref','Score Reference'], ['ucs-roundtracker','Round Tracker'], ['ucs-aid-back','Aid back'],
+  ];
+  SECONDARY.forEach(([key], i) => {
+    const col = i % COLS, row = Math.floor(i / COLS);
+    css += `.${key}{background-position:calc(var(--ucs-card-w)*${-col}) calc(var(--ucs-card-h)*${-row});}\n`;
+  });
   style.textContent = css; document.head.appendChild(style);
 
+  const section = (title) => { const h = document.createElement('h2'); h.textContent = title; root.appendChild(h);
+    const g = document.createElement('div'); g.className = 'grid'; root.appendChild(g); return g; };
+  const addCard = (g, cls, label, rotate) => {
+    const cell = document.createElement('div'); cell.className = 'cell' + (rotate ? ' rot-cell' : '');
+    const card = document.createElement('div'); card.className = cls;
+    const lbl = document.createElement('div'); lbl.textContent = label;
+    if (rotate) { const slot = document.createElement('div'); slot.className = 'santa-slot'; slot.appendChild(card); cell.appendChild(slot); }
+    else cell.appendChild(card);
+    cell.appendChild(lbl); g.appendChild(cell); return cell;
+  };
+
+  // ---- Sweater rows ----
   for (const c of COLORS) {
-    const h = document.createElement('h2'); h.textContent = c.toUpperCase(); root.appendChild(h);
-    const g = document.createElement('div'); g.className = 'grid';
-    for (let v = 0; v <= 12; v++) {
-      const cell = document.createElement('div'); cell.className = 'cell';
-      const card = document.createElement('div'); card.className = `ucs-card ucs-face ucs-face-${c}_${v}`;
-      const lbl = document.createElement('div'); lbl.textContent = v === 0 ? `${c} patch` : `${c} ${v}`;
-      cell.appendChild(card); cell.appendChild(lbl); g.appendChild(cell);
-    }
-    root.appendChild(g);
+    const g = section(c.toUpperCase());
+    for (let v = 0; v <= 12; v++) addCard(g, `ucs-card ucs-face ucs-face-${c}_${v}`, v === 0 ? `${c} patch` : `${c} ${v}`);
   }
-  // Shared card back
-  const h = document.createElement('h2'); h.textContent = 'CARD BACK'; root.appendChild(h);
-  const g = document.createElement('div'); g.className = 'grid';
-  const back = document.createElement('div'); back.className = 'ucs-card ucs-card-back';
-  const b1 = document.createElement('div'); b1.className = 'cell'; b1.appendChild(back);
-  const bl = document.createElement('div'); bl.textContent = 'card back'; b1.appendChild(bl); g.appendChild(b1);
-  root.appendChild(g);
+  { const g = section('SWEATER BACK'); addCard(g, 'ucs-card ucs-card-back', 'card back'); }
+
+  // ---- Secondary sections (subset filters keep grouping readable) ----
+  const show = (title, prefixes, rotate) => {
+    const g = section(title);
+    SECONDARY.filter(([k]) => prefixes.some(p => k.startsWith(p)))
+             .forEach(([k, lbl]) => addCard(g, `ucs-card ucs-art2 ${k}`, lbl, rotate));
+  };
+  show('PERFECT FIT', ['ucs-gp-perfectfit']);
+  show('TRENDY YARN', ['ucs-gp-trendyyarn']);
+  show('FADS', ['ucs-gp-fad']);
+  show('SECRET SANTA (upright)', ['ucs-santa']);
+  show('SECRET SANTA (rotated 90° — in-game orientation)', ['ucs-santa'], true);
+  show('BONUS / SPECIAL ABILITY', ['ucs-bonus']);
+  show('PLAYER AIDS', ['ucs-draftorder', 'ucs-scoreref', 'ucs-roundtracker', 'ucs-aid-back']);
 </script>
 </body>
 </html>

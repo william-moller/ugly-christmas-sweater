@@ -23,12 +23,13 @@ const remote = cfg.remotePath.replace(/\/$/, '');
 // The allowlist of what BGA needs (mirrors the reference games' deployed file set). Anything not
 // listed here — node_modules, scripts, src, package.json, tsconfig, rollup config — never uploads.
 const DIRS = ['modules', 'img', 'misc'];
-// Note: the bga-*.d.ts TypeScript typedefs are intentionally NOT deployed — BGA never uses them,
-// and the server denies overwriting them. They stay local (build-time only).
+// Note: dev-only IDE/type helpers are intentionally NOT deployed — BGA never uses them at runtime and
+// the server denies overwriting them (they stay local, build-time only): the bga-*.d.ts TypeScript
+// typedefs and _ide_helper.php (PHP autocomplete stub).
 const FILES = [
     'uglychristmassweater.css',
     'gameinfos.jsonc', 'gameoptions.jsonc', 'gamepreferences.jsonc', 'stats.jsonc',
-    'dbmodel.sql', 'LICENCE_BGA', '_ide_helper.php',
+    'dbmodel.sql', 'LICENCE_BGA',
 ];
 
 const APPLY = process.argv.includes('--yes');

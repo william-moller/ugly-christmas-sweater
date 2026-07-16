@@ -97,3 +97,17 @@ must be regenerated with `npm run build:sprites` before the art will show; the e
 committed so the CSS still builds without the art. Uses the `sharp` dev-dependency. The script trims the
 ~37.5px print bleed off the 750×1125 PNGs (→ 675×1050, a **bridge card**, ratio **0.643**) so the sweater
 art reaches the card edge; all six `--ucs-card-w/h` contexts in `Game.scss` are kept at that 0.643 ratio.
+
+The Stage-2 (non-sweater) cards are packed the same way by `scripts/build-secondary-sprites.mjs` into
+`img/secondary.jpg` (8×7 grid) + the GENERATED `src/scss/_secondary-sprites.scss` (one `.ucs-<key>`
+position class per face; base class `.ucs-art2`). Covers Perfect Fit (`ucs-gp-perfectfit-<1..6>`),
+Trendy Yarn (`ucs-gp-trendyyarn-<colour>`), Fad (`ucs-gp-fad-<1..10>`), Secret Santa (`ucs-santa-<1..16>`),
+Bonus (`ucs-bonus-<1..4>`), Draft Order (`ucs-draftorder-<1..4>`), Score Reference, Round Tracker, plus each
+deck's back. `npm run build:sprites` runs both sprite scripts. Consumers (`Game.ts`) add `.ucs-art2` + the
+face class to a `.ucs-card`-sized element; Secret Santa cards are turned `rotate(90deg)` (the art is drawn
+to read in landscape). The publisher source PNGs were renamed to systematic names (`scripts/rename-art.mjs`,
+reversible via `--reverse`), so the build maps read plainly (e.g. `fad-05-red-candycane.png`).
+
+**Fad deck (verified from art):** 10 physical cards = 8 distinct colour+icon fads + "Clash Is In" ×2. Each
+colour appears on two cards paired with a *different* icon (NOT one tidy colour⇄icon pair ×2). See
+`Material::fads()`.

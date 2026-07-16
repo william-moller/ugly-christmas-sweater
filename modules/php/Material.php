@@ -184,36 +184,46 @@ class Material
     const TRENDY_YARN = self::COLORS;
 
     /**
-     * FADS (10 cards) — round bonus scoring. Each fad lists up to two objectives, each worth VP_FAD.
-     * A sweater scores an objective if it is entirely that colour OR entirely that icon.
-     * The special "Clash Is In" fad scores when all three pieces are different colours AND icons.
+     * FADS (10 cards) — round bonus scoring. Each fad lists two objectives (one colour, one icon),
+     * each worth VP_FAD: a completed sweater scores +3 if it is entirely that colour, and +3 if it is
+     * entirely that icon (a single sweater can score both). The special "Clash Is In" fad instead
+     * scores VP_FAD when the sweater's three pieces are all different colours AND all different icons.
      *
      * Format per fad:
      *   ['id'=>int, 'title'=>clienttranslate('...'),
      *    'objectives' => [ ['match'=>'color','value'=>COLOR_*], ['match'=>'icon','value'=>ICON_*] ]]
      *   or ['id'=>int, 'title'=>clienttranslate('...'), 'clash'=>true]
      *
-     * ⚠️ DECK DISTRIBUTION UNRESOLVED (2026-06-24): the physical Fad deck has **10** cards, but it is
-     * not yet confirmed whether that is 2 copies of each of these 5 types, or a different mix (there
-     * may be further types not yet transcribed). The 5 types below ARE confirmed; note they form a
-     * tidy complete-looking set — one colour⇄icon fad per colour (red⇄candycane, green⇄tree,
-     * yellow⇄bell, purple⇄snowman) plus Clash Is In — which hints at "2× each" but is NOT verified.
-     * Until the distribution is confirmed the deck is built from these 5 unique fads
-     * (gameplayDeckRows keys card_type_arg off 'id'); revisit when the full 10-card list is known.
+     * DECK (confirmed from the publisher art 2026-07-15): 10 physical cards = 8 distinct colour+icon
+     * fads + "Clash Is In" ×2. Each colour appears on TWO cards, each paired with a DIFFERENT icon —
+     * the earlier "one tidy colour⇄icon pair per colour, 2× each" guess was WRONG. The eight pairings:
+     *   yellow+bell, yellow+snowman, purple+snowman, purple+bell,
+     *   red+candycane, red+tree, green+tree, green+candycane  (+ clash ×2).
+     * createGameplayCards() makes one card per entry (type_arg = id), so this returns all 10 physical
+     * cards. Scoring (Game::sweaterScoreParts / fadPointsFor) already iterates objectives independently,
+     * so no scoring change was needed — only this data.
      */
     public static function fads(): array
     {
         return [
-            1 => ['id'=>1, 'title'=>clienttranslate('Clash Is In'), 'clash'=>true], // no matching colours or icons
-            2 => ['id'=>2, 'title'=>clienttranslate('All Red / All Candy Canes'),
-                  'objectives'=>[['match'=>'color','value'=>self::COLOR_RED],    ['match'=>'icon','value'=>self::ICON_CANDY_CANE]]],
-            3 => ['id'=>3, 'title'=>clienttranslate('All Green / All Trees'),
-                  'objectives'=>[['match'=>'color','value'=>self::COLOR_GREEN],  ['match'=>'icon','value'=>self::ICON_TREE]]],
-            4 => ['id'=>4, 'title'=>clienttranslate('All Yellow / All Bells'),
-                  'objectives'=>[['match'=>'color','value'=>self::COLOR_YELLOW], ['match'=>'icon','value'=>self::ICON_BELL]]],
-            5 => ['id'=>5, 'title'=>clienttranslate('All Purple / All Snowmen'),
-                  'objectives'=>[['match'=>'color','value'=>self::COLOR_PURPLE], ['match'=>'icon','value'=>self::ICON_SNOWMAN]]],
-            // TODO: remaining cards to reach 10 physical fads — distribution unresolved (see note above).
+            1  => ['id'=>1,  'title'=>clienttranslate('All Yellow / All Bells'),
+                   'objectives'=>[['match'=>'color','value'=>self::COLOR_YELLOW], ['match'=>'icon','value'=>self::ICON_BELL]]],
+            2  => ['id'=>2,  'title'=>clienttranslate('All Yellow / All Snowmen'),
+                   'objectives'=>[['match'=>'color','value'=>self::COLOR_YELLOW], ['match'=>'icon','value'=>self::ICON_SNOWMAN]]],
+            3  => ['id'=>3,  'title'=>clienttranslate('All Purple / All Snowmen'),
+                   'objectives'=>[['match'=>'color','value'=>self::COLOR_PURPLE], ['match'=>'icon','value'=>self::ICON_SNOWMAN]]],
+            4  => ['id'=>4,  'title'=>clienttranslate('All Purple / All Bells'),
+                   'objectives'=>[['match'=>'color','value'=>self::COLOR_PURPLE], ['match'=>'icon','value'=>self::ICON_BELL]]],
+            5  => ['id'=>5,  'title'=>clienttranslate('All Red / All Candy Canes'),
+                   'objectives'=>[['match'=>'color','value'=>self::COLOR_RED],    ['match'=>'icon','value'=>self::ICON_CANDY_CANE]]],
+            6  => ['id'=>6,  'title'=>clienttranslate('All Red / All Trees'),
+                   'objectives'=>[['match'=>'color','value'=>self::COLOR_RED],    ['match'=>'icon','value'=>self::ICON_TREE]]],
+            7  => ['id'=>7,  'title'=>clienttranslate('All Green / All Trees'),
+                   'objectives'=>[['match'=>'color','value'=>self::COLOR_GREEN],  ['match'=>'icon','value'=>self::ICON_TREE]]],
+            8  => ['id'=>8,  'title'=>clienttranslate('All Green / All Candy Canes'),
+                   'objectives'=>[['match'=>'color','value'=>self::COLOR_GREEN],  ['match'=>'icon','value'=>self::ICON_CANDY_CANE]]],
+            9  => ['id'=>9,  'title'=>clienttranslate('Clash Is In'), 'clash'=>true], // no matching colours or icons
+            10 => ['id'=>10, 'title'=>clienttranslate('Clash Is In'), 'clash'=>true],
         ];
     }
 
@@ -231,51 +241,48 @@ class Material
      *   'needs' is an unordered multiset of exactly 3 requirements (a completed sweater's 3 pieces
      *   must cover them; each piece counts toward EITHER its colour or its icon, orientation ignored).
      *
-     * ⚠️ PARTIAL / UNRESOLVED (2026-06-24): 15 of 16 transcribed; the colour/icon REQUIREMENTS are the
-     * trusted data. The 16th card is missing, and TITLES are deliberately NOT recorded here — they vary
-     * by game edition, so the publisher art is the source of truth for the exact names, the missing
-     * card, and any requirement corrections. 'name' below is a generated placeholder (the requirement
-     * spelled out), to be replaced once the art lands.
-     *
-     * Strong hypothesis for the missing #16 (flagged for verification, NOT yet added): the 15 known
-     * cards use 15 distinct (colour, icon) pairs out of the 16 possible — the only absent pair is
-     * **purple + candy cane**. Each colour and each icon is otherwise balanced 2×"2-of" + 2×"1-of",
-     * which is only completed if #16 is **1 Purple + 2 Candy Canes**. Confirm against the art.
+     * CONFIRMED against the publisher art (2026-07-15): all 16 cards transcribed. The 15 previously
+     * known requirement multisets were each verified correct, and the 16th (#16, Auntie Jaimie) is the
+     * hypothesised **1 Purple + 2 Candy Canes** — the one (colour, icon) pair that was missing. 'name'
+     * now holds each card's real printed family-member title. Requirements are the trusted data; each
+     * completed sweater's 3 pieces must cover the multiset, each piece counting toward EITHER its
+     * colour or its icon (orientation ignored). 'id' also keys the Secret Santa card art sprite.
      */
     public static function secretSantas(): array
     {
         return [
-            1  => ['id'=>1,  'name'=>clienttranslate('1 Green + 2 Trees'),
+            1  => ['id'=>1,  'name'=>clienttranslate("Aunt Jo Ann's Christmas Sweater"),
                    'needs'=>['color:green', 'icon:tree', 'icon:tree']],
-            2  => ['id'=>2,  'name'=>clienttranslate('2 Red + 1 Candy Cane'),
+            2  => ['id'=>2,  'name'=>clienttranslate("Baby Bro Mads' Christmas Sweater"),
                    'needs'=>['color:red', 'color:red', 'icon:candycane']],
-            3  => ['id'=>3,  'name'=>clienttranslate('1 Red + 2 Snowmen'),
+            3  => ['id'=>3,  'name'=>clienttranslate("Boisterous Barley's Christmas Sweater"),
                    'needs'=>['color:red', 'icon:snowman', 'icon:snowman']],
-            4  => ['id'=>4,  'name'=>clienttranslate('1 Purple + 2 Bells'),
+            4  => ['id'=>4,  'name'=>clienttranslate("Aunt Bleu's Vibrant Christmas Sweater"),
                    'needs'=>['color:purple', 'icon:bell', 'icon:bell']],
-            5  => ['id'=>5,  'name'=>clienttranslate('1 Yellow + 2 Candy Canes'),
+            5  => ['id'=>5,  'name'=>clienttranslate("Indiana Alex's Adventurous Christmas Sweater"),
                    'needs'=>['color:yellow', 'icon:candycane', 'icon:candycane']],
-            6  => ['id'=>6,  'name'=>clienttranslate('2 Yellow + 1 Bell'),
+            6  => ['id'=>6,  'name'=>clienttranslate("My Cousin Veny's Christmas Sweater"),
                    'needs'=>['color:yellow', 'color:yellow', 'icon:bell']],
-            7  => ['id'=>7,  'name'=>clienttranslate('2 Green + 1 Candy Cane'),
+            7  => ['id'=>7,  'name'=>clienttranslate("Spoon's Toasty Warm Christmas Sweater"),
                    'needs'=>['color:green', 'color:green', 'icon:candycane']],
-            8  => ['id'=>8,  'name'=>clienttranslate('2 Purple + 1 Snowman'),
+            8  => ['id'=>8,  'name'=>clienttranslate("Auntie Jennifer's Christmas Sweater"),
                    'needs'=>['color:purple', 'color:purple', 'icon:snowman']],
-            9  => ['id'=>9,  'name'=>clienttranslate('1 Green + 2 Bells'),
+            9  => ['id'=>9,  'name'=>clienttranslate("A Christmas Sweater for Nola's Grandpa Tony"),
                    'needs'=>['color:green', 'icon:bell', 'icon:bell']],
-            10 => ['id'=>10, 'name'=>clienttranslate('2 Green + 1 Snowman'),
+            10 => ['id'=>10, 'name'=>clienttranslate("Brainy Bytes Bryan's Christmas Sweater"),
                    'needs'=>['color:green', 'color:green', 'icon:snowman']],
-            11 => ['id'=>11, 'name'=>clienttranslate('1 Yellow + 2 Snowmen'),
+            11 => ['id'=>11, 'name'=>clienttranslate("Rambunctious Sister Rain's Christmas Sweater"),
                    'needs'=>['color:yellow', 'icon:snowman', 'icon:snowman']],
-            12 => ['id'=>12, 'name'=>clienttranslate('1 Red + 2 Trees'),
+            12 => ['id'=>12, 'name'=>clienttranslate("Lovely Leia's Christmas Sweater"),
                    'needs'=>['color:red', 'icon:tree', 'icon:tree']],
-            13 => ['id'=>13, 'name'=>clienttranslate('2 Purple + 1 Tree'),
+            13 => ['id'=>13, 'name'=>clienttranslate("Uncle Phil's Christmas Sweater"),
                    'needs'=>['color:purple', 'color:purple', 'icon:tree']],
-            14 => ['id'=>14, 'name'=>clienttranslate('2 Red + 1 Bell'),
+            14 => ['id'=>14, 'name'=>clienttranslate("Ravishing Rosemary's Christmas Sweater"),
                    'needs'=>['color:red', 'color:red', 'icon:bell']],
-            15 => ['id'=>15, 'name'=>clienttranslate('2 Yellow + 1 Tree'),
+            15 => ['id'=>15, 'name'=>clienttranslate("Cousin Rami's Ugliest Christmas Sweater"),
                    'needs'=>['color:yellow', 'color:yellow', 'icon:tree']],
-            // 16 => MISSING — likely 1 Purple + 2 Candy Canes (see hypothesis above); add once art confirms.
+            16 => ['id'=>16, 'name'=>clienttranslate("Auntie Jaimie's Christmas Sweater"),
+                   'needs'=>['color:purple', 'icon:candycane', 'icon:candycane']],
         ];
     }
 
@@ -313,17 +320,17 @@ class Material
             ],
             self::BONUS_TINA => [
                 'id' => self::BONUS_TINA, 'key' => 'tina', 'kind' => 'oneshot',
-                'name' => clienttranslate('Tina Can Tink'),
+                'name' => clienttranslate('Tina Can Tink (Mend)'),
                 'text' => clienttranslate('One-time: at round end, before scoring, move or swap one placed piece.'),
             ],
             self::BONUS_MARIA => [
                 'id' => self::BONUS_MARIA, 'key' => 'maria', 'kind' => 'oneshot',
-                'name' => clienttranslate('Mixed-up Maria'),
+                'name' => clienttranslate('Mixed-up Maria (Break Orientation)'),
                 'text' => clienttranslate('One-time: place a card into a slot that does not match its orientation.'),
             ],
             self::BONUS_BILLY => [
                 'id' => self::BONUS_BILLY, 'key' => 'billy', 'kind' => 'oneshot',
-                'name' => clienttranslate("Billy's a Brute"),
+                'name' => clienttranslate("Billy's a Brute (The Ultimate Hate Draft)"),
                 'text' => clienttranslate('One-time: when another player tops the draft order, you draft first and the contested card is discarded.'),
             ],
         ];

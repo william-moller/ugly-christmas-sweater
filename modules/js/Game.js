@@ -568,9 +568,11 @@ class Game {
             // beside the Round Parameters without overlapping its neighbour (Express deals 2).
             const slot = document.createElement('div');
             slot.className = 'ucs-santa-slot';
+            const arg = Number(c.type_arg);
             const el = document.createElement('div');
-            el.className = 'ucs-card ucs-santa-card';
-            el.innerHTML = `<div class="ucs-santa-name">${ss?.name ?? _('Secret Santa')}</div>`;
+            el.className = `ucs-card ucs-santa-card ucs-art2 ucs-santa-${arg}`;
+            el.id = `ucs-santa-el-${arg}`;
+            this.bga.gameui.addTooltipHtml?.(el.id, `<b>${ss?.name ?? _('Secret Santa')}</b><br>${_('Build a completed sweater matching this request for +3 VP.')}`);
             slot.appendChild(el);
             row.appendChild(slot);
         });
@@ -633,7 +635,7 @@ class Game {
         const deck = document.createElement('div');
         deck.className = 'ucs-gp-deck';
         const remaining = pile?.deckCount ?? 0;
-        deck.innerHTML = `<div class="ucs-card ucs-card-back ucs-gp-back ${remaining ? '' : 'ucs-gp-empty'}"></div>`
+        deck.innerHTML = `<div class="ucs-card ucs-art2 ucs-gp-${type}-back ucs-gp-back ${remaining ? '' : 'ucs-gp-empty'}"></div>`
             + `<div class="ucs-gp-count">${remaining} left</div>`;
         cards.appendChild(deck);
         // The current revealed card to the RIGHT of its draw pile (with a "stacked" look when earlier
@@ -647,7 +649,7 @@ class Game {
         wrap.appendChild(cards);
         return wrap;
     }
-    /** Placeholder face for a revealed gameplay card (colour swatch / value / fad title). */
+    /** A revealed gameplay card, drawn with its real publisher art (sprite via .ucs-art2). */
     gameplayCardEl(type, card) {
         const el = document.createElement('div');
         el.className = 'ucs-card ucs-gp-card';
@@ -657,22 +659,20 @@ class Game {
             return el;
         }
         const arg = Number(card.type_arg);
+        el.classList.add('ucs-art2');
         if (type === 'perfectfit') {
-            el.innerHTML = `<div class="ucs-gp-kind">Perfect Fit</div><div class="ucs-gp-big">${arg}</div>`;
+            el.classList.add(`ucs-gp-perfectfit-${arg}`);
             this.bga.gameui.addTooltipHtml?.(this.gpId(el), `<strong>Perfect Fit ${arg}</strong><br>Cards of value ${arg} are the super-trump this round.`);
         }
         else if (type === 'trendyyarn') {
             const color = this.material.colors[arg] ?? String(arg);
-            el.classList.add(`ucs-color-${color}`);
-            el.innerHTML = `<div class="ucs-card-pattern"></div><div class="ucs-gp-kind">Trendy Yarn</div>`
-                + `<div class="ucs-gp-big">${color.charAt(0).toUpperCase()}</div>`;
+            el.classList.add(`ucs-gp-trendyyarn-${color}`);
             this.bga.gameui.addTooltipHtml?.(this.gpId(el), `<strong>Trendy Yarn: ${color}</strong><br>${color.charAt(0).toUpperCase() + color.slice(1)} is the trump colour this round.`);
         }
         else {
             const fad = this.material.fads[arg];
             const title = fad?.title ?? `Fad ${arg}`;
-            el.classList.add('ucs-gp-fad');
-            el.innerHTML = `<div class="ucs-gp-kind">Fad</div><div class="ucs-gp-fad-title">${title}</div>`;
+            el.classList.add('ucs-gp-fad', `ucs-gp-fad-${arg}`); // ucs-gp-fad = styling/hook; -${arg} = sprite face
             this.bga.gameui.addTooltipHtml?.(this.gpId(el), `<strong>${title}</strong><br>Round scoring bonus (applies to all players).`);
         }
         return el;
@@ -768,8 +768,9 @@ class Game {
         el.style.display = '';
         el.classList.toggle('ucs-bonus-used', !!card.used);
         el.innerHTML = `<span class="ucs-bonus-icon">🎁</span><span class="ucs-bonus-name">${card.name}</span>`;
-        if (card.text)
-            this.bga.gameui.addTooltipHtml?.(el.id, `<b>${card.name}</b><br>${card.text}`);
+        // Tooltip carries the full publisher card art (sized via inline --ucs-card-w/h) beneath the text.
+        const art = `<div class="ucs-art2 ucs-bonus-${card.bonusId}" style="--ucs-card-w:150px;--ucs-card-h:233px;width:150px;height:233px;border-radius:6px;margin:6px auto 0"></div>`;
+        this.bga.gameui.addTooltipHtml?.(el.id, `<b>${card.name}</b>${card.text ? `<br>${card.text}` : ''}${art}`);
     }
     /**
      * The compact abstraction shown for an opponent on small screens (the side column collapses to
@@ -968,9 +969,8 @@ class Game {
         const step = 5;
         for (let k = 1; k <= this.draftOrderCount(); k++) {
             const el = document.createElement('div');
-            el.className = 'ucs-draftorder-card ucs-draftorder-home-card';
-            el.id = `ucs-draftcard-${k}`;
-            el.innerHTML = `<span class="ucs-draftorder-num">${k}</span>`;
+            el.className = `ucs-draftorder-card ucs-draftorder-home-card ucs-art2 ucs-draftorder-${k}`;
+            el.id = `ucs-draftcard-${k}`; // the "${k}" holly-wreath art carries the number
             el.style.left = `${step * (k - 1)}px`;
             el.style.top = `${step * (k - 1)}px`;
             el.style.width = `${this.draftOrderCardW()}px`;
@@ -1036,8 +1036,7 @@ class Game {
         if (!clone) {
             const start = homeEl.getBoundingClientRect(); // begin exactly where the home card sits
             clone = document.createElement('div');
-            clone.className = 'ucs-draftorder-card ucs-draftorder-out';
-            clone.innerHTML = homeEl.innerHTML;
+            clone.className = `ucs-draftorder-card ucs-draftorder-out ucs-art2 ucs-draftorder-${k}`;
             layer.appendChild(clone);
             this.draftOrderClones[k] = clone;
             this.setCloneRect(clone, start, lr, scale, false, dur);
