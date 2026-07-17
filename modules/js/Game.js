@@ -365,12 +365,11 @@ class Game {
         console.log("Starting game setup");
         this.gamedatas = gamedatas;
         this.bga.gameArea.getElement().insertAdjacentHTML('beforeend', `
-            <div id="ucs-table">
+            <div id="ucs-table" style="--ucs-players:${Object.keys(gamedatas.players).length}">
                 <div id="ucs-hand-end-banner" class="ucs-hand-end-banner" style="display:none">
                     ${_('Last trick and draft phase of this hand — the round ends after this draft.')}
                 </div>
                 <div id="ucs-upper">
-                    <div id="ucs-my-area" class="ucs-zone"></div>
                     <div id="ucs-center-stack">
                         <div id="ucs-params-row">
                             <div id="ucs-gameplay" class="ucs-zone"></div>
@@ -385,6 +384,7 @@ class Game {
                     <div id="ucs-opponents"></div>
                 </div>
                 <div id="ucs-placement" class="ucs-zone" style="display:none"></div>
+                <div id="ucs-my-area" class="ucs-zone"></div>
                 <div id="ucs-my-hand-wrap" class="ucs-zone">
                     <div class="ucs-zone-label" id="ucs-hand-label">${_('Your hand')}</div>
                     <div id="ucs-my-hand-row">
@@ -1016,9 +1016,6 @@ class Game {
             return;
         const lr = layer.getBoundingClientRect();
         const scale = layer.offsetWidth ? lr.width / layer.offsetWidth : 1;
-        // Expand the Trade Area to reserve room for the Draft Order card row below the played cards.
-        document.getElementById('ucs-trade-area')
-            ?.classList.toggle('ucs-trade-has-order', this.draftOrderMode === 'dealt');
         this.draftOrderEls.forEach((homeEl, i) => {
             const k = i + 1;
             const target = this.draftOrderOutTarget(k);

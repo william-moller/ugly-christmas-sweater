@@ -46,8 +46,8 @@
 @use "sweater-sprites"; // GENERATED per-card sprite face classes (scripts/build-sprites.mjs)
 @use "secondary-sprites"; // GENERATED Stage-2 card faces (scripts/build-secondary-sprites.mjs)
 
-$card-w: 64px;
-$card-h: 100px; // bridge-card ratio 0.643 (675x1050 after bleed trim); every --ucs-card-h below is w * 1.556
+$card-w: 80px;
+$card-h: 125px; // bridge-card ratio 0.643 (675x1050 after bleed trim); every --ucs-card-h below is w * 1.556
 
 // Per-colour palette + a distinct pattern direction for colour-blind accessibility
 // (the rules require each colour to also carry a unique pattern).
@@ -568,9 +568,9 @@ html[data-theme="dark"] {
 
 // ---- Player tables / knitting -------------------------------------------------------
 
-// Upper region: three columns — my Knitting Area (left), the page-centred shared stack (Gameplay →
-// Draft Pool → Trade Area, centre), and the opponents column (right). Both side columns share the
-// same width so the centre stack stays balanced about the true page centre; all ride up to the top.
+// Upper region: two columns — the shared stack (Gameplay → Draft Pool → Trade Area) and the opponents
+// column (right, fixed 210px). Nothing balances the opponents column on the left, so the stack centres
+// about the space left over rather than about the true page centre.
 #ucs-upper {
     display: flex;
     gap: 12px;
@@ -586,14 +586,8 @@ html[data-theme="dark"] {
     gap: 10px;
 }
 
-#ucs-my-area {
-    // Raised to the top-left as a fixed column, sized to fit TWO sweaters side by side (each build is
-    // ~159px: 2×74px cards + gaps/padding/border; +12px inter-build gap +16px zone padding ≈ 350px).
-    flex: 0 0 360px;
-    align-self: stretch;
-    --ucs-card-w: 74px;
-    --ucs-card-h: 115px;
-}
+// #ucs-my-area needs no rules of its own: it's a direct child of the #ucs-table column, so it spans
+// the full play-area width, and it takes the base card size (.ucs-knitting wraps builds across it).
 
 #ucs-opponents {
     flex: 0 0 auto;
@@ -978,12 +972,21 @@ html[data-theme="dark"] {
         justify-content: center;
     }
 }
+// Fixed for the whole round: one slot per player, so the frame never resizes as cards are played into
+// it. A slot is a card plus the owner caption's allowed overhang (.ucs-trade-owner may run to
+// --ucs-card-w + 12px), and --ucs-players is set on #ucs-table by Game.ts::setup.
 #ucs-trade-area {
+    --ucs-trade-slot: calc(var(--ucs-card-w) + 12px);
+    box-sizing: border-box; // width below is the full frame, padding + border included
     border: 3px solid var(--ucs-frame);
-}
-// While the Draft Order cards are dealt, reserve room below the played cards for their row (the cards
-// themselves are positioned by Game.ts in the #ucs-draftorder-layer overlay; this just grows the frame).
-#ucs-trade-area.ucs-trade-has-order {
+    width: calc(
+        var(--ucs-players, 4) * var(--ucs-trade-slot)  // the slots themselves
+        + (var(--ucs-players, 4) - 1) * 12px           // .ucs-card-row gap between them
+        + 16px                                          // .ucs-zone left + right padding
+        + 6px                                           // this border
+    );
+    // Room for the Draft Order row is reserved permanently rather than only while it's dealt, so the
+    // frame never jumps. The cards themselves are positioned by Game.ts into #ucs-draftorder-layer.
     padding-bottom: calc(var(--ucs-card-h) + 14px);
 }
 
@@ -1201,13 +1204,9 @@ html[data-theme="dark"] {
 
 // ---- Responsive: on small screens the opponents column collapses to tappable chips --------------
 @media (max-width: 800px) {
-    // Stack the upper region vertically: my area / centre stack / opponents each go full width
-    // (drop the fixed column basis so my area isn't clamped to 210px tall), opponents → chips.
+    // Stack the upper region vertically: centre stack and opponents each go full width, opponents → chips.
     #ucs-upper {
         flex-direction: column;
-    }
-    #ucs-my-area {
-        flex: 0 0 auto;
     }
     // The enlarged desktop hand would overflow a phone/tablet width, so scale the whole fan back
     // down to roughly the original footprint (bga-cards fixes the frame px in JS, so a transform is
