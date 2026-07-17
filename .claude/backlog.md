@@ -12,9 +12,6 @@ not of the code.
 
 ## Release-blocking (BGA pre-release checklist)
 
-- **Zombie mode** — `zombieTurn()` in PHP. Required before alpha: a player who quits or times out
-  must not stall the table. Needs a defined behaviour for every state that can be active (trick
-  play, draft, knit, patch assignment).
 - **Tooltips** — checklist: "non-self explanatory graphic elements should have tool tips". Scope:
   cards, knitting slots, the trade area, the round-parameter cards, draft-order badges.
 - **Responsive / mobile** — checklist: the game must work on a mobile device. Related checklist
