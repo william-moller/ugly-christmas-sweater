@@ -6,10 +6,6 @@
  * Static game material for Ugly Christmas Sweaters. Per BGA guidelines, ALL static (non-changing)
  * data lives here, never in the database. The database (dbmodel.sql) stores only dynamic state
  * (card locations, sweater builds, patch wild resolutions, etc.).
- *
- * DRAFT (2026-06-17): structure complete; the per-card ICON and ORIENTATION (and the exact Fad /
- * Secret Santa / Perfect Fit / Trendy Yarn definitions) are printed on the physical cards and must be
- * transcribed from the art files. Search this file for "TODO" to find every gap.
  */
 declare(strict_types=1);
 

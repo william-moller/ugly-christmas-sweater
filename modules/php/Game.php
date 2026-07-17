@@ -9,11 +9,6 @@
  * -----
  *
  * Game.php — main server-side game logic for Ugly Christmas Sweaters.
- *
- * STATUS (2026-06-17): setup + state-machine wiring. The control flow (Trade -> Resolve -> Draft ->
- * Knit -> round end -> scoring) is in place. Rule internals that need the (still-pending) card art
- * data — full trick resolution, scoring math, patch wild handling — are partially implemented and
- * marked TODO. The game can deal and run the trick loop structurally even before the art arrives.
  */
 declare(strict_types=1);
 
@@ -747,8 +742,6 @@ class Game extends \Bga\GameFramework\Table
     /**
      * Whether a card may legally follow the led card: same COLOUR or same ICON (rules), else any card
      * is allowed only if the player can't follow. Returns the set of legally-playable card ids in hand.
-     * TODO: needs card icon data (Material::FACES) to evaluate icon-following; until then only colour
-     * matching is considered (safe but permissive).
      */
     public function getPlayableCardIds(int $playerId): array
     {
@@ -1525,8 +1518,6 @@ class Game extends \Bga\GameFramework\Table
      * End-of-round scoring. Public (non-Secret-Santa) points are already reflected live as sweaters
      * complete (see refreshPublicScore), so here we only add the hidden Secret Santa bonus, then clear
      * the live tracker so the next round starts fresh (its knitting area is wiped in NewRound).
-     * TODO: Secret Santa scoring (+3 per satisfied objective) once Material::secretSantas() data and
-     *       dealing are wired up — currently no Secret Santas are dealt, so this adds nothing.
      */
     public function scoreRound(): void
     {

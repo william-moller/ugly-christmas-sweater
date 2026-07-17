@@ -20,13 +20,11 @@
             "name": "Sweaters with three consecutive numbers",
             "type": "int"
         },
-        // TODO: incremented once Fad scoring is finalised in scoreRound().
         "fad_objectives": {
             "id": 12,
             "name": "Fad objectives scored",
             "type": "int"
         },
-        // TODO: incremented once Secret Santa dealing/scoring lands.
         "secret_santas": {
             "id": 13,
             "name": "Secret Santas fulfilled",
