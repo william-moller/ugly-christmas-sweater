@@ -108,16 +108,18 @@ export class Game {
                     ${_('Last trick and draft phase of this hand — the round ends after this draft.')}
                 </div>
                 <div id="ucs-upper">
+                    <div id="ucs-params-col">
+                        <div id="ucs-gameplay" class="ucs-zone"></div>
+                        <div id="ucs-secret-santa" class="ucs-zone ucs-secret-santa" style="display:none"></div>
+                    </div>
                     <div id="ucs-center-stack">
-                        <div id="ucs-params-row">
-                            <div id="ucs-gameplay" class="ucs-zone"></div>
-                            <div id="ucs-secret-santa" class="ucs-zone ucs-secret-santa" style="display:none"></div>
-                            <div id="ucs-draft-order" class="ucs-zone ucs-draft-order"></div>
-                        </div>
                         <div id="ucs-draft-pool" class="ucs-zone"></div>
                         <div id="ucs-trade-area" class="ucs-zone"></div>
                     </div>
-                    <div id="ucs-opponents"></div>
+                    <div id="ucs-opponents">
+                        <div id="ucs-opponents-list"></div>
+                        <div id="ucs-draft-order" class="ucs-zone ucs-draft-order"></div>
+                    </div>
                 </div>
                 <div id="ucs-placement" class="ucs-zone" style="display:none"></div>
                 <div id="ucs-my-area" class="ucs-zone"></div>
@@ -142,11 +144,13 @@ export class Game {
         `);
 
         // Self-focus layout: my own table (large, primary) lives in #ucs-my-area; every opponent goes
-        // into the compact, clickable #ucs-opponents side column. Element ids stay `ucs-*-<playerId>`
-        // so the render* methods keep working regardless of which container a table sits in.
+        // into the compact, clickable #ucs-opponents-list. That list is its own box (rather than the
+        // #ucs-opponents column itself) so appending players here can't land them after the Draft Order
+        // zone, which sits below them. Element ids stay `ucs-*-<playerId>` so the render* methods keep
+        // working regardless of which container a table sits in.
         Object.values(gamedatas.players).forEach((player) => {
             const mine = Number(player.id) === this.myId;
-            const parent = mine ? 'ucs-my-area' : 'ucs-opponents';
+            const parent = mine ? 'ucs-my-area' : 'ucs-opponents-list';
             document.getElementById(parent)!.insertAdjacentHTML('beforeend', `
                 <div class="ucs-player-table ${mine ? 'ucs-me' : 'ucs-oppo'}" id="ucs-player-${player.id}"
                      style="--player-color:#${player.color}" data-player-id="${player.id}">
@@ -672,16 +676,18 @@ export class Game {
         return Object.keys(this.gamedatas.players).length;
     }
 
+    // Read off #ucs-table deliberately, NOT the zone: the Draft Order cards stay play-area sized even
+    // though the zone lives inside the shrunk-down #ucs-opponents column.
     private draftOrderCardW(): number {
         const t = document.getElementById('ucs-table');
-        return (t && parseFloat(getComputedStyle(t).getPropertyValue('--ucs-card-w'))) || 64;
+        return (t && parseFloat(getComputedStyle(t).getPropertyValue('--ucs-card-w'))) || 80;
     }
     private draftOrderCardH(): number {
         const t = document.getElementById('ucs-table');
-        return (t && parseFloat(getComputedStyle(t).getPropertyValue('--ucs-card-h'))) || 90;
+        return (t && parseFloat(getComputedStyle(t).getPropertyValue('--ucs-card-h'))) || 125;
     }
 
-    /** The static "home" box + label for the stack, left of Round Parameters (reserves the footprint). */
+    /** The static "home" box + label for the stack, below the opponents (reserves the footprint). */
     private renderDraftOrderZone() {
         const zone = document.getElementById('ucs-draft-order');
         if (!zone) return;

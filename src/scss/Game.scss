@@ -49,6 +49,11 @@
 $card-w: 80px;
 $card-h: 125px; // bridge-card ratio 0.643 (675x1050 after bleed trim); every --ucs-card-h below is w * 1.556
 
+// Both flanking columns of #ucs-upper share this width so the centre stack sits on the true page
+// centre. Must clear the widest thing in either: the params' deck + revealed card ($card-w * 2 + an
+// 8px gap + 16px zone padding = 184px).
+$side-col-w: 210px;
+
 // Per-colour palette + a distinct pattern direction for colour-blind accessibility
 // (the rules require each colour to also carry a unique pattern).
 // Keys are quoted because red/green/yellow are CSS colour keywords (unquoted they'd be parsed
@@ -412,10 +417,11 @@ html[data-theme="dark"] {
 }
 
 // ---- Gameplay decks (Perfect Fit / Trendy Yarn / Fad — public round parameters) -----------------
+// Stacked vertically: the three parameters sit one above the other in the narrow left column.
 .ucs-gameplay-row {
     display: flex;
-    gap: 18px;
-    flex-wrap: wrap;
+    flex-direction: column;
+    gap: 14px;
 }
 .ucs-gp-pile {
     display: flex;
@@ -568,13 +574,20 @@ html[data-theme="dark"] {
 
 // ---- Player tables / knitting -------------------------------------------------------
 
-// Upper region: two columns — the shared stack (Gameplay → Draft Pool → Trade Area) and the opponents
-// column (right, fixed 210px). Nothing balances the opponents column on the left, so the stack centres
-// about the space left over rather than about the true page centre.
+// Upper region: three columns — the round parameters + Secret Santa (left), the shared stack
+// (Draft Pool → Trade Area, centre), and the opponents + Draft Order (right). Both side columns are
+// the same fixed width, so the centre stack stays balanced about the true page centre.
 #ucs-upper {
     display: flex;
     gap: 12px;
     align-items: flex-start;
+}
+
+#ucs-params-col {
+    flex: 0 0 $side-col-w;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
 }
 
 #ucs-center-stack {
@@ -589,15 +602,22 @@ html[data-theme="dark"] {
 // #ucs-my-area needs no rules of its own: it's a direct child of the #ucs-table column, so it spans
 // the full play-area width, and it takes the base card size (.ucs-knitting wraps builds across it).
 
+// Right column: the opponents' knitting areas, with the Draft Order stack parked below them.
 #ucs-opponents {
-    flex: 0 0 auto;
-    width: 210px;
+    flex: 0 0 $side-col-w;
     display: flex;
     flex-direction: column;
     gap: 8px;
-    // Opponents are shrunk down (scaled-down live sweaters).
+    // Opponents are shrunk down (scaled-down live sweaters). NB this cascades into #ucs-draft-order,
+    // which restores the base size for itself — see .ucs-draft-order.
     --ucs-card-w: 40px;
     --ucs-card-h: 62px;
+}
+
+#ucs-opponents-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
 }
 
 .ucs-player-table {
@@ -1204,9 +1224,21 @@ html[data-theme="dark"] {
 
 // ---- Responsive: on small screens the opponents column collapses to tappable chips --------------
 @media (max-width: 800px) {
-    // Stack the upper region vertically: centre stack and opponents each go full width, opponents → chips.
+    // Stack the upper region vertically: params / centre stack / opponents each go full width.
     #ucs-upper {
         flex-direction: column;
+    }
+    // Drop the fixed side-column basis — in a column flex, that basis is a HEIGHT, and would clamp
+    // both flanking columns to $side-col-w tall.
+    #ucs-params-col,
+    #ucs-opponents {
+        flex: 0 0 auto;
+    }
+    // Full width, the three parameters go back to sitting side by side rather than stacked.
+    .ucs-gameplay-row {
+        flex-direction: row;
+        flex-wrap: wrap;
+        gap: 18px;
     }
     // The enlarged desktop hand would overflow a phone/tablet width, so scale the whole fan back
     // down to roughly the original footprint (bga-cards fixes the frame px in JS, so a transform is
@@ -1216,8 +1248,8 @@ html[data-theme="dark"] {
         transform-origin: top center;
         min-height: 128px;
     }
-    #ucs-opponents {
-        width: auto;
+    // The chips row is the LIST now, not the column that wraps it (the column also holds Draft Order).
+    #ucs-opponents-list {
         flex-direction: row;
         flex-wrap: wrap;
 
@@ -1303,22 +1335,17 @@ html[data-theme="dark"] {
     pointer-events: none;
 }
 
-// One row, left to right: Round Parameters (the Gameplay cards), the turned Secret Santa, then the
-// Draft Order stack. Keeping all three side by side matters vertically: the row is as tall as its
-// tallest zone, so anything stacked here hangs below Round Parameters and pushes the Draft Pool down.
-#ucs-params-row {
-    align-self: center;
-    display: flex;
-    justify-content: center;
-    align-items: flex-start; // each zone rides up under its own label
-    gap: 14px;
-}
 
 // ---- Draft Order cards (physical cards 1..N marking pick order) ---------------------------------
 // The stack sits at the right end of the params row; the numbered cards themselves are overlay clones
 // (created in Game.ts) that fly out onto the Trade Area cards and back, so this zone only reserves the
 // "home" footprint they rest over between deals.
 .ucs-draft-order {
+    // Lives inside #ucs-opponents, which shrinks cards to 40x62 for the mini sweaters. These cards are
+    // play-area sized (Game.ts sizes them off #ucs-table), so restore the base here or the home
+    // footprint below would size to the mini card and its own cards would overflow it.
+    --ucs-card-w: #{$card-w};
+    --ucs-card-h: #{$card-h};
     display: flex;
     flex-direction: column;
     align-items: center;

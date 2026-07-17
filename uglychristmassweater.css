@@ -792,8 +792,8 @@ html[data-theme=dark] {
 
 .ucs-gameplay-row {
   display: flex;
-  gap: 18px;
-  flex-wrap: wrap;
+  flex-direction: column;
+  gap: 14px;
 }
 
 .ucs-gp-pile {
@@ -964,6 +964,13 @@ html[data-theme=dark] {
   align-items: flex-start;
 }
 
+#ucs-params-col {
+  flex: 0 0 210px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
 #ucs-center-stack {
   flex: 1 1 auto;
   min-width: 0;
@@ -974,13 +981,18 @@ html[data-theme=dark] {
 }
 
 #ucs-opponents {
-  flex: 0 0 auto;
-  width: 210px;
+  flex: 0 0 210px;
   display: flex;
   flex-direction: column;
   gap: 8px;
   --ucs-card-w: 40px;
   --ucs-card-h: 62px;
+}
+
+#ucs-opponents-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
 .ucs-player-table {
@@ -1600,23 +1612,31 @@ html[data-theme=dark] {
   #ucs-upper {
     flex-direction: column;
   }
+  #ucs-params-col,
+  #ucs-opponents {
+    flex: 0 0 auto;
+  }
+  .ucs-gameplay-row {
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 18px;
+  }
   #ucs-my-hand {
     transform: scale(0.68);
     transform-origin: top center;
     min-height: 128px;
   }
-  #ucs-opponents {
-    width: auto;
+  #ucs-opponents-list {
     flex-direction: row;
     flex-wrap: wrap;
   }
-  #ucs-opponents .ucs-oppo {
+  #ucs-opponents-list .ucs-oppo {
     flex: 1 1 160px;
   }
-  #ucs-opponents .ucs-oppo .ucs-knitting {
+  #ucs-opponents-list .ucs-oppo .ucs-knitting {
     display: none;
   }
-  #ucs-opponents .ucs-oppo .ucs-oppo-summary {
+  #ucs-opponents-list .ucs-oppo .ucs-oppo-summary {
     display: flex;
   }
 }
@@ -1690,15 +1710,9 @@ html[data-theme=dark] {
   pointer-events: none;
 }
 
-#ucs-params-row {
-  align-self: center;
-  display: flex;
-  justify-content: center;
-  align-items: flex-start;
-  gap: 14px;
-}
-
 .ucs-draft-order {
+  --ucs-card-w: 80px;
+  --ucs-card-h: 125px;
   display: flex;
   flex-direction: column;
   align-items: center;
