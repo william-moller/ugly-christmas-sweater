@@ -374,9 +374,9 @@ class Game {
                         <div id="ucs-trade-area" class="ucs-zone"></div>
                     </div>
                     <div id="ucs-opponents"></div>
+                    <div id="ucs-my-area" class="ucs-zone"></div>
                 </div>
                 <div id="ucs-placement" class="ucs-zone" style="display:none"></div>
-                <div id="ucs-my-area" class="ucs-zone"></div>
                 <div id="ucs-my-hand-wrap" class="ucs-zone">
                     <div class="ucs-zone-label" id="ucs-hand-label">${_('Your hand')}</div>
                     <div id="ucs-my-hand-row">

@@ -959,21 +959,27 @@ html[data-theme=dark] {
 }
 
 #ucs-upper {
-  display: flex;
+  display: grid;
+  grid-template-columns: 210px auto minmax(0, 1fr) 210px;
+  grid-template-areas: "params santa center oppo" "params knit  knit   knit";
   gap: 12px;
-  align-items: flex-start;
+  align-items: start;
 }
 
 #ucs-gameplay {
-  flex: 0 0 210px;
+  grid-area: params;
 }
 
 #ucs-secret-santa {
-  flex: 0 0 auto;
+  grid-area: santa;
+}
+
+#ucs-my-area {
+  grid-area: knit;
 }
 
 #ucs-center-stack {
-  flex: 1 1 auto;
+  grid-area: center;
   min-width: 0;
   display: flex;
   flex-direction: column;
@@ -982,7 +988,7 @@ html[data-theme=dark] {
 }
 
 #ucs-opponents {
-  flex: 0 0 210px;
+  grid-area: oppo;
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -1604,11 +1610,8 @@ html[data-theme=dark] {
 
 @media (max-width: 800px) {
   #ucs-upper {
-    flex-direction: column;
-  }
-  #ucs-gameplay,
-  #ucs-opponents {
-    flex: 0 0 auto;
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas: "params" "santa" "center" "oppo" "knit";
   }
   .ucs-gameplay-row {
     flex-direction: row;

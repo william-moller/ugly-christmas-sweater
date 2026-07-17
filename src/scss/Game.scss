@@ -580,40 +580,37 @@ html[data-theme="dark"] {
 
 // ---- Player tables / knitting -------------------------------------------------------
 
-// Upper region, left to right: the round parameters (stacked), the Secret Santa, the shared stack
-// (Draft Pool → Trade Area), and the opponents. The Secret Santa column is why the centre stack
-// doesn't land on the true page centre — see $side-col-w.
+// Upper region. A grid rather than a row, because the two axes disagree: the round parameters run
+// tall down the left over BOTH rows, while my Knitting Area fills the width to their right under the
+// Trade Area. `santa` is an auto track (a turned card wide); it collapses to nothing when no Secret
+// Santa is dealt, and it's why the centre stack doesn't land on the true page centre — see $side-col-w.
 #ucs-upper {
-    display: flex;
+    display: grid;
+    grid-template-columns: $side-col-w auto minmax(0, 1fr) $side-col-w;
+    grid-template-areas:
+        "params santa center oppo"
+        "params knit  knit   knit";
     gap: 12px;
-    align-items: flex-start;
+    align-items: start;
 }
 
-// Left column: the three round parameters, stacked one above the other.
-#ucs-gameplay {
-    flex: 0 0 $side-col-w;
-}
-
-// Sits between the params and the centre stack; takes its natural width (a turned card).
-#ucs-secret-santa {
-    flex: 0 0 auto;
-}
+// Left column: the three round parameters, stacked one above the other, spanning both grid rows.
+#ucs-gameplay { grid-area: params; }
+#ucs-secret-santa { grid-area: santa; }
+#ucs-my-area { grid-area: knit; } // takes the base card size; .ucs-knitting wraps builds across it
 
 #ucs-center-stack {
-    flex: 1 1 auto;
+    grid-area: center;
     min-width: 0;
     display: flex;
     flex-direction: column;
-    align-items: center; // centralise the gameplay / draft / trade zones
+    align-items: center; // centralise the draft / trade zones
     gap: 10px;
 }
 
-// #ucs-my-area needs no rules of its own: it's a direct child of the #ucs-table column, so it spans
-// the full play-area width, and it takes the base card size (.ucs-knitting wraps builds across it).
-
 // Right column: the opponents' knitting areas.
 #ucs-opponents {
-    flex: 0 0 $side-col-w;
+    grid-area: oppo;
     display: flex;
     flex-direction: column;
     gap: 8px;
@@ -1222,15 +1219,16 @@ html[data-theme="dark"] {
 
 // ---- Responsive: on small screens the opponents column collapses to tappable chips --------------
 @media (max-width: 800px) {
-    // Stack the upper region vertically: params / centre stack / opponents each go full width.
+    // Collapse the grid to a single full-width column, in reading order. Re-declaring the areas (rather
+    // than just the columns) is what un-spans the params column and the knitting row.
     #ucs-upper {
-        flex-direction: column;
-    }
-    // Drop the fixed side-column basis — in a column flex, that basis is a HEIGHT, and would clamp
-    // both flanking columns to $side-col-w tall.
-    #ucs-gameplay,
-    #ucs-opponents {
-        flex: 0 0 auto;
+        grid-template-columns: minmax(0, 1fr);
+        grid-template-areas:
+            "params"
+            "santa"
+            "center"
+            "oppo"
+            "knit";
     }
     // Full width, the three parameters go back to sitting side by side rather than stacked.
     .ucs-gameplay-row {
