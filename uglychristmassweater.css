@@ -964,11 +964,12 @@ html[data-theme=dark] {
   align-items: flex-start;
 }
 
-#ucs-params-col {
+#ucs-gameplay {
   flex: 0 0 210px;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
+}
+
+#ucs-secret-santa {
+  flex: 0 0 auto;
 }
 
 #ucs-center-stack {
@@ -987,12 +988,6 @@ html[data-theme=dark] {
   gap: 8px;
   --ucs-card-w: 40px;
   --ucs-card-h: 62px;
-}
-
-#ucs-opponents-list {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
 }
 
 .ucs-player-table {
@@ -1374,7 +1369,6 @@ html[data-theme=dark] {
   box-sizing: border-box;
   border: 3px solid var(--ucs-frame);
   width: calc(var(--ucs-players, 4) * var(--ucs-trade-slot) + (var(--ucs-players, 4) - 1) * 12px + 16px + 6px);
-  padding-bottom: calc(var(--ucs-card-h) + 14px);
 }
 
 .ucs-trade-card {
@@ -1612,7 +1606,7 @@ html[data-theme=dark] {
   #ucs-upper {
     flex-direction: column;
   }
-  #ucs-params-col,
+  #ucs-gameplay,
   #ucs-opponents {
     flex: 0 0 auto;
   }
@@ -1626,17 +1620,17 @@ html[data-theme=dark] {
     transform-origin: top center;
     min-height: 128px;
   }
-  #ucs-opponents-list {
+  #ucs-opponents {
     flex-direction: row;
     flex-wrap: wrap;
   }
-  #ucs-opponents-list .ucs-oppo {
+  #ucs-opponents .ucs-oppo {
     flex: 1 1 160px;
   }
-  #ucs-opponents-list .ucs-oppo .ucs-knitting {
+  #ucs-opponents .ucs-oppo .ucs-knitting {
     display: none;
   }
-  #ucs-opponents-list .ucs-oppo .ucs-oppo-summary {
+  #ucs-opponents .ucs-oppo .ucs-oppo-summary {
     display: flex;
   }
 }
@@ -1710,39 +1704,19 @@ html[data-theme=dark] {
   pointer-events: none;
 }
 
-.ucs-draft-order {
-  --ucs-card-w: 80px;
-  --ucs-card-h: 125px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-}
-
-.ucs-draftorder-home {
-  position: relative;
-  width: calc(var(--ucs-card-w) + 24px);
-  height: calc(var(--ucs-card-h) + 10px);
-}
-
-#ucs-draftorder-layer {
+.ucs-draftorder-badge {
+  --ucs-card-w: 30px;
+  --ucs-card-h: 47px;
   position: absolute;
-  inset: 0;
-  pointer-events: none;
-  z-index: 50;
-  overflow: visible;
-}
-
-.ucs-draftorder-card {
-  position: absolute;
+  top: 3px;
+  right: 3px;
+  width: var(--ucs-card-w);
+  height: var(--ucs-card-h);
+  z-index: 5;
   pointer-events: none;
   background-color: #fff;
-  border-radius: 6px;
-  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.35);
-  box-sizing: border-box;
-}
-
-.ucs-draftorder-card.ucs-draftorder-out {
-  box-shadow: 0 5px 14px rgba(0, 0, 0, 0.5);
+  border-radius: 4px;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.45);
 }
 
 .ucs-secret-santa .ucs-santa-cards {

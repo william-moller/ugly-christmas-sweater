@@ -49,10 +49,16 @@
 $card-w: 80px;
 $card-h: 125px; // bridge-card ratio 0.643 (675x1050 after bleed trim); every --ucs-card-h below is w * 1.556
 
-// Both flanking columns of #ucs-upper share this width so the centre stack sits on the true page
-// centre. Must clear the widest thing in either: the params' deck + revealed card ($card-w * 2 + an
-// 8px gap + 16px zone padding = 184px).
+// The params (left) and opponents (right) columns of #ucs-upper. Must clear the widest thing in
+// either: the params' deck + revealed card ($card-w * 2 + an 8px gap + 16px zone padding = 184px).
+// NB the Secret Santa column sits between the params and the centre, so the centre stack does NOT
+// land on the true page centre — it reads left of it by roughly the Secret Santa's width.
 $side-col-w: 210px;
+
+// Draft Order marker: much smaller than a card, at the card's aspect ratio ($card-w * 1.556) so the
+// sprite art scales rather than distorts.
+$order-badge-w: 30px;
+$order-badge-h: 47px;
 
 // Per-colour palette + a distinct pattern direction for colour-blind accessibility
 // (the rules require each colour to also carry a unique pattern).
@@ -142,7 +148,7 @@ html[data-theme="dark"] {
     // my own area bumps it up (focus), the opponents column shrinks it, the popin shows them large.
     --ucs-card-w: #{$card-w};
     --ucs-card-h: #{$card-h};
-    position: relative; // positioning context for #ucs-draftorder-layer (the Draft Order card overlay)
+    position: relative;
     display: flex;
     flex-direction: column;
     gap: 10px;
@@ -574,20 +580,23 @@ html[data-theme="dark"] {
 
 // ---- Player tables / knitting -------------------------------------------------------
 
-// Upper region: three columns — the round parameters + Secret Santa (left), the shared stack
-// (Draft Pool → Trade Area, centre), and the opponents + Draft Order (right). Both side columns are
-// the same fixed width, so the centre stack stays balanced about the true page centre.
+// Upper region, left to right: the round parameters (stacked), the Secret Santa, the shared stack
+// (Draft Pool → Trade Area), and the opponents. The Secret Santa column is why the centre stack
+// doesn't land on the true page centre — see $side-col-w.
 #ucs-upper {
     display: flex;
     gap: 12px;
     align-items: flex-start;
 }
 
-#ucs-params-col {
+// Left column: the three round parameters, stacked one above the other.
+#ucs-gameplay {
     flex: 0 0 $side-col-w;
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
+}
+
+// Sits between the params and the centre stack; takes its natural width (a turned card).
+#ucs-secret-santa {
+    flex: 0 0 auto;
 }
 
 #ucs-center-stack {
@@ -602,22 +611,15 @@ html[data-theme="dark"] {
 // #ucs-my-area needs no rules of its own: it's a direct child of the #ucs-table column, so it spans
 // the full play-area width, and it takes the base card size (.ucs-knitting wraps builds across it).
 
-// Right column: the opponents' knitting areas, with the Draft Order stack parked below them.
+// Right column: the opponents' knitting areas.
 #ucs-opponents {
     flex: 0 0 $side-col-w;
     display: flex;
     flex-direction: column;
     gap: 8px;
-    // Opponents are shrunk down (scaled-down live sweaters). NB this cascades into #ucs-draft-order,
-    // which restores the base size for itself — see .ucs-draft-order.
+    // Opponents are shrunk down (scaled-down live sweaters).
     --ucs-card-w: 40px;
     --ucs-card-h: 62px;
-}
-
-#ucs-opponents-list {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
 }
 
 .ucs-player-table {
@@ -1005,9 +1007,6 @@ html[data-theme="dark"] {
         + 16px                                          // .ucs-zone left + right padding
         + 6px                                           // this border
     );
-    // Room for the Draft Order row is reserved permanently rather than only while it's dealt, so the
-    // frame never jumps. The cards themselves are positioned by Game.ts into #ucs-draftorder-layer.
-    padding-bottom: calc(var(--ucs-card-h) + 14px);
 }
 
 // A Trade Area card captioned with who played it this trick (label not carried into the pool).
@@ -1036,9 +1035,8 @@ html[data-theme="dark"] {
 #ucs-my-hand-wrap {
     --ucs-card-w: 96px;
     --ucs-card-h: 149px;
-    // Keep the (attached) hand painting above the Draft Order overlay (#ucs-draftorder-layer, z-index 50)
-    // so the dealt rank cards sit BEHIND the fanned hand where they overlap. The floating hand is lifted
-    // separately via the HandStock `floatZIndex` option in Game.ts. Stays below the popin (z-index 1000).
+    // Keep the (attached) hand painting above the tabletop zones where they overlap. The floating hand
+    // is lifted separately via the HandStock `floatZIndex` option in Game.ts. Below the popin (z-1000).
     position: relative;
     z-index: 100;
 }
@@ -1230,7 +1228,7 @@ html[data-theme="dark"] {
     }
     // Drop the fixed side-column basis — in a column flex, that basis is a HEIGHT, and would clamp
     // both flanking columns to $side-col-w tall.
-    #ucs-params-col,
+    #ucs-gameplay,
     #ucs-opponents {
         flex: 0 0 auto;
     }
@@ -1248,8 +1246,7 @@ html[data-theme="dark"] {
         transform-origin: top center;
         min-height: 128px;
     }
-    // The chips row is the LIST now, not the column that wraps it (the column also holds Draft Order).
-    #ucs-opponents-list {
+    #ucs-opponents {
         flex-direction: row;
         flex-wrap: wrap;
 
@@ -1336,48 +1333,25 @@ html[data-theme="dark"] {
 }
 
 
-// ---- Draft Order cards (physical cards 1..N marking pick order) ---------------------------------
-// The stack sits at the right end of the params row; the numbered cards themselves are overlay clones
-// (created in Game.ts) that fly out onto the Trade Area cards and back, so this zone only reserves the
-// "home" footprint they rest over between deals.
-.ucs-draft-order {
-    // Lives inside #ucs-opponents, which shrinks cards to 40x62 for the mini sweaters. These cards are
-    // play-area sized (Game.ts sizes them off #ucs-table), so restore the base here or the home
-    // footprint below would size to the mini card and its own cards would overflow it.
-    --ucs-card-w: #{$card-w};
-    --ucs-card-h: #{$card-h};
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-}
-.ucs-draftorder-home {
-    // Positioning context + footprint for the resting stack. Game.ts adds the N "home" cards as absolute
-    // children here (a 5px diagonal stack), so they always sit inside this box under the label.
-    position: relative;
-    width: calc(var(--ucs-card-w) + 24px);
-    height: calc(var(--ucs-card-h) + 10px);
-}
-// Overlay inside #ucs-table holding the numbered cards (see Game.ts::draftOrderLayer). Absolute so it
-// shares the tabletop coordinate space; doesn't clip its cards or catch clicks.
-#ucs-draftorder-layer {
+// ---- Draft Order markers (the numbers 1..N marking pick order) ----------------------------------
+// A marker is a small badge in the top-right corner of the Trade Area card it ranks, drawn there by
+// renderTradeArea and existing only while an order is live. It sits INSIDE the card (which is
+// overflow:hidden, so it can't hang off the corner).
+.ucs-draftorder-badge {
+    // The sprite sizes and crops itself off --ucs-card-w/h (see _secondary-sprites.scss), so shrinking
+    // those here shrinks the art with the badge. Keep the card aspect ratio or the art distorts.
+    --ucs-card-w: #{$order-badge-w};
+    --ucs-card-h: #{$order-badge-h};
     position: absolute;
-    inset: 0;
-    pointer-events: none;
-    z-index: 50;
-    overflow: visible;
-}
-.ucs-draftorder-card {
-    position: absolute;
-    pointer-events: none; // purely a marker — never intercept clicks on the cards beneath
-    background-color: #fff;          // fallback tint behind the sprite art (.ucs-art2 background-image)
-    border-radius: 6px;
-    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.35);
-    box-sizing: border-box;
-    // left / top / width / height are set inline by Game.ts; transition is toggled there per move.
-}
-.ucs-draftorder-card.ucs-draftorder-out {
-    // Lifted look while dealt onto a trade card or parked at the leader.
-    box-shadow: 0 5px 14px rgba(0, 0, 0, 0.5);
+    top: 3px;
+    right: 3px;
+    width: var(--ucs-card-w);
+    height: var(--ucs-card-h);
+    z-index: 5;
+    pointer-events: none; // purely a marker — never intercept clicks on the card beneath
+    background-color: #fff; // fallback tint behind the sprite art (.ucs-art2 background-image)
+    border-radius: 4px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.45);
 }
 
 // Secret Santa (my private objective card(s)) — rendered as a normal card turned 90°.

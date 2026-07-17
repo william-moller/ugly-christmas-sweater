@@ -331,15 +331,12 @@ class Game {
         // the action button's countdown). The abort controller cancels that countdown on Reset / leave.
         this.confirmAbort = null;
         this.confirming = false; // true while a play/draft is awaiting Confirm (hides draft targets)
-        // Draft Order cards (physical cards numbered 1..N, N = player count). They live in a stack left of
-        // Round Parameters, deal out onto the ranked Trade Area cards while drafting, then all return home
-        // once the trick's drafting is done. `draftOrderEls[k-1]` is card "k"; `draftOrderCardIds` is the
-        // current trick's trade-card ids in rank order (rank k → the k-th id).
-        this.draftOrderEls = []; // the N "home" cards — real flow children of the zone
-        this.draftOrderClones = {}; // overlay clones while a card is dealt out
+        // Draft Order (the numbers 1..N, N = player count, marking pick order). While a trick's order is
+        // live each number is drawn as a small badge in the corner of the Trade Area card it ranks; there
+        // is no stack and nothing exists between orders. `draftOrderCardIds` is the current trick's
+        // trade-card ids in rank order (rank k → the k-th id).
         this.draftOrderCardIds = [];
         this.draftOrderMode = 'idle';
-        this.draftOrderAnimating = false; // true while a deal/return transition is in flight (blocks snap)
         // Monotonic counter for assigning ids to gameplay-card elements (so tooltips can attach).
         this.gpSeq = 0;
         // bga-cards: the fanned hand is a HandStock backed by a CardManager (both loaded at runtime via
@@ -370,18 +367,13 @@ class Game {
                     ${_('Last trick and draft phase of this hand — the round ends after this draft.')}
                 </div>
                 <div id="ucs-upper">
-                    <div id="ucs-params-col">
-                        <div id="ucs-gameplay" class="ucs-zone"></div>
-                        <div id="ucs-secret-santa" class="ucs-zone ucs-secret-santa" style="display:none"></div>
-                    </div>
+                    <div id="ucs-gameplay" class="ucs-zone"></div>
+                    <div id="ucs-secret-santa" class="ucs-zone ucs-secret-santa" style="display:none"></div>
                     <div id="ucs-center-stack">
                         <div id="ucs-draft-pool" class="ucs-zone"></div>
                         <div id="ucs-trade-area" class="ucs-zone"></div>
                     </div>
-                    <div id="ucs-opponents">
-                        <div id="ucs-opponents-list"></div>
-                        <div id="ucs-draft-order" class="ucs-zone ucs-draft-order"></div>
-                    </div>
+                    <div id="ucs-opponents"></div>
                 </div>
                 <div id="ucs-placement" class="ucs-zone" style="display:none"></div>
                 <div id="ucs-my-area" class="ucs-zone"></div>
@@ -405,13 +397,11 @@ class Game {
             </div>
         `);
         // Self-focus layout: my own table (large, primary) lives in #ucs-my-area; every opponent goes
-        // into the compact, clickable #ucs-opponents-list. That list is its own box (rather than the
-        // #ucs-opponents column itself) so appending players here can't land them after the Draft Order
-        // zone, which sits below them. Element ids stay `ucs-*-<playerId>` so the render* methods keep
-        // working regardless of which container a table sits in.
+        // into the compact, clickable #ucs-opponents side column. Element ids stay `ucs-*-<playerId>`
+        // so the render* methods keep working regardless of which container a table sits in.
         Object.values(gamedatas.players).forEach((player) => {
             const mine = Number(player.id) === this.myId;
-            const parent = mine ? 'ucs-my-area' : 'ucs-opponents-list';
+            const parent = mine ? 'ucs-my-area' : 'ucs-opponents';
             document.getElementById(parent).insertAdjacentHTML('beforeend', `
                 <div class="ucs-player-table ${mine ? 'ucs-me' : 'ucs-oppo'}" id="ucs-player-${player.id}"
                      style="--player-color:#${player.color}" data-player-id="${player.id}">
@@ -439,18 +429,11 @@ class Game {
             this.setupHandStock();
         }
         this.renderAll();
-        // Draft Order cards: build the N fixed-position cards and drop them home. The active state's
-        // handler (PlayCard / DraftCard onEnteringState, which fires right after setup — including on an
-        // F5) snaps them to the correct idle/dealt layout; keep them aligned on viewport resize.
+        // Draft Order: markers are drawn into the Trade Area cards themselves, so there's nothing to
+        // place here. The active state's handler (PlayCard / DraftCard onEnteringState, which fires
+        // right after setup — including on an F5) syncs them to the correct idle/dealt picture.
         this.draftOrderCardIds = (gamedatas.draftOrderCards ?? []).map(Number);
         this.draftOrderMode = 'idle';
-        this.setupDraftOrderCards();
-        // Position after the layout settles (BGA may still be sizing player panels / the tabletop right
-        // after setup), and again on a short delay to catch any late reflow. The active state's handler
-        // (PlayCard/DraftCard onEnteringState) also re-snaps against the final layout.
-        requestAnimationFrame(() => this.positionDraftOrder(false));
-        setTimeout(() => this.positionDraftOrder(false), 400);
-        window.addEventListener('resize', () => this.positionDraftOrder(false));
         // Restore the "last trick & draft phase" banner if this hand's end is already triggered (e.g. an
         // F5 mid-final-draft). Live-computed server-side, so it's absent again once the next round deals.
         this.showHandEndBanner(!!gamedatas.handEndTriggered);
@@ -543,7 +526,6 @@ class Game {
     renderAll() {
         this.renderGameplay();
         this.renderSecretSanta();
-        this.renderDraftOrderZone();
         this.renderDraftPool();
         this.renderTradeArea();
         this.renderPlayers();
@@ -587,7 +569,7 @@ class Game {
      */
     renderGameplay() {
         const zone = document.getElementById('ucs-gameplay');
-        zone.innerHTML = `<div class="ucs-zone-label">Round Parameters</div>`;
+        zone.innerHTML = ''; // no zone label: each parameter carries its own (Perfect Fit / Trendy Yarn / Fads)
         const row = document.createElement('div');
         row.className = 'ucs-gameplay-row';
         const gp = this.gamedatas.gameplay;
@@ -737,6 +719,11 @@ class Game {
                 el.classList.add('ucs-owned');
                 wrap.insertAdjacentHTML('afterbegin', `<div class="ucs-trade-owner">${owner.name}</div>`);
             }
+            // Draft Order marker: the k-th ranked card wears its number in its own top-right corner.
+            const rank = this.draftOrderRankOf(Number(card.id));
+            if (rank) {
+                el.insertAdjacentHTML('beforeend', `<div class="ucs-draftorder-badge ucs-art2 ucs-draftorder-${rank}"></div>`);
+            }
             wrap.appendChild(el);
             row.appendChild(wrap);
         });
@@ -744,6 +731,12 @@ class Game {
             row.innerHTML = `<div class="ucs-empty">No cards played yet</div>`;
         }
         zone.appendChild(row);
+    }
+    /** Draft Order rank (1..N) marking this Trade Area card, or 0 when the order isn't live. */
+    draftOrderRankOf(cardId) {
+        if (this.draftOrderMode !== 'dealt')
+            return 0;
+        return this.draftOrderCardIds.indexOf(cardId) + 1;
     }
     renderPlayers() {
         Object.values(this.gamedatas.players).forEach((player) => {
@@ -914,207 +907,38 @@ class Game {
             popin.style.display = 'none';
     }
     // ===================================================================================
-    //  Draft Order cards (physical cards 1..N that mark pick order — see the fields above)
+    //  Draft Order markers (the numbers 1..N marking pick order — see the fields above)
     // ===================================================================================
-    /** Number of Draft Order cards in play = number of players (4P→1-4, 3P→1-3, 2P→1-2). */
-    draftOrderCount() {
-        return Object.keys(this.gamedatas.players).length;
-    }
-    // Read off #ucs-table deliberately, NOT the zone: the Draft Order cards stay play-area sized even
-    // though the zone lives inside the shrunk-down #ucs-opponents column.
-    draftOrderCardW() {
-        const t = document.getElementById('ucs-table');
-        return (t && parseFloat(getComputedStyle(t).getPropertyValue('--ucs-card-w'))) || 80;
-    }
-    draftOrderCardH() {
-        const t = document.getElementById('ucs-table');
-        return (t && parseFloat(getComputedStyle(t).getPropertyValue('--ucs-card-h'))) || 125;
-    }
-    /** The static "home" box + label for the stack, below the opponents (reserves the footprint). */
-    renderDraftOrderZone() {
-        const zone = document.getElementById('ucs-draft-order');
-        if (!zone)
-            return;
-        zone.innerHTML = `<div class="ucs-zone-label">${_('Draft Order')}</div>`
-            + `<div class="ucs-draftorder-home"></div>`;
-    }
-    /**
-     * The overlay that holds the Draft Order cards. It lives INSIDE #ucs-table (position:absolute,
-     * inset:0) so the cards share the tabletop's coordinate/transform context — positions are computed
-     * as deltas relative to this layer, which is robust to any transform/scale/offset BGA applies to the
-     * game area (a plain document.body + position:fixed approach mis-aligned by the game-area offset).
-     */
-    draftOrderLayer() {
-        let layer = document.getElementById('ucs-draftorder-layer');
-        if (!layer) {
-            const table = document.getElementById('ucs-table');
-            if (!table)
-                return null;
-            layer = document.createElement('div');
-            layer.id = 'ucs-draftorder-layer';
-            table.appendChild(layer);
-        }
-        return layer;
-    }
-    /**
-     * Create the N "home" Draft Order cards as real flow children of the zone's home box (rebuilt if the
-     * count changed). They're absolutely positioned WITHIN that box (a small diagonal stack), so they
-     * always sit correctly inside the Draft Order area no matter how the surrounding grid reflows — no
-     * viewport-coordinate guessing for the resting position (that was fragile / per-view inconsistent).
-     */
-    setupDraftOrderCards() {
-        const home = document.querySelector('#ucs-draft-order .ucs-draftorder-home');
-        if (!home)
-            return;
-        if (this.draftOrderEls.length === this.draftOrderCount() && this.draftOrderEls[0]?.isConnected)
-            return;
-        this.draftOrderEls.forEach((el) => el.remove());
-        this.draftOrderEls = [];
-        const step = 5;
-        for (let k = 1; k <= this.draftOrderCount(); k++) {
-            const el = document.createElement('div');
-            el.className = `ucs-draftorder-card ucs-draftorder-home-card ucs-art2 ucs-draftorder-${k}`;
-            el.id = `ucs-draftcard-${k}`; // the "${k}" holly-wreath art carries the number
-            el.style.left = `${step * (k - 1)}px`;
-            el.style.top = `${step * (k - 1)}px`;
-            el.style.width = `${this.draftOrderCardW()}px`;
-            el.style.height = `${this.draftOrderCardH()}px`;
-            el.style.zIndex = String(k);
-            home.appendChild(el);
-            this.draftOrderEls.push(el);
-        }
-    }
-    /**
-     * Viewport rect where Draft Order card k should sit when it's OUT of the home stack (dealt below its
-     * ranked Trade Area card). Returns null when the card belongs home — the resting home card is then
-     * shown and any clone animates back.
-     */
-    draftOrderOutTarget(k) {
-        if (this.draftOrderMode !== 'dealt')
-            return null;
-        // directly BELOW the k-th ranked trade card (same x); Trade Area expands to frame the row.
-        const cardId = this.draftOrderCardIds[k - 1];
-        const cardEl = cardId != null ? document.getElementById(`ucs-card-${cardId}`) : null;
-        if (!cardEl)
-            return null; // e.g. 2P has 4 trade cards but only 2 order cards → extras stay home
-        const r = cardEl.getBoundingClientRect();
-        return { left: r.left, top: r.bottom + 6, w: r.width, h: r.height };
-    }
-    /** Place an overlay clone at a viewport rect, converted into the layer's internal coords (scale-aware). */
-    setCloneRect(clone, vp, lr, scale, animate, dur) {
-        clone.style.transition = animate ? `left ${dur}s ease, top ${dur}s ease` : 'none';
-        clone.style.left = `${(vp.left - lr.left) / scale}px`;
-        clone.style.top = `${(vp.top - lr.top) / scale}px`;
-        clone.style.width = `${this.draftOrderCardW()}px`;
-        clone.style.height = `${this.draftOrderCardH()}px`;
-    }
-    /**
-     * Position every Draft Order card for the current mode. Resting cards are the flow "home" cards
-     * (correct by construction); a card that's OUT is shown as an overlay clone animated from/to its home
-     * card's spot, so only the *animation* uses viewport coordinates (the resting position never does).
-     */
-    positionDraftOrder(animate, durationSec = 0.5) {
-        this.setupDraftOrderCards();
-        const layer = this.draftOrderLayer();
-        if (!layer)
-            return;
-        const lr = layer.getBoundingClientRect();
-        const scale = layer.offsetWidth ? lr.width / layer.offsetWidth : 1;
-        this.draftOrderEls.forEach((homeEl, i) => {
-            const k = i + 1;
-            const target = this.draftOrderOutTarget(k);
-            if (!target) {
-                this.returnDraftCloneHome(k, homeEl, lr, scale, animate, durationSec);
-            }
-            else {
-                this.sendDraftClone(k, homeEl, target, layer, lr, scale, animate, durationSec);
-            }
-        });
-    }
-    /** Show Draft Order card k OUT at `target` via an overlay clone; hide its home card. */
-    sendDraftClone(k, homeEl, target, layer, lr, scale, animate, dur) {
-        let clone = this.draftOrderClones[k];
-        if (!clone) {
-            const start = homeEl.getBoundingClientRect(); // begin exactly where the home card sits
-            clone = document.createElement('div');
-            clone.className = `ucs-draftorder-card ucs-draftorder-out ucs-art2 ucs-draftorder-${k}`;
-            layer.appendChild(clone);
-            this.draftOrderClones[k] = clone;
-            this.setCloneRect(clone, start, lr, scale, false, dur);
-            void clone.offsetWidth; // reflow so the start position sticks before the transition
-            homeEl.style.visibility = 'hidden';
-        }
-        this.setCloneRect(clone, target, lr, scale, animate, dur);
-    }
-    /** Return Draft Order card k home: animate its clone back to the home card, then reveal the home card. */
-    returnDraftCloneHome(k, homeEl, lr, scale, animate, dur) {
-        const clone = this.draftOrderClones[k];
-        if (!clone) {
-            homeEl.style.visibility = '';
-            return;
-        }
-        delete this.draftOrderClones[k];
-        const finish = () => { clone.remove(); homeEl.style.visibility = ''; };
-        if (!animate) {
-            finish();
-            return;
-        }
-        this.setCloneRect(clone, homeEl.getBoundingClientRect(), lr, scale, true, dur); // hidden el keeps layout
-        let done = false;
-        const end = () => { if (!done) {
-            done = true;
-            finish();
-        } };
-        clone.addEventListener('transitionend', end, { once: true });
-        setTimeout(end, dur * 1000 + 120); // fallback if transitionend doesn't fire
-    }
-    /** Draft order resolved: deal the numbered cards from the stack onto the ranked Trade Area cards. */
+    // No stack and no overlay: renderTradeArea draws each number straight into the corner of the card
+    // it ranks (see draftOrderRankOf), so a marker only exists while an order is live. These methods
+    // move that state and re-render.
+    /** Draft order resolved: the numbers appear on the ranked Trade Area cards. */
     dealDraftOrder(orderCards) {
         this.draftOrderCardIds = orderCards.map(Number);
         this.gamedatas.draftOrderCards = this.draftOrderCardIds; // keep the model fresh for a later F5 sync
-        this.beginDraftOrderAnim(1100);
         this.draftOrderMode = 'dealt';
-        this.positionDraftOrder(true);
+        this.renderTradeArea();
     }
-    /** Drafting done: ALL Draft Order cards return to the stack (~2s, in step with the pool slide). */
-    returnDraftOrderHome() {
-        this.gamedatas.draftOrderCards = []; // the order is spent; the cards go home
-        this.beginDraftOrderAnim(2100);
-        this.draftOrderMode = 'idle';
-        this.positionDraftOrder(true, 2);
-    }
-    /** Tuck all Draft Order cards home (idle) — used by the round-end states so they don't linger. */
+    /** The order is spent (drafting done, or the round ended) — the markers go with it. */
     hideDraftOrder() {
-        // Forget the resolved order too, so the next round's opening leader shows no parked "1" card.
+        // Forget the resolved order too, so the next round's opening leader shows no stale marker.
         this.gamedatas.draftOrderCards = [];
-        this.beginDraftOrderAnim(600);
+        this.draftOrderCardIds = [];
         this.draftOrderMode = 'idle';
-        this.positionDraftOrder(true);
-    }
-    /** Flag an in-flight deal/park so a state-entry sync doesn't snap over it mid-animation. */
-    beginDraftOrderAnim(ms) {
-        this.draftOrderAnimating = true;
-        setTimeout(() => { this.draftOrderAnimating = false; }, ms);
+        this.renderTradeArea();
     }
     /**
-     * Snap the Draft Order cards to a state's layout (no animation) — called from the PlayCard / DraftCard
-     * handlers for every player. On an F5 reload this restores the right picture; during live play the
-     * matching notif already animated, so we skip (don't interrupt the in-flight transition, and don't
-     * redundantly re-snap when we're already in the target state).
+     * Snap the markers to a state's picture — called from the PlayCard / DraftCard handlers for every
+     * player. On an F5 reload this is what restores the right view.
      */
     syncDraftOrder(mode) {
-        if (this.draftOrderAnimating)
-            return; // don't snap over an in-flight notif animation
         const ids = (this.gamedatas.draftOrderCards ?? []).map(Number);
-        // 'dealt' only holds while a trick's order is live (cards on the trade area); once it's spent
-        // (draftOrderCards cleared on cleanup) fall back to 'idle' so the cards rest in their stack.
+        // 'dealt' only holds while a trick's order is live (markers on the trade area); once it's spent
+        // (draftOrderCards cleared on cleanup) fall back to 'idle' and the markers go.
         const effective = (mode === 'dealt' && ids.length) ? 'dealt' : 'idle';
-        if (effective === 'dealt')
-            this.draftOrderCardIds = ids;
+        this.draftOrderCardIds = effective === 'dealt' ? ids : [];
         this.draftOrderMode = effective;
-        // Always re-snap (don't early-return when already in this mode): the setup-time layout may not
-        // have settled, and this state entry is our reliable chance to place against the final layout.
-        this.positionDraftOrder(false);
+        this.renderTradeArea();
     }
     /** Express: the Fad-claim map (fadCardId -> {playerId, buildNo}), or empty outside Express. */
     expressClaims() {
@@ -2415,8 +2239,8 @@ class Game {
         this.renderPiles();
         // Slide the collected cards from the Trade Area up into their new Draft Pool spots (~2s, together).
         this.animateTradeToPool(oldRects);
-        // Drafting is done: all Draft Order cards return to their stack (~2s, in step with the pool slide).
-        this.returnDraftOrderHome();
+        // Drafting is done: the order is spent, so its markers go.
+        this.hideDraftOrder();
     }
     /**
      * FLIP-animate the just-collected cards from their old (Trade Area) positions to their new Draft Pool
