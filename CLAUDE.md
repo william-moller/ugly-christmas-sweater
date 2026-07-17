@@ -11,7 +11,7 @@ only what's specific to this game.
 ## Ground rules
 
 1. **Verify, don't trust.** The rulebook PDF, the wiki mirror, *these docs* — all wrong/stale until confirmed against on-disk state or a test table. When a doc disagrees with the code, the code wins.
-2. **No status in docs. Git is the status.** No "not yet synced", "current state", "as of <date>". Ask git.
+2. **No status in docs. Git is the status.** No "not yet synced", "current state", "as of <date>". Ask git. The one exception is *intent* — what we want built, which git cannot tell you — and it lives in [`.claude/backlog.md`](.claude/backlog.md). That file says what we want, never how far along it is, and an item leaves it in the commit that implements it. Do not delete it for "carrying status"; it doesn't.
 3. **History lives in commit messages, not required reading.** If a session needs history, `git log` it.
 4. **Every convention line must have burned us at least once.** If it never bit anyone, cut it.
 
@@ -19,6 +19,7 @@ only what's specific to this game.
 
 | Topic | File |
 |-------|------|
+| Open work: release blockers, polish, open questions | [`.claude/backlog.md`](.claude/backlog.md) |
 | Game rules, components, card data, scoring, variants, Bonus cards | [`.claude/game-rules.md`](.claude/game-rules.md) |
 | Framework, state machine, data model, client layout, build | [`.claude/architecture.md`](.claude/architecture.md) |
 | Official rulebook (PDF) | [`docs/ugly-christmas-sweater-rules.pdf`](docs/ugly-christmas-sweater-rules.pdf) |
