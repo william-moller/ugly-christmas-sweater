@@ -12,8 +12,15 @@ not of the code.
 
 ## Release-blocking (BGA pre-release checklist)
 
-- **Tooltips** — checklist: "non-self explanatory graphic elements should have tool tips". Scope:
-  cards, knitting slots, the trade area, the round-parameter cards, draft-order badges.
+- **Strings ready for translation** — checklist: "strings in your source code are ready for
+  translation". Every user-facing string wrapped (`_()` in PHP, `clienttranslate()` / `_()` in TS),
+  `CardView.ts::cardTooltip` and the round-parameter tooltips in `Game.ts` included. Worth doing as
+  one sweep *after* the layout work below, so new strings land already wrapped rather than being
+  swept twice. See also the colour-word gap under Rules gaps.
+- **Tooltip coverage sweep** — checklist: "non-self explanatory graphic elements should have tool
+  tips". *Blocked on the playing-area layout work below:* which elements need explaining is defined
+  by which zones exist, and a reworked zone throws the sweep away. While there, use BGA's tooltip
+  system for the draw pile rather than a native `title=` attribute (`src/ts/Game.ts:129`).
 - **Responsive / mobile** — checklist: the game must work on a mobile device. Related checklist
   line: if elements don't occupy all available horizontal space, they should be centered.
 - **Statistics** — checklist wants meaningful stats. *Open question:* which ones beyond the five
