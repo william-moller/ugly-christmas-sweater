@@ -1303,29 +1303,21 @@ html[data-theme="dark"] {
     pointer-events: none;
 }
 
-// Round Parameters (the Gameplay cards) with a right-hand column holding the Draft Order stack ABOVE
-// the turned Secret Santa card. Dropping the old empty left balancing track saves horizontal width on
-// smaller monitors; the gameplay + right column centre as a group (gameplay reads slightly left of the
-// true page centre, which is fine — the Draft Pool/Trade Area below stay centred in the stack).
+// One row, left to right: Round Parameters (the Gameplay cards), the turned Secret Santa, then the
+// Draft Order stack. Keeping all three side by side matters vertically: the row is as tall as its
+// tallest zone, so anything stacked here hangs below Round Parameters and pushes the Draft Pool down.
 #ucs-params-row {
     align-self: center;
     display: flex;
     justify-content: center;
-    align-items: flex-start; // let the right column ride up under its own labels
+    align-items: flex-start; // each zone rides up under its own label
     gap: 14px;
-}
-// Right column: Draft Order stack on top, Secret Santa beneath it.
-#ucs-params-right {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 10px;
 }
 
 // ---- Draft Order cards (physical cards 1..N marking pick order) ---------------------------------
-// The stack lives at the top of the params row's right column (above Secret Santa); the numbered cards
-// themselves are overlay clones (created in Game.ts) that fly out onto the Trade Area cards and back, so
-// this zone only reserves the "home" footprint they rest over between deals.
+// The stack sits at the right end of the params row; the numbered cards themselves are overlay clones
+// (created in Game.ts) that fly out onto the Trade Area cards and back, so this zone only reserves the
+// "home" footprint they rest over between deals.
 .ucs-draft-order {
     display: flex;
     flex-direction: column;

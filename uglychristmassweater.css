@@ -1698,13 +1698,6 @@ html[data-theme=dark] {
   gap: 14px;
 }
 
-#ucs-params-right {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 10px;
-}
-
 .ucs-draft-order {
   display: flex;
   flex-direction: column;

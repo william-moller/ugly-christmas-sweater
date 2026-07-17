@@ -373,10 +373,8 @@ class Game {
                     <div id="ucs-center-stack">
                         <div id="ucs-params-row">
                             <div id="ucs-gameplay" class="ucs-zone"></div>
-                            <div id="ucs-params-right">
-                                <div id="ucs-draft-order" class="ucs-zone ucs-draft-order"></div>
-                                <div id="ucs-secret-santa" class="ucs-zone ucs-secret-santa" style="display:none"></div>
-                            </div>
+                            <div id="ucs-secret-santa" class="ucs-zone ucs-secret-santa" style="display:none"></div>
+                            <div id="ucs-draft-order" class="ucs-zone ucs-draft-order"></div>
                         </div>
                         <div id="ucs-draft-pool" class="ucs-zone"></div>
                         <div id="ucs-trade-area" class="ucs-zone"></div>
