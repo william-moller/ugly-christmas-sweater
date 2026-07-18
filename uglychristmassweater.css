@@ -1547,138 +1547,187 @@ html[data-theme=dark] {
 }
 
 .ucs-score-box {
-  width: min(1100px, 94vw);
-  max-width: 94vw;
-  --ucs-card-w: 42px;
-  --ucs-card-h: 65px;
-  border-top-color: #ffd54a;
-}
-
-.ucs-score-body {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.ucs-score-player {
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  border-left: 5px solid var(--player-color, #888);
-  border-radius: 8px;
-  padding: 8px 10px;
-  background: rgba(255, 255, 255, 0.04);
-}
-
-.ucs-score-pname {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 8px;
-}
-.ucs-score-pname .ucs-score-pn {
-  font-weight: 800;
-  color: var(--player-color, #fff);
-  font-size: 15px;
-}
-.ucs-score-pname .ucs-score-ptot {
-  font-weight: 700;
-}
-.ucs-score-pname .ucs-score-ptot small {
-  opacity: 0.7;
-  font-weight: 600;
-}
-
-.ucs-score-sweaters {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-}
-
-.ucs-score-sweater {
-  display: flex;
-  gap: 8px;
-  padding: 6px;
-  border: 2px solid transparent;
-  border-radius: 8px;
-  background: rgba(0, 0, 0, 0.25);
-}
-.ucs-score-sweater.ucs-ss-gold {
-  border-color: #ffd54a;
-  box-shadow: 0 0 8px rgba(255, 213, 74, 0.5);
-}
-
-.ucs-score-build {
-  border: none;
+  width: auto;
+  max-width: 96vw;
   padding: 0;
-  align-self: center;
+  background: #fbf7ee;
+  color: #1e1e1e;
+  border-top: none;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.6);
 }
 
-.ucs-score-lines {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  font-size: 12px;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  gap: 2px;
-  white-space: nowrap;
-}
-.ucs-score-lines li {
-  color: #e8e8e8;
-}
-.ucs-score-lines .ucs-line-zero {
-  color: #ff9a9a;
-}
-.ucs-score-lines .ucs-line-total {
-  font-weight: 800;
-  color: #fff;
-  border-top: 1px solid rgba(255, 255, 255, 0.2);
-  margin-top: 2px;
-  padding-top: 2px;
-}
-
-.ucs-score-santa {
+.ucs-scorepad-head {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  margin-top: 8px;
-  padding: 4px 8px;
-  border-radius: 6px;
-  font-size: 13px;
-  background: rgba(0, 0, 0, 0.3);
+  gap: 14px;
+  padding: 16px 22px 10px;
 }
-.ucs-score-santa .ucs-santa-res {
+
+.ucs-scorepad-tree {
+  flex: 0 0 auto;
+  width: 62px;
+  height: 106px;
+  background: url("img/scorepad-tree.png") center/contain no-repeat;
+  mix-blend-mode: multiply;
+}
+
+.ucs-scorepad-title {
+  font-weight: 800;
+  font-size: clamp(18px, 3.2vw, 27px);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #262626;
+  line-height: 1.05;
+}
+
+.ucs-scorepad-sub {
+  margin-top: 3px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #6b6357;
+}
+
+.ucs-scorepad-scroll {
+  overflow-x: auto;
+  padding: 2px 18px 6px;
+}
+
+table.ucs-scorepad {
+  border-collapse: collapse;
+  margin: 0 auto;
+  font-size: 13px;
+  color: #1e1e1e;
+  white-space: nowrap;
+}
+table.ucs-scorepad th, table.ucs-scorepad td {
+  border: 1.5px solid #23201b;
+  padding: 0;
+}
+
+.ucs-sp-cat {
+  position: sticky;
+  left: 0;
+  z-index: 2;
+  min-width: 168px;
+  max-width: 220px;
+  padding: 6px 12px !important;
+  text-align: center;
+  background: #fbf7ee;
+  white-space: normal;
+}
+.ucs-sp-cat .ucs-sp-lbl {
+  display: block;
+  font-weight: 700;
+  font-size: 13px;
+  line-height: 1.15;
+}
+.ucs-sp-cat .ucs-sp-vp {
+  display: block;
+  font-size: 11px;
+  font-weight: 600;
+  color: #6b6357;
+  margin-top: 1px;
+}
+
+.ucs-sp-pname {
+  padding: 5px 8px !important;
+  text-align: center;
+  font-weight: 800;
+  font-size: 15px;
+  color: var(--player-color, #333);
+  -webkit-text-stroke: 0.3px rgba(0, 0, 0, 0.35);
+}
+
+.ucs-sp-rounds th {
+  padding: 4px 0 !important;
+}
+
+.ucs-sp-rc {
+  min-width: 32px;
+  text-align: center;
+  font-size: 11px;
+  font-weight: 600;
+  color: #4a463e;
+}
+
+.ucs-sp-total-h {
+  min-width: 40px;
+  text-align: center;
+  font-size: 11px;
+  font-weight: 800;
+  color: #23201b;
+}
+
+.ucs-sp-num {
+  height: 26px;
+  min-width: 32px;
+  text-align: center;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.ucs-sp-alt {
+  background: rgba(35, 32, 27, 0.05);
+}
+
+.ucs-sp-total {
+  background: rgba(35, 32, 27, 0.1);
   font-weight: 800;
 }
-.ucs-score-santa.ucs-santa-yes .ucs-santa-res {
-  color: #7bed9f;
+
+.ucs-sp-cur {
+  background: rgba(214, 158, 46, 0.2);
 }
-.ucs-score-santa.ucs-santa-no .ucs-santa-res {
-  color: #ff9a9a;
+
+.ucs-sp-cur.ucs-sp-alt {
+  background: rgba(214, 158, 46, 0.26);
+}
+
+.ucs-sp-totals td, .ucs-sp-totals th {
+  border-top-width: 2.5px;
+}
+.ucs-sp-totals .ucs-sp-cat .ucs-sp-lbl {
+  font-size: 17px;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+}
+.ucs-sp-totals .ucs-sp-num {
+  font-size: 15px;
+  font-weight: 800;
+}
+
+.ucs-sp-foot .ucs-sp-cat .ucs-sp-lbl {
+  font-size: 12px;
+  font-weight: 600;
+}
+.ucs-sp-foot .ucs-sp-num {
+  font-size: 12px;
+  font-weight: 600;
+  color: #4a463e;
 }
 
 .ucs-score-foot {
   display: flex;
   justify-content: center;
-  margin-top: 12px;
+  padding: 12px;
   position: sticky;
   bottom: 0;
+  background: #fbf7ee;
+  box-shadow: 0 -1px 0 rgba(35, 32, 27, 0.15);
 }
 
 .ucs-score-okay {
-  padding: 8px 28px;
+  padding: 8px 30px;
   font-weight: 800;
   font-size: 15px;
-  color: #06240f;
-  background: #2ecc71;
-  border: 1px solid #27ae60;
+  color: #fff;
+  background: #b3261e;
+  border: 1px solid #8f1c16;
   border-radius: 8px;
   cursor: pointer;
 }
 .ucs-score-okay:hover {
-  background: #43d883;
+  background: #c9342b;
 }
 
 @media (max-width: 800px) {

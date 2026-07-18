@@ -1179,102 +1179,141 @@ html[data-theme="dark"] {
     &:hover { opacity: 1; }
 }
 
-// ---- End-of-round scoring summary (modal overlay, shown to all players) -------------------------
+// ---- End-of-round scoring summary — an HTML recreation of the printed ScorePad -------------------
+// A cream "paper" sheet with a black grid: category rows down the left, per-player × per-round columns
+// across. Overrides the dark .ucs-popin-box skin for a scoresheet look.
 .ucs-score-box {
-    // Wider than the opponent close-up; compact sweaters so several players fit. Reuses .ucs-popin-box.
-    width: min(1100px, 94vw);
-    max-width: 94vw;
-    --ucs-card-w: 42px;
-    --ucs-card-h: 65px;
-    border-top-color: #ffd54a;
-}
-.ucs-score-body {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-}
-.ucs-score-player {
-    border: 1px solid rgba(255, 255, 255, 0.15);
-    border-left: 5px solid var(--player-color, #888);
-    border-radius: 8px;
-    padding: 8px 10px;
-    background: rgba(255, 255, 255, 0.04);
-}
-.ucs-score-pname {
-    display: flex;
-    align-items: baseline;
-    justify-content: space-between;
-    gap: 12px;
-    margin-bottom: 8px;
-    .ucs-score-pn { font-weight: 800; color: var(--player-color, #fff); font-size: 15px; }
-    .ucs-score-ptot { font-weight: 700; small { opacity: 0.7; font-weight: 600; } }
-}
-.ucs-score-sweaters {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 10px;
-}
-.ucs-score-sweater {
-    display: flex;
-    gap: 8px;
-    padding: 6px;
-    border: 2px solid transparent;
-    border-radius: 8px;
-    background: rgba(0, 0, 0, 0.25);
-    // The gold border marks a sweater that satisfies this player's Secret Santa.
-    &.ucs-ss-gold { border-color: #ffd54a; box-shadow: 0 0 8px rgba(255, 213, 74, 0.5); }
-}
-.ucs-score-build {
-    // Static silhouette in the summary — no borders/interaction beyond the pieces.
-    border: none;
+    width: auto;
+    max-width: 96vw;
     padding: 0;
-    align-self: center;
+    background: #fbf7ee; // aged-paper cream
+    color: #1e1e1e;
+    border-top: none;
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.6);
 }
-.ucs-score-lines {
-    list-style: none;
-    margin: 0;
-    padding: 0;
-    font-size: 12px;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    gap: 2px;
-    white-space: nowrap;
-    li { color: #e8e8e8; }
-    .ucs-line-zero { color: #ff9a9a; }
-    .ucs-line-total { font-weight: 800; color: #fff; border-top: 1px solid rgba(255,255,255,0.2); margin-top: 2px; padding-top: 2px; }
-}
-.ucs-score-santa {
+.ucs-scorepad-head {
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-    margin-top: 8px;
-    padding: 4px 8px;
-    border-radius: 6px;
-    font-size: 13px;
-    background: rgba(0, 0, 0, 0.3);
-    .ucs-santa-res { font-weight: 800; }
-    &.ucs-santa-yes .ucs-santa-res { color: #7bed9f; }
-    &.ucs-santa-no .ucs-santa-res { color: #ff9a9a; }
+    gap: 14px;
+    padding: 16px 22px 10px;
 }
+.ucs-scorepad-tree {
+    flex: 0 0 auto;
+    width: 62px;
+    height: 106px;
+    background: url('img/scorepad-tree.png') center / contain no-repeat;
+    // The logo art is line-work on white; multiply blends its white ground into the cream paper.
+    mix-blend-mode: multiply;
+}
+.ucs-scorepad-title {
+    font-weight: 800;
+    font-size: clamp(18px, 3.2vw, 27px);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: #262626;
+    line-height: 1.05;
+}
+.ucs-scorepad-sub {
+    margin-top: 3px;
+    font-size: 14px;
+    font-weight: 600;
+    color: #6b6357;
+}
+.ucs-scorepad-scroll {
+    overflow-x: auto;
+    padding: 2px 18px 6px;
+}
+
+table.ucs-scorepad {
+    border-collapse: collapse;
+    margin: 0 auto;
+    font-size: 13px;
+    color: #1e1e1e;
+    white-space: nowrap;
+    th, td { border: 1.5px solid #23201b; padding: 0; }
+}
+// Left column: the category label + its VP annotation. Sticky so it stays put on horizontal scroll.
+.ucs-sp-cat {
+    position: sticky;
+    left: 0;
+    z-index: 2;
+    min-width: 168px;
+    max-width: 220px;
+    padding: 6px 12px !important;
+    text-align: center;
+    background: #fbf7ee;
+    white-space: normal;
+    .ucs-sp-lbl { display: block; font-weight: 700; font-size: 13px; line-height: 1.15; }
+    .ucs-sp-vp  { display: block; font-size: 11px; font-weight: 600; color: #6b6357; margin-top: 1px; }
+}
+// Player group header band; alternate players get a light grey wash, as on the printed pad.
+.ucs-sp-pname {
+    padding: 5px 8px !important;
+    text-align: center;
+    font-weight: 800;
+    font-size: 15px;
+    color: var(--player-color, #333);
+    -webkit-text-stroke: 0.3px rgba(0, 0, 0, 0.35);
+}
+.ucs-sp-rounds th { padding: 4px 0 !important; }
+.ucs-sp-rc {
+    min-width: 32px;
+    text-align: center;
+    font-size: 11px;
+    font-weight: 600;
+    color: #4a463e;
+}
+.ucs-sp-total-h {
+    min-width: 40px;
+    text-align: center;
+    font-size: 11px;
+    font-weight: 800;
+    color: #23201b;
+}
+// Data cells.
+.ucs-sp-num {
+    height: 26px;
+    min-width: 32px;
+    text-align: center;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+}
+// Alternate-player wash + the shaded "Total" (Game End) column, mirroring the pad's grey fills.
+.ucs-sp-alt   { background: rgba(35, 32, 27, 0.05); }
+.ucs-sp-total { background: rgba(35, 32, 27, 0.10); font-weight: 800; }
+// The round just scored is tinted so the eye lands on the new column.
+.ucs-sp-cur   { background: rgba(214, 158, 46, 0.20); }
+.ucs-sp-cur.ucs-sp-alt { background: rgba(214, 158, 46, 0.26); }
+
+.ucs-sp-totals {
+    td, th { border-top-width: 2.5px; }
+    .ucs-sp-cat .ucs-sp-lbl { font-size: 17px; font-weight: 800; letter-spacing: 0.03em; }
+    .ucs-sp-num { font-size: 15px; font-weight: 800; }
+}
+.ucs-sp-foot {
+    .ucs-sp-cat .ucs-sp-lbl { font-size: 12px; font-weight: 600; }
+    .ucs-sp-num { font-size: 12px; font-weight: 600; color: #4a463e; }
+}
+
 .ucs-score-foot {
     display: flex;
     justify-content: center;
-    margin-top: 12px;
+    padding: 12px;
     position: sticky;
     bottom: 0;
+    background: #fbf7ee;
+    box-shadow: 0 -1px 0 rgba(35, 32, 27, 0.15);
 }
 .ucs-score-okay {
-    padding: 8px 28px;
+    padding: 8px 30px;
     font-weight: 800;
     font-size: 15px;
-    color: #06240f;
-    background: #2ecc71;
-    border: 1px solid #27ae60;
+    color: #fff;
+    background: #b3261e; // festive red, reads on cream
+    border: 1px solid #8f1c16;
     border-radius: 8px;
     cursor: pointer;
-    &:hover { background: #43d883; }
+    &:hover { background: #c9342b; }
 }
 
 // ---- Responsive: on small screens the opponents column collapses to tappable chips --------------

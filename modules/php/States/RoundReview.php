@@ -14,9 +14,9 @@ use Bga\Games\UglyChristmasSweater\Game;
  * have, the next round is dealt (NewRound). A MULTIPLE_ACTIVE_PLAYER acknowledgement gate — order does
  * not matter, everyone acts simultaneously. (Pattern from the crybaby reference game's ShowBets state.)
  *
- * Entered from ScoreRound (which has already applied the round's scores, stashed the summary in the
- * `roundResult` global, and set all players multiactive). Not entered after the final round — that goes
- * straight to EndScore.
+ * Entered from ScoreRound (which has already applied the round's scores, stashed the cumulative scorepad
+ * in the `scorepad` global, and set all players multiactive). Not entered after the final round — that
+ * goes straight to EndScore.
  */
 class RoundReview extends GameState
 {
@@ -30,10 +30,11 @@ class RoundReview extends GameState
         );
     }
 
-    /** Re-served on refresh so the review screen (built from the stashed summary) survives an F5. */
+    /** Re-served on refresh so the review screen (built from the stashed scorepad) survives an F5. */
     public function getArgs(): array
     {
-        return (array) ($this->game->globals->get('roundResult') ?? ['round' => 0, 'players' => []]);
+        $pad = json_decode($this->game->globals->get('scorepad') ?? 'null', true);
+        return is_array($pad) ? $pad : ['round' => 0, 'totalRounds' => 0, 'players' => [], 'rounds' => []];
     }
 
     #[PossibleAction]

@@ -126,52 +126,47 @@ interface DraftCardArgs {
     draftableIds: number[];
 }
 
-/** Per-component public VP for one completed sweater (parts sum to its public total). */
-interface SweaterScoreParts {
-    build: number;   // +2 completed
-    run: number;     // +2 three consecutive values
-    fad: number;     // +3 per Fad objective met (0/3/6)
-    nonfad: number;  // +1 all one colour/icon that is NOT the Fad
+/** One player's per-round category totals — a single column of the scorepad grid. */
+interface ScorepadCell {
+    built: number;         // Each Sweater Built  (+2 each)
+    run: number;           // Three Consecutive Numbers (+2 each)
+    fad: number;           // Fads (+3 each)
+    nonfad: number;        // All Matching Non-Fad Colours & Icons (+1 each)
+    ss: number;            // Secret Santa (+3 each)
+    bonus: number;         // remainder absorbed here (e.g. Little Brothers bonus objective)
+    total: number;         // this round's contribution to the player's score
+    cumulative: number;    // running grand total after this round
+    unfinished: number;    // informational: unfinished sweaters this round
+    fadsCompleted: number; // informational: Fad objectives met this round
 }
 
-/** One started sweater in the round-score summary (complete or not). */
-interface SweaterScore {
-    buildNo: number;
-    complete: boolean;
-    cards: SweaterCard[];   // the placed pieces (for rendering the silhouette)
-    parts: SweaterScoreParts;
-    total: number;          // public total for this sweater
-    ss: boolean;            // satisfies this player's Secret Santa (→ gold border)
-}
-
-/** One of a player's revealed Secret Santa objectives at round end. */
-interface SecretSantaResult {
-    id: number;
-    name: string;
-    needs: string[];        // 3 requirements, "color:x" / "icon:y"
-    satisfied: boolean;
-    points: number;         // 3 if satisfied, else 0
-}
-
-/** One player's full breakdown in the round-score summary. */
-interface PlayerScoreDetail {
+/** Stable per-player identity for the scorepad column headers. */
+interface ScorepadPlayer {
     player_id: number;
     player_name: string;
     color: string;
-    score: number;          // cumulative total after this round
-    roundTotal: number;     // points earned this round (public + Secret Santa)
-    sweaters: SweaterScore[];
-    secretSantas: SecretSantaResult[];
 }
 
-/** Full end-of-round scoring detail — RoundReview state args (re-served on refresh) and roundScored notif. */
-interface RoundScoreDetail {
+/** One recorded round of the scorepad: the round number and each player's category cell. */
+interface ScorepadRound {
     round: number;
-    fad: { title?: string; objectives?: any[]; clash?: boolean } | null;
-    players: PlayerScoreDetail[];
+    players: { [playerId: number]: ScorepadCell };
 }
 
-type RoundReviewArgs = RoundScoreDetail;
+/**
+ * Cumulative end-of-round scorepad — RoundReview state args (re-served on refresh) and roundScored notif.
+ * Modelled on the printed ScorePad sheet: category rows × (per player, per round) columns.
+ */
+interface Scorepad {
+    round: number;         // the round just scored
+    totalRounds: number;   // 3 (Casual) or 1 (Express)
+    fad: { title?: string; objectives?: any[]; clash?: boolean } | null;
+    bonus: boolean;        // Bonus cards option on → show the Bonus row
+    players: ScorepadPlayer[];
+    rounds: ScorepadRound[];
+}
+
+type RoundReviewArgs = Scorepad;
 
 /** Placement choices submitted alongside a draft. A patch's value/icon are NOT chosen here. */
 interface DraftPlacement {
@@ -278,7 +273,7 @@ interface NotifTinaResolved {
     bonus: BonusCardState[];
 }
 
-type NotifRoundScored = RoundScoreDetail;
+type NotifRoundScored = Scorepad;
 
 interface NotifFadClaimed {
     player_id: number;

@@ -199,6 +199,7 @@ class Game extends \Bga\GameFramework\Table
         $this->globals->set('draftOrder', []);
         $this->globals->set('draftOrderCards', []);
         $this->globals->set('draftIndex', 0);
+        $this->globals->set('scorepad', 'null'); // cumulative end-of-round scorepad, appended per round
 
         // --- Stats (defined in stats.jsonc) ---------------------------------------------------
         $this->initStat('table', 'rounds', 0);
@@ -1741,90 +1742,124 @@ class Game extends \Bga\GameFramework\Table
      * Santa(s) with satisfied yes/no + points. Call at scoring time — knitting still in place, patches
      * already assigned. Knitting is public and Secret Santas are revealed at round end, so this is safe.
      */
-    public function roundScoreDetail(): array
+    /**
+     * Cumulative scorepad payload for the end-of-round summary — modelled on the printed ScorePad sheet:
+     * category rows × (per player, per round) columns. Called once per round from ScoreRound AFTER
+     * scoreRound() has applied the round to player_score. Appends this round's per-player category totals
+     * to the persisted `scorepad` global (so prior rounds' columns survive into later rounds and a page
+     * refresh) and returns the full accumulated grid.
+     *
+     * Category rows mirror the pad: Each Sweater Built (+2 each), Three Consecutive Numbers (+2), Fads
+     * (+3 each), All Matching Non-Fad Colours & Icons (+1 each), Secret Santa (+3 each). A `bonus` delta
+     * per player absorbs anything not captured by those rows (e.g. the Little Brothers bonus objective)
+     * so each round's TOTAL always reconciles cumulatively to player_score. Two informational footer
+     * counts travel too: unfinished sweaters and Fads completed.
+     */
+    public function roundScorepad(): array
     {
+        $round    = (int) $this->globals->get('roundNo');
         $express  = $this->isExpress();
         $roundFad = $express ? null : $this->activeFad();
         $scores   = $this->getCollectionFromDb("SELECT `player_id`, `player_score` FROM `player`");
 
-        $players = [];
+        // Prior payload (if any) carries the rounds already recorded; append this round to its history.
+        $prev    = json_decode($this->globals->get('scorepad') ?? 'null', true);
+        $history = is_array($prev['rounds'] ?? null) ? $prev['rounds'] : [];
+
+        // Cumulative TOTAL per player across already-recorded rounds — lets us derive this round's bonus
+        // delta as (score - priorCumulative - thisRoundCategoryTotal).
+        $priorCum = [];
+        foreach ($history as $entry) {
+            foreach (($entry['players'] ?? []) as $pid => $cat) {
+                $priorCum[(int) $pid] = ($priorCum[(int) $pid] ?? 0) + (int) ($cat['total'] ?? 0);
+            }
+        }
+
+        $playersMeta  = [];
+        $roundPlayers = [];
         foreach ($this->loadPlayersBasicInfos() as $pid => $info) {
             $pid = (int) $pid;
+            $playersMeta[] = [
+                'player_id'   => $pid,
+                'player_name' => $info['player_name'],
+                'color'       => $info['player_color'] ?? '',
+            ];
+
             $claimedByBuild = $express ? $this->claimedFadByBuild($pid) : [];
 
-            // Group ALL knitting cards by build (incomplete builds + floating patches included).
-            $rawByBuild = [];
+            $byBuild = [];
             foreach ($this->getCardsWithExtras(self::LOC_KNITTING, $pid) as $c) {
-                $rawByBuild[(int) $c['buildNo']][] = $c;
+                $byBuild[(int) $c['buildNo']][] = $c;
             }
-            ksort($rawByBuild);
+            ksort($byBuild);
 
-            $ssList = $this->playerSecretSantas($pid);
-
-            $sweaters = [];
-            $roundTotal = 0;
-            $ssSatisfied = array_fill(0, count($ssList), false);
-            foreach ($rawByBuild as $buildNo => $cards) {
+            $built = $run = $fad = $nonfad = 0;
+            $unfinished = 0;
+            $fadsCompleted = 0;
+            foreach ($byBuild as $buildNo => $cards) {
                 $bySlot = [];
                 foreach ($cards as $c) {
                     if ($c['slot'] !== null) $bySlot[$c['slot']] = $c;
                 }
-                $complete = isset($bySlot[Material::SLOT_LEFT], $bySlot[Material::SLOT_RIGHT], $bySlot[Material::SLOT_BOTTOM]);
-                $fad   = $express ? ($claimedByBuild[$buildNo] ?? null) : $roundFad;
-                $parts = $this->sweaterParts($bySlot, $fad);
-                $total = $parts['build'] + $parts['run'] + $parts['fad'] + $parts['nonfad'];
-                $roundTotal += $total;
+                if (!isset($bySlot[Material::SLOT_LEFT], $bySlot[Material::SLOT_RIGHT], $bySlot[Material::SLOT_BOTTOM])) {
+                    $unfinished++;
+                    continue;
+                }
+                $fadCard = $express ? ($claimedByBuild[$buildNo] ?? null) : $roundFad;
+                $parts   = $this->sweaterParts($bySlot, $fadCard);
+                $built  += $parts['build'];
+                $run    += $parts['run'];
+                $fad    += $parts['fad'];
+                $nonfad += $parts['nonfad'];
+                if ($parts['fad'] > 0) $fadsCompleted += intdiv($parts['fad'], Material::VP_FAD);
+            }
 
-                $satisfiesSS = false;
-                if ($complete) {
-                    $three = [$bySlot[Material::SLOT_LEFT], $bySlot[Material::SLOT_RIGHT], $bySlot[Material::SLOT_BOTTOM]];
-                    foreach ($ssList as $i => $ss) {
-                        if ($this->sweaterMatchesNeeds($three, $ss['needs'])) {
-                            $ssSatisfied[$i] = true;
-                            $satisfiesSS = true;
-                        }
+            // Secret Santa: +VP_SECRET_SANTA per satisfied card (scores once per card, over completed builds).
+            $ss = 0;
+            $builds = $this->playerBuilds($pid);
+            foreach ($this->playerSecretSantas($pid) as $sc) {
+                foreach ($builds as $bySlot) {
+                    if (isset($bySlot[Material::SLOT_LEFT], $bySlot[Material::SLOT_RIGHT], $bySlot[Material::SLOT_BOTTOM])
+                        && $this->sweaterMatchesNeeds(
+                            [$bySlot[Material::SLOT_LEFT], $bySlot[Material::SLOT_RIGHT], $bySlot[Material::SLOT_BOTTOM]],
+                            $sc['needs']
+                        )) {
+                        $ss += Material::VP_SECRET_SANTA;
+                        break; // scores once per Secret Santa card
                     }
                 }
-
-                $sweaters[] = [
-                    'buildNo'  => (int) $buildNo,
-                    'complete' => $complete,
-                    'cards'    => array_values($cards),
-                    'parts'    => $parts,
-                    'total'    => $total,
-                    'ss'       => $satisfiesSS,
-                ];
             }
 
-            $secretSantas = [];
-            foreach ($ssList as $i => $ss) {
-                $satisfied = $ssSatisfied[$i] ?? false;
-                if ($satisfied) $roundTotal += Material::VP_SECRET_SANTA;
-                $secretSantas[] = [
-                    'id'        => $ss['id'],
-                    'name'      => $ss['name'],
-                    'needs'     => $ss['needs'],
-                    'satisfied' => $satisfied,
-                    'points'    => $satisfied ? Material::VP_SECRET_SANTA : 0,
-                ];
-            }
+            $categoryTotal = $built + $run + $fad + $nonfad + $ss;
+            $score = (int) ($scores[$pid]['player_score'] ?? 0);
+            $bonus = $score - ($priorCum[$pid] ?? 0) - $categoryTotal; // absorbs bonus objectives / any remainder
 
-            $players[] = [
-                'player_id'    => $pid,
-                'player_name'  => $info['player_name'],
-                'color'        => $info['player_color'] ?? '',
-                'score'        => (int) ($scores[$pid]['player_score'] ?? 0),
-                'roundTotal'   => $roundTotal,
-                'sweaters'     => $sweaters,
-                'secretSantas' => $secretSantas,
+            $roundPlayers[$pid] = [
+                'built'         => $built,
+                'run'           => $run,
+                'fad'           => $fad,
+                'nonfad'        => $nonfad,
+                'ss'            => $ss,
+                'bonus'         => $bonus,
+                'total'         => $categoryTotal + $bonus, // == this round's contribution to player_score
+                'cumulative'    => $score,                  // running grand total after this round
+                'unfinished'    => $unfinished,
+                'fadsCompleted' => $fadsCompleted,
             ];
         }
 
-        return [
-            'round'   => (int) $this->globals->get('roundNo'),
-            'fad'     => $roundFad,
-            'players' => $players,
+        $history[] = ['round' => $round, 'players' => $roundPlayers];
+
+        $payload = [
+            'round'       => $round,
+            'totalRounds' => $this->totalRounds(),
+            'fad'         => $roundFad,
+            'bonus'       => $this->bonusEnabled(),
+            'players'     => $playersMeta,
+            'rounds'      => $history, // each: { round, players: { pid: {built,run,fad,nonfad,ss,bonus,total,...} } }
         ];
+        $this->globals->set('scorepad', json_encode($payload));
+        return $payload;
     }
 
     public function getGameProgression()

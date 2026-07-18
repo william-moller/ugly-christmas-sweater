@@ -1803,10 +1803,12 @@ export class Game {
     }
 
     /**
-     * Build the scoring-summary modal. `onOkay` (if given) wires the Okay button; without it the button
-     * just closes the overlay (used for the final round, which has no RoundReview acknowledgement gate).
+     * Build the end-of-round scoring summary — an HTML recreation of the printed ScorePad: category rows
+     * × (per player, per round) columns, filled cumulatively as rounds are scored. `onOkay` (if given)
+     * wires the Okay button; without it the button just closes the overlay (used for the final round,
+     * which has no RoundReview acknowledgement gate).
      */
-    private renderRoundSummary(detail: RoundScoreDetail, onOkay?: () => void) {
+    private renderRoundSummary(detail: Scorepad, onOkay?: () => void) {
         this.hideRoundSummary();
         const overlay = document.createElement('div');
         overlay.id = 'ucs-score-popin';
@@ -1818,13 +1820,20 @@ export class Game {
 
         const box = document.createElement('div');
         box.className = 'ucs-popin-box ucs-score-box';
-        const fadTitle = detail.fad?.title ? ` · ${_('Fad')}: ${detail.fad.title}` : '';
-        box.innerHTML = `<div class="ucs-popin-head"><span>${_('Round')} ${detail.round} — ${_('Scoring')}${fadTitle}</span></div>`;
 
-        const body = document.createElement('div');
-        body.className = 'ucs-score-body';
-        (detail.players || []).forEach((p) => body.appendChild(this.renderScorePlayer(p)));
-        box.appendChild(body);
+        const fadTitle = detail.fad?.title ? ` · ${_('Fad')}: ${detail.fad.title}` : '';
+        box.innerHTML =
+            `<div class="ucs-scorepad-head">`
+            + `<div class="ucs-scorepad-tree" role="presentation"></div>`
+            + `<div class="ucs-scorepad-titles">`
+            + `<div class="ucs-scorepad-title">${_('Ugly Christmas Sweaters Scoring')}</div>`
+            + `<div class="ucs-scorepad-sub">${_('Round')} ${detail.round}${fadTitle}</div>`
+            + `</div></div>`;
+
+        const scroll = document.createElement('div');
+        scroll.className = 'ucs-scorepad-scroll';
+        scroll.appendChild(this.buildScorepadTable(detail));
+        box.appendChild(scroll);
 
         const foot = document.createElement('div');
         foot.className = 'ucs-score-foot';
@@ -1839,72 +1848,102 @@ export class Game {
         this.bga.gameArea.getElement().appendChild(overlay);
     }
 
-    /** One player's block in the scoring summary: their sweaters' breakdowns + Secret Santa result(s). */
-    private renderScorePlayer(p: PlayerScoreDetail): HTMLElement {
-        const el = document.createElement('div');
-        el.className = 'ucs-score-player';
-        el.style.setProperty('--player-color', p.color ? `#${p.color}` : '#888');
+    /** The scorepad grid table: category rows down the left, per-player × per-round columns across. */
+    private buildScorepadTable(detail: Scorepad): HTMLElement {
+        const players = detail.players || [];
+        const rounds = detail.rounds || [];
+        const nRounds = Math.max(1, detail.totalRounds || 1);
+        const cur = detail.round; // the round just scored — highlight its column
 
-        el.insertAdjacentHTML('beforeend',
-            `<div class="ucs-score-pname"><span class="ucs-score-pn">${p.player_name}</span>`
-            + `<span class="ucs-score-ptot">${_('Total')}: ${p.score} <small>(+${p.roundTotal})</small></span></div>`);
+        // round number → recorded cell for a player (undefined = a round not yet scored → blank cell)
+        const cellOf = (pid: number, r: number): ScorepadCell | undefined =>
+            rounds.find((x) => x.round === r)?.players[pid];
 
-        const sweaters = document.createElement('div');
-        sweaters.className = 'ucs-score-sweaters';
-        if (!p.sweaters.length) sweaters.innerHTML = `<div class="ucs-empty">${_('No sweaters')}</div>`;
-        p.sweaters.forEach((s) => sweaters.appendChild(this.renderScoreSweater(s)));
-        el.appendChild(sweaters);
+        // Scoring-category rows (top block); `sum` totals the category across every recorded round.
+        const cats: { key: keyof ScorepadCell; label: string; vp: string }[] = [
+            { key: 'built', label: _('Each Sweater Built'), vp: '+2 VP' },
+            { key: 'run', label: _('Three Consecutive Numbers'), vp: '+2 VP' },
+            { key: 'fad', label: _('Fads'), vp: '+? VP' },
+            { key: 'nonfad', label: _("All Matching 'Non-Fad' Colours and Icons"), vp: '+1 VP' },
+            { key: 'ss', label: _('Secret Santa'), vp: '+3 VP' },
+        ];
+        if (detail.bonus) cats.push({ key: 'bonus', label: _('Bonus'), vp: '+3 VP' });
 
-        (p.secretSantas || []).forEach((ss) => {
-            const yn = ss.satisfied ? _('Yes') : _('No');
-            el.insertAdjacentHTML('beforeend',
-                `<div class="ucs-score-santa ${ss.satisfied ? 'ucs-santa-yes' : 'ucs-santa-no'}">`
-                + `<span class="ucs-santa-label">${_('Secret Santa')}: ${ss.name}</span>`
-                + `<span class="ucs-santa-res">${yn} (+${ss.points})</span></div>`);
+        const sumCat = (pid: number, key: keyof ScorepadCell): number =>
+            rounds.reduce((acc, x) => acc + (Number(x.players[pid]?.[key]) || 0), 0);
+
+        const roundCols = Array.from({ length: nRounds }, (_v, i) => i + 1);
+
+        // ---- header: player group row, then per-player Round 1..N + Total sub-columns ----
+        let html = '<table class="ucs-scorepad"><thead>';
+        html += `<tr class="ucs-sp-players"><th class="ucs-sp-cat" rowspan="2"></th>`;
+        players.forEach((p, i) => {
+            html += `<th class="ucs-sp-pname ${i % 2 === 0 ? 'ucs-sp-alt' : ''}" colspan="${nRounds + 1}" `
+                + `style="--player-color:${p.color ? '#' + p.color : '#555'}">${p.player_name}</th>`;
         });
-        return el;
-    }
+        html += '</tr><tr class="ucs-sp-rounds">';
+        players.forEach((p, i) => {
+            roundCols.forEach((r) => {
+                const c = ['ucs-sp-rc', i % 2 === 0 ? 'ucs-sp-alt' : '', r === cur ? 'ucs-sp-cur' : ''].join(' ');
+                html += `<th class="${c}">${_('R')}${r}</th>`;
+            });
+            html += `<th class="ucs-sp-total-h ${i % 2 === 0 ? 'ucs-sp-alt' : ''}">${_('Total')}</th>`;
+        });
+        html += '</tr></thead><tbody>';
 
-    /** A single sweater in the summary: mini silhouette + its scoring lines; gold-bordered if it meets SS. */
-    private renderScoreSweater(s: SweaterScore): HTMLElement {
+        // ---- scoring rows ----
+        const cell = (v: number | undefined, extra = '') =>
+            `<td class="ucs-sp-num ${extra}">${v === undefined ? '' : v}</td>`;
+        cats.forEach((cat) => {
+            html += `<tr class="ucs-sp-row"><th class="ucs-sp-cat"><span class="ucs-sp-lbl">${cat.label}</span>`
+                + `<span class="ucs-sp-vp">${cat.vp}</span></th>`;
+            players.forEach((p, i) => {
+                roundCols.forEach((r) => {
+                    const rec = cellOf(p.player_id, r);
+                    const cls = [i % 2 === 0 ? 'ucs-sp-alt' : '', r === cur ? 'ucs-sp-cur' : ''].join(' ');
+                    html += cell(rec ? Number(rec[cat.key]) : undefined, cls);
+                });
+                html += cell(sumCat(p.player_id, cat.key), `ucs-sp-total ${i % 2 === 0 ? 'ucs-sp-alt' : ''}`);
+            });
+            html += '</tr>';
+        });
+
+        // ---- TOTALS row: per-round contribution, Total column = running grand total (cumulative) ----
+        html += `<tr class="ucs-sp-row ucs-sp-totals"><th class="ucs-sp-cat"><span class="ucs-sp-lbl">${_('TOTALS')}</span></th>`;
+        players.forEach((p, i) => {
+            let lastCum = 0;
+            roundCols.forEach((r) => {
+                const rec = cellOf(p.player_id, r);
+                if (rec) lastCum = rec.cumulative;
+                const cls = [i % 2 === 0 ? 'ucs-sp-alt' : '', r === cur ? 'ucs-sp-cur' : ''].join(' ');
+                html += cell(rec ? rec.total : undefined, cls);
+            });
+            html += cell(lastCum, `ucs-sp-total ${i % 2 === 0 ? 'ucs-sp-alt' : ''}`);
+        });
+        html += '</tr>';
+
+        // ---- informational footer counts (not summed into VP) ----
+        const foot: { key: keyof ScorepadCell; label: string }[] = [
+            { key: 'unfinished', label: _('# of Unfinished Sweaters') },
+            { key: 'fadsCompleted', label: _('# of Fads Completed') },
+        ];
+        foot.forEach((f) => {
+            html += `<tr class="ucs-sp-row ucs-sp-foot"><th class="ucs-sp-cat"><span class="ucs-sp-lbl">${f.label}</span></th>`;
+            players.forEach((p, i) => {
+                roundCols.forEach((r) => {
+                    const rec = cellOf(p.player_id, r);
+                    const cls = [i % 2 === 0 ? 'ucs-sp-alt' : '', r === cur ? 'ucs-sp-cur' : ''].join(' ');
+                    html += cell(rec ? Number(rec[f.key]) : undefined, cls);
+                });
+                html += cell(sumCat(p.player_id, f.key), `ucs-sp-total ${i % 2 === 0 ? 'ucs-sp-alt' : ''}`);
+            });
+            html += '</tr>';
+        });
+
+        html += '</tbody></table>';
         const wrap = document.createElement('div');
-        wrap.className = 'ucs-score-sweater' + (s.ss ? ' ucs-ss-gold' : '');
-
-        const build = document.createElement('div');
-        build.className = 'ucs-build ucs-score-build';
-        if (s.complete) build.classList.add('ucs-build-complete');
-        const filled = new Set<string>();
-        (s.cards || []).forEach((card) => {
-            const el = createCardElement(card, this.material);
-            const slot = (card.slot as string) ?? faceOf(card, this.material).slot ?? null;
-            if (slot) { el.style.gridArea = slot; el.classList.add(`ucs-slot-${slot}`); filled.add(slot); }
-            else el.classList.add('ucs-floating');
-            build.appendChild(el);
-        });
-        if (filled.size > 0) {
-            (['L', 'R', 'B'] as const).forEach((sl) => { if (!filled.has(sl)) build.appendChild(this.makeEmptySlot(sl)); });
-        }
-        wrap.appendChild(build);
-
-        const lines = document.createElement('ul');
-        lines.className = 'ucs-score-lines';
-        const li = (txt: string, cls = '') => {
-            const l = document.createElement('li');
-            if (cls) l.className = cls;
-            l.textContent = txt;
-            lines.appendChild(l);
-        };
-        if (!s.complete) {
-            li(_('Incomplete — 0'), 'ucs-line-zero');
-        } else {
-            li(`${_('Completed')} +${s.parts.build}`);
-            if (s.parts.run) li(`${_('Consecutive values')} +${s.parts.run}`);
-            if (s.parts.fad) li(`${_('Fad')} +${s.parts.fad}`);
-            if (s.parts.nonfad) li(`${_('All one colour/icon')} +${s.parts.nonfad}`);
-        }
-        li(`${_('Sweater total')}: ${s.total}`, 'ucs-line-total');
-        wrap.appendChild(lines);
-        return wrap;
+        wrap.innerHTML = html;
+        return wrap.firstElementChild as HTMLElement;
     }
 
     // ===================================================================================
