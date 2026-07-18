@@ -89,7 +89,8 @@ export function cardFaceInner(card: SweaterCard, material: UcsMaterial): string 
 
     const valueLabel = wildValue != null ? String(wildValue) : '';
     const iconLabel = wildIcon ? (ICON_GLYPH[wildIcon] ?? wildIcon) : '';
-    return `<div class="ucs-wild-badge">${valueLabel}`
+    return `<div class="ucs-wild-badge">`
+        + `<span class="ucs-wild-value">${valueLabel}</span>`
         + (iconLabel ? `<span class="ucs-wild-icon">${iconLabel}</span>` : '')
         + `</div>`;
 }

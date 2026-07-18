@@ -329,22 +329,31 @@ html[data-theme="dark"] {
 // The patch faces are self-evidently patchwork in the real art, so no dashed outline is needed.
 // When a patch has TAKEN ON a value/icon (copied in a trick, or assigned at scoring), we overlay a
 // centred badge on top of the patch art so its current identity is legible at a glance.
+// The value + icon a patch has taken on, shown as a solid high-contrast chip centred on the card so
+// it reads clearly over the busy watercolour patch art (a bare overlay was hard to make out).
 .ucs-wild-badge {
     position: absolute;
-    inset: 0;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
     display: flex;
     align-items: center;
-    justify-content: center;
-    gap: calc(var(--ucs-card-w) * 0.04);
-    z-index: 1;
+    gap: calc(var(--ucs-card-w) * 0.06);
+    padding: calc(var(--ucs-card-w) * 0.06) calc(var(--ucs-card-w) * 0.11);
+    border-radius: calc(var(--ucs-card-w) * 0.12);
+    background: rgba(24, 24, 24, 0.82);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.5);
+    z-index: 2;
     pointer-events: none;
-    font-size: calc(var(--ucs-card-w) * 0.34);
+    line-height: 1;
+}
+.ucs-wild-value {
+    font-size: calc(var(--ucs-card-w) * 0.42);
     font-weight: 800;
     color: #fff;
-    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.85), 0 0 6px rgba(0, 0, 0, 0.6);
 }
 .ucs-wild-icon {
-    font-size: calc(var(--ucs-card-w) * 0.30);
+    font-size: calc(var(--ucs-card-w) * 0.40);
 }
 
 .ucs-card-back {
@@ -1012,14 +1021,31 @@ html[data-theme="dark"] {
 // --ucs-card-w + 12px), and --ucs-players is set on #ucs-table by Game.ts::setup.
 #ucs-trade-area {
     --ucs-trade-slot: calc(var(--ucs-card-w) + 12px);
+    position: relative; // anchor for the vertical label sitting just outside the left border
     box-sizing: border-box; // width below is the full frame, padding + border included
     border: 3px solid var(--ucs-frame);
+    padding-top: 20px; // room for the owner captions above each card (the label no longer sits here)
     width: calc(
         var(--ucs-players, 4) * var(--ucs-trade-slot)  // the slots themselves
         + (var(--ucs-players, 4) - 1) * 12px           // .ucs-card-row gap between them
         + 16px                                          // .ucs-zone left + right padding
         + 6px                                           // this border
     );
+}
+// The zone label lives OUTSIDE the frame, running up the left border (rotated 90°), so the owner
+// captions inside no longer collide with it.
+#ucs-trade-area .ucs-zone-label {
+    position: absolute;
+    right: 100%;          // to the left of the frame
+    top: 0;
+    bottom: 0;
+    margin: 0 6px 0 0;    // clear the border + a small gap
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    writing-mode: vertical-rl;
+    transform: rotate(180deg); // read bottom-to-top
+    white-space: nowrap;
 }
 
 // A Trade Area card captioned with who played it this trick (label not carried into the pool).

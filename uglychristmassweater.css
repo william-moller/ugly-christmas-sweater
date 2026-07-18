@@ -700,21 +700,29 @@ html[data-theme=dark] {
 
 .ucs-wild-badge {
   position: absolute;
-  inset: 0;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
   display: flex;
   align-items: center;
-  justify-content: center;
-  gap: calc(var(--ucs-card-w) * 0.04);
-  z-index: 1;
+  gap: calc(var(--ucs-card-w) * 0.06);
+  padding: calc(var(--ucs-card-w) * 0.06) calc(var(--ucs-card-w) * 0.11);
+  border-radius: calc(var(--ucs-card-w) * 0.12);
+  background: rgba(24, 24, 24, 0.82);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.5);
+  z-index: 2;
   pointer-events: none;
-  font-size: calc(var(--ucs-card-w) * 0.34);
+  line-height: 1;
+}
+
+.ucs-wild-value {
+  font-size: calc(var(--ucs-card-w) * 0.42);
   font-weight: 800;
   color: #fff;
-  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.85), 0 0 6px rgba(0, 0, 0, 0.6);
 }
 
 .ucs-wild-icon {
-  font-size: calc(var(--ucs-card-w) * 0.3);
+  font-size: calc(var(--ucs-card-w) * 0.4);
 }
 
 .ucs-card-back {
@@ -1379,9 +1387,25 @@ html[data-theme=dark] {
 
 #ucs-trade-area {
   --ucs-trade-slot: calc(var(--ucs-card-w) + 12px);
+  position: relative;
   box-sizing: border-box;
   border: 3px solid var(--ucs-frame);
+  padding-top: 20px;
   width: calc(var(--ucs-players, 4) * var(--ucs-trade-slot) + (var(--ucs-players, 4) - 1) * 12px + 16px + 6px);
+}
+
+#ucs-trade-area .ucs-zone-label {
+  position: absolute;
+  right: 100%;
+  top: 0;
+  bottom: 0;
+  margin: 0 6px 0 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+  white-space: nowrap;
 }
 
 .ucs-trade-card {
