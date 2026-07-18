@@ -48,6 +48,12 @@ not of the code.
   the watercolour background per card and shift each cell to a consistent registration (L body to its
   right edge, R to its left, B centred), so any L+R+B tiles. Heuristic; verify across all 52 cards by
   eye. The layout itself (rotate B, centre, butt) is already correct.
+- **Reveal covered cards in a knitting area** — a way to see what a build slot previously held after a
+  card was "placed over" it. Today the covered piece is discarded outright (`modules/php/Game.php:1090`),
+  so nothing is retained to reveal — the feature first needs covered pieces kept under the slot (a
+  data-model change that also has to reshuffle them at round end). *Open question — ask the publisher:*
+  is peeking at covered cards meant to be allowed for anyone, only the owner of that knitting area, or
+  nobody? That answer decides both whether pieces are retained and who the reveal is exposed to.
 - **Player preferences** — `gamepreferences.jsonc`. *Open question:* which knobs? Animation speed
   is the conventional one.
 - **Player panel improvements** — *open question:* what needs to change? Not actionable until we
