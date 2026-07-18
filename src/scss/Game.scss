@@ -796,10 +796,19 @@ html[data-theme="dark"] {
         "L R"
         "B B";
     justify-items: center;
-    gap: 0 3px; // no row gap — the hem (B) sits flush against the L/R pieces; small column gap only
+    gap: 0; // pieces butt together (no row OR column gap) so the sweater art is continuous across edges
     padding: 3px;
     border-radius: 6px;
     border: 1px dashed var(--ucs-hairline);
+}
+
+// Within an assembled sweater the three pieces sit edge-to-edge, so drop the per-card rounding and
+// drop-shadow: those round the inner corners into notches and draw a dark line along the seams,
+// breaking the continuous art. The physical cards butt together the same way. (The whole build still
+// gets its outer frame from .ucs-build / .ucs-build-complete.)
+.ucs-build .ucs-card {
+    border-radius: 0;
+    box-shadow: none;
 }
 
 .ucs-build-complete {

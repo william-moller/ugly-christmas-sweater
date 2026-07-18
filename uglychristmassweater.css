@@ -1155,10 +1155,15 @@ html[data-theme=dark] {
   grid-template-columns: repeat(2, var(--ucs-card-w));
   grid-template-areas: "L R" "B B";
   justify-items: center;
-  gap: 0 3px;
+  gap: 0;
   padding: 3px;
   border-radius: 6px;
   border: 1px dashed var(--ucs-hairline);
+}
+
+.ucs-build .ucs-card {
+  border-radius: 0;
+  box-shadow: none;
 }
 
 .ucs-build-complete {
