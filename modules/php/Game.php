@@ -415,7 +415,19 @@ class Game extends \Bga\GameFramework\Table
         //    else into the deal source. On round 1 (called from setupNewGame) the pool is empty, so this
         //    sweeps the whole deck and we deal a fresh pool below — the original behaviour.
         $carryIds = array_map(fn($c) => (int) $c['id'], $this->cards->getCardsInLocation(self::LOC_DRAFTPOOL));
-        $this->cards->moveAllCardsInLocation(null, self::LOC_SOURCE);
+
+        // Sweep EVERY other card back into the shuffle source: leftover HANDS (a round ends on the sweater
+        // trigger, not hand exhaustion, so players are usually still holding cards), personal draw piles,
+        // knitting builds and the discard all reshuffle together — nothing a player still held survives
+        // into the new deal. Only the draft pool (the final trick's cards) is kept, re-seated below. We move
+        // each location explicitly so none is silently missed, then a null catch-all mops up anything else.
+        foreach ([self::LOC_HAND, self::LOC_KNITTING, self::LOC_TRICK, self::LOC_DISCARD] as $loc) {
+            $this->cards->moveAllCardsInLocation($loc, self::LOC_SOURCE);
+        }
+        foreach (array_keys($this->loadPlayersBasicInfos()) as $pid) {
+            $this->cards->moveAllCardsInLocation($this->pileLoc((int) $pid), self::LOC_SOURCE);
+        }
+        $this->cards->moveAllCardsInLocation(null, self::LOC_SOURCE); // catch-all incl. the carry pool (re-seated below)
         $this->cards->shuffle(self::LOC_SOURCE);
 
         // Wipe all per-card dynamic extras so last round's build/slot/wild data can't bleed into a
@@ -591,6 +603,11 @@ class Game extends \Bga\GameFramework\Table
     /** Deal each player their Secret Santa objective(s) for the round: Casual = 1, Express = 2. */
     public function dealSecretSantas(): void
     {
+        // Last round's Secret Santas are spent: DISCARD them out of the game — never back into 'box' — so a
+        // Secret Santa someone already held can't be re-dealt later. Only the undealt 'box' is shuffled and
+        // drawn from below. (No-op on round 1: no Secret Santas have been dealt yet.)
+        $this->secretSantas->moveAllCardsInLocation(self::LOC_HAND, self::LOC_DISCARD);
+
         $n = $this->secretSantasPerPlayer();
         $this->secretSantas->shuffle('box');
         foreach (array_keys($this->loadPlayersBasicInfos()) as $pid) {
