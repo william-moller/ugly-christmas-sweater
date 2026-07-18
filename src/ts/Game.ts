@@ -225,11 +225,11 @@ export class Game {
         this.cardsManager = new BgaCards.Manager({
             animationManager: this.animationManager,
             type: 'ucs-sweater',
-            // The hand is the primary interaction on a desktop table, so its cards run large — matched to
-            // the Secret Santa card size. The inner face content (sized off --ucs-card-w) is matched to
-            // this in SCSS (#ucs-my-hand-wrap), and the mobile breakpoint scales the whole fan back down.
-            cardWidth: 128,
-            cardHeight: 200, // bridge ratio 0.643 (bleed-trimmed art) + #ucs-my-hand-wrap's --ucs-card-h
+            // The hand is the primary interaction on a desktop table, so its cards run larger than the
+            // 64/90 used elsewhere. The inner face content (sized off --ucs-card-w) is matched to this in
+            // SCSS (#ucs-my-hand-wrap), and the mobile breakpoint scales the whole fan back down.
+            cardWidth: 96,
+            cardHeight: 149, // bridge ratio 0.643 (bleed-trimmed art) + #ucs-my-hand-wrap's --ucs-card-h
             getId: (c: SweaterCard) => `ucs-hand-${c.id}`,
             isCardVisible: () => true,
             setupFrontDiv: (c: SweaterCard, div: HTMLElement) => {
