@@ -39,6 +39,15 @@ not of the code.
   like the gaps.
 - **How-to-play rules summary** — in-client summary so players don't need the rulebook PDF.
 - **Playing-area layout** — improve. Overlaps the centering checklist line above.
+- **Knitting area: normalise sweater art registration across cards** — the sweater silhouette is
+  drawn at a slightly different horizontal position on each card face, so an assembled sweater built
+  from mismatched cards (the normal case) doesn't tile cleanly: the L/R/B pieces jog left/right of
+  each other. Verified by extracting the B faces and mocking assemblies from the real sprite — a
+  matched-colour set tiles, mixed sets don't, and the per-card offset varies in both directions, so
+  no single CSS nudge fixes it. Real fix is in `scripts/build-sprites.mjs`: segment the sweater from
+  the watercolour background per card and shift each cell to a consistent registration (L body to its
+  right edge, R to its left, B centred), so any L+R+B tiles. Heuristic; verify across all 52 cards by
+  eye. The layout itself (rotate B, centre, butt) is already correct.
 - **Player preferences** — `gamepreferences.jsonc`. *Open question:* which knobs? Animation speed
   is the conventional one.
 - **Player panel improvements** — *open question:* what needs to change? Not actionable until we
