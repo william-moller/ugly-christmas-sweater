@@ -47,6 +47,13 @@ not of the code.
   is the conventional one.
 - **Player panel improvements** — *open question:* what needs to change? Not actionable until we
   decide what's wrong with it today.
+- **Patch assignment UI: compact grid + one-at-a-time** — at end of round, choosing a patch's value
+  and icon currently renders one tall single-column button list per patch, stacked side by side. Two
+  problems: (1) the buttons waste space — lay them out like a keypad, ~4 numbers wide, and the same
+  for the icon buttons, so the menu is a compact grid instead of a full-height column. (2) When a
+  player has multiple patches to assign, resolve them one at a time: today all menus show at once and
+  the second patch's sweater sits fully hidden behind the first patch's selection menu, so the player
+  can't see the card they're assigning to.
 
 ## Rules gaps (anchored in code)
 

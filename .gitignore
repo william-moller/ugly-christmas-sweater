@@ -21,3 +21,6 @@ node_modules/
 # ── OS / editor cruft ──
 Thumbs.db
 .DS_Store
+
+# ── Throwaway scratch scripts run from the repo root (need node_modules resolution) ──
+_tmp-*
