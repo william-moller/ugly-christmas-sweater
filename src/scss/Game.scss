@@ -904,6 +904,13 @@ html[data-theme="dark"] {
     margin-top: calc((var(--ucs-card-w) - var(--ucs-card-h)) / 2);
     margin-bottom: calc((var(--ucs-card-w) - var(--ucs-card-h)) / 2);
 }
+// ...but a patch's value/icon badge must stay UPRIGHT — it's an information overlay, not part of the
+// printed art, so it should read the same whether it sits on an L/R or the rotated B (hem) piece.
+// Counter-rotate it back the +90° the B card turned (keeping the centring translate). Applies to every
+// build view: your knitting, opponents' knitting, and the opponent close-up.
+.ucs-build .ucs-slot-B .ucs-wild-badge {
+    transform: translate(-50%, -50%) rotate(90deg);
+}
 
 .ucs-owned {
     box-shadow: 0 0 0 2px var(--player-color, transparent), 0 1px 3px rgba(0, 0, 0, 0.35);

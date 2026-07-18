@@ -1288,6 +1288,10 @@ html[data-theme=dark] {
   margin-bottom: calc((var(--ucs-card-w) - var(--ucs-card-h)) / 2);
 }
 
+.ucs-build .ucs-slot-B .ucs-wild-badge {
+  transform: translate(-50%, -50%) rotate(90deg);
+}
+
 .ucs-owned {
   box-shadow: 0 0 0 2px var(--player-color, transparent), 0 1px 3px rgba(0, 0, 0, 0.35);
 }
