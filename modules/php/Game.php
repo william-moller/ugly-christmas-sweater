@@ -691,7 +691,11 @@ class Game extends \Bga\GameFramework\Table
      * Short public label identifying a card by colour + value, e.g. "Purple 9" — enough to identify
      * the exact card in play (icon + orientation can be inferred). A resolved patch shows its copied
      * value; an unresolved one falls back to "<Colour> Patch".
-     * TODO: colour word is not translated here (alpha); revisit for i18n if needed.
+     * TODO (i18n): the colour word is composed into the label server-side, so it always renders in
+     * English even for a translated client. Translating it properly means passing colour + value as
+     * separate notification args with an 'i18n' key (colour → clienttranslate('Green') etc.) across
+     * every cardPlayed/drafted/patch notification and updating the log rendering — a notification
+     * restructure, not a wrap. Tracked in .claude/backlog.md; left as-is deliberately.
      */
     public function cardLabel(int $cardId): string
     {

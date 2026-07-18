@@ -172,6 +172,36 @@ const ICON_GLYPH = {
 function iconGlyph(icon) {
     return ICON_GLYPH[icon] ?? icon;
 }
+// Translated display names for the data-driven colour / icon / orientation values. Each `_()` call
+// takes a literal so BGA's translation scanner picks it up; the lookup runs at render time. Falls
+// back to the raw value for anything unexpected. These are the single source of truth for turning a
+// card's colour/icon/slot into player-facing text (tooltips, read-outs).
+function colourName(colour) {
+    switch (colour) {
+        case 'green': return _('Green');
+        case 'red': return _('Red');
+        case 'yellow': return _('Yellow');
+        case 'purple': return _('Purple');
+        default: return colour;
+    }
+}
+function iconName(icon) {
+    switch (icon) {
+        case 'snowman': return _('Snowman');
+        case 'candycane': return _('Candy Cane');
+        case 'bell': return _('Bell');
+        case 'tree': return _('Tree');
+        default: return icon;
+    }
+}
+function orientationName(slot) {
+    switch (slot) {
+        case 'L': return _('Left');
+        case 'R': return _('Right');
+        case 'B': return _('Bottom');
+        default: return slot;
+    }
+}
 /** Resolve a card row to its static face via the material map. */
 function faceOf(card, material) {
     const key = `${card.type}_${card.type_arg}`;
@@ -264,14 +294,14 @@ function createCardBack() {
 /** Tooltip HTML describing a card (colour + value; icon/orientation once known). */
 function cardTooltip(card, material) {
     const face = faceOf(card, material);
-    const colour = face.color.charAt(0).toUpperCase() + face.color.slice(1);
+    const colour = colourName(face.color);
     if (face.patch) {
-        return `<strong>${colour} Patch</strong><br>Wild. Starting a new sweater it "floats" (no orientation) `
-            + `until a second card joins; its value &amp; icon are chosen at round-end scoring.`;
+        return `<strong>${colour} ${_('Patch')}</strong><br>`
+            + _('Wild. Starting a new sweater it "floats" (no orientation) until a second card joins; its value & icon are chosen at round-end scoring.');
     }
-    const icon = face.icon ?? '?';
-    const slot = face.slot ?? '?';
-    return `<strong>${colour} ${face.value}</strong><br>Icon: ${icon}<br>Orientation: ${slot}`;
+    const icon = face.icon ? iconName(face.icon) : '?';
+    const slot = face.slot ? orientationName(face.slot) : '?';
+    return `<strong>${colour} ${face.value}</strong><br>${_('Icon:')} ${icon}<br>${_('Orientation:')} ${slot}`;
 }
 
 /*
@@ -574,7 +604,9 @@ class Game {
             const el = document.createElement('div');
             el.className = `ucs-card ucs-santa-card ucs-art2 ucs-santa-${arg}`;
             el.id = `ucs-santa-el-${arg}`;
-            this.bga.gameui.addTooltipHtml?.(el.id, `<b>${ss?.name ?? _('Secret Santa')}</b><br>${_('Build a completed sweater matching this request for +3 VP.')}`);
+            // ss.name is marked with clienttranslate server-side (Material::secretSantas); translate it
+            // for display here. Same pattern for the Fad title and Bonus card name/text below.
+            this.bga.gameui.addTooltipHtml?.(el.id, `<b>${ss?.name ? _(ss.name) : _('Secret Santa')}</b><br>${_('Build a completed sweater matching this request for +3 VP.')}`);
             slot.appendChild(el);
             row.appendChild(slot);
         });
@@ -591,12 +623,12 @@ class Game {
         const row = document.createElement('div');
         row.className = 'ucs-gameplay-row';
         const gp = this.gamedatas.gameplay;
-        row.appendChild(this.gameplayPileEl('perfectfit', 'Perfect Fit', gp?.perfectfit));
-        row.appendChild(this.gameplayPileEl('trendyyarn', 'Trendy Yarn', gp?.trendyyarn));
+        row.appendChild(this.gameplayPileEl('perfectfit', _('Perfect Fit'), gp?.perfectfit));
+        row.appendChild(this.gameplayPileEl('trendyyarn', _('Trendy Yarn'), gp?.trendyyarn));
         // Express shows a DISPLAY of claimable Fads (players+1); Casual shows the single revealed Fad.
         const fadEl = this.gamedatas.express
             ? this.fadDisplayEl(gp?.express)
-            : this.gameplayPileEl('fad', 'Fads', gp?.fad);
+            : this.gameplayPileEl('fad', _('Fads'), gp?.fad);
         fadEl.id = 'ucs-fad-zone'; // hook for the round-end assignment dim (kept readable above the overlay)
         row.appendChild(fadEl);
         zone.appendChild(row);
@@ -664,18 +696,18 @@ class Game {
         el.classList.add('ucs-art2');
         if (type === 'perfectfit') {
             el.classList.add(`ucs-gp-perfectfit-${arg}`);
-            this.bga.gameui.addTooltipHtml?.(this.gpId(el), `<strong>Perfect Fit ${arg}</strong><br>Cards of value ${arg} are the super-trump this round.`);
+            this.bga.gameui.addTooltipHtml?.(this.gpId(el), `<strong>${_('Perfect Fit')} ${arg}</strong><br>${_('Cards of this value are the super-trump this round.')}`);
         }
         else if (type === 'trendyyarn') {
             const color = this.material.colors[arg] ?? String(arg);
             el.classList.add(`ucs-gp-trendyyarn-${color}`);
-            this.bga.gameui.addTooltipHtml?.(this.gpId(el), `<strong>Trendy Yarn: ${color}</strong><br>${color.charAt(0).toUpperCase() + color.slice(1)} is the trump colour this round.`);
+            this.bga.gameui.addTooltipHtml?.(this.gpId(el), `<strong>${_('Trendy Yarn')}: ${colourName(color)}</strong><br>${_('This colour is the trump colour this round.')}`);
         }
         else {
             const fad = this.material.fads[arg];
-            const title = fad?.title ?? `Fad ${arg}`;
+            const title = fad?.title ? _(fad.title) : `${_('Fad')} ${arg}`;
             el.classList.add('ucs-gp-fad', `ucs-gp-fad-${arg}`); // ucs-gp-fad = styling/hook; -${arg} = sprite face
-            this.bga.gameui.addTooltipHtml?.(this.gpId(el), `<strong>${title}</strong><br>Round scoring bonus (applies to all players).`);
+            this.bga.gameui.addTooltipHtml?.(this.gpId(el), `<strong>${title}</strong><br>${_('Round scoring bonus (applies to all players).')}`);
         }
         return el;
     }
@@ -687,7 +719,7 @@ class Game {
     }
     renderDraftPool() {
         const zone = document.getElementById('ucs-draft-pool');
-        zone.innerHTML = `<div class="ucs-zone-label">Draft Pool</div>`;
+        zone.innerHTML = `<div class="ucs-zone-label">${_('Draft Pool')}</div>`;
         const row = document.createElement('div');
         row.className = 'ucs-card-row';
         // While leading with a patch, the numbered pool cards are clickable copy sources (a patch can't
@@ -718,7 +750,7 @@ class Game {
     }
     renderTradeArea() {
         const zone = document.getElementById('ucs-trade-area');
-        zone.innerHTML = `<div class="ucs-zone-label">Trade Area (this trick)</div>`;
+        zone.innerHTML = `<div class="ucs-zone-label">${_('Trade Area (this trick)')}</div>`;
         const row = document.createElement('div');
         row.className = 'ucs-card-row';
         // Show in play order (trickOrder) when available.
@@ -746,7 +778,7 @@ class Game {
             row.appendChild(wrap);
         });
         if (!cards.length) {
-            row.innerHTML = `<div class="ucs-empty">No cards played yet</div>`;
+            row.innerHTML = `<div class="ucs-empty">${_('No cards played yet')}</div>`;
         }
         zone.appendChild(row);
     }
@@ -780,10 +812,13 @@ class Game {
         }
         el.style.display = '';
         el.classList.toggle('ucs-bonus-used', !!card.used);
-        el.innerHTML = `<span class="ucs-bonus-icon">🎁</span><span class="ucs-bonus-name">${card.name}</span>`;
+        // card.name / card.text are marked with clienttranslate server-side (Material::bonusCards);
+        // translate for display.
+        const name = card.name ? _(card.name) : '';
+        el.innerHTML = `<span class="ucs-bonus-icon">🎁</span><span class="ucs-bonus-name">${name}</span>`;
         // Tooltip carries the full publisher card art (sized via inline --ucs-card-w/h) beneath the text.
         const art = `<div class="ucs-art2 ucs-bonus-${card.bonusId}" style="--ucs-card-w:150px;--ucs-card-h:233px;width:150px;height:233px;border-radius:6px;margin:6px auto 0"></div>`;
-        this.bga.gameui.addTooltipHtml?.(el.id, `<b>${card.name}</b>${card.text ? `<br>${card.text}` : ''}${art}`);
+        this.bga.gameui.addTooltipHtml?.(el.id, `<b>${name}</b>${card.text ? `<br>${_(card.text)}` : ''}${art}`);
     }
     /**
      * The compact abstraction shown for an opponent on small screens (the side column collapses to
@@ -1091,7 +1126,7 @@ class Game {
         const floatDest = (mine && this.pendingBuildNo != null && this.floatingPatchSlot)
             ? { buildNo: this.pendingBuildNo, slot: this.floatingPatchSlot } : null;
         if (!cards.length && regularSlot == null && !selPatch) {
-            zone.innerHTML = `<div class="ucs-empty">No sweaters yet</div>`;
+            zone.innerHTML = `<div class="ucs-empty">${_('No sweaters yet')}</div>`;
             return;
         }
         const builds = {};

@@ -4,7 +4,7 @@ import { RoundReview } from "./States/RoundReview";
 import { AssignPatches } from "./States/AssignPatches";
 import { BillyChoice } from "./States/BillyChoice";
 import { TinaTink } from "./States/TinaTink";
-import { createCardElement, cardTooltip, cardLogChip, faceOf, isPatch, cardFaceInner, faceSpriteClass, iconGlyph } from "./CardView";
+import { createCardElement, cardTooltip, cardLogChip, faceOf, isPatch, cardFaceInner, faceSpriteClass, iconGlyph, colourName } from "./CardView";
 import { BgaAnimations, BgaCards } from "./libs";
 
 type CardMapT = { [cardId: number]: SweaterCard };
@@ -323,7 +323,9 @@ export class Game {
             const el = document.createElement('div');
             el.className = `ucs-card ucs-santa-card ucs-art2 ucs-santa-${arg}`;
             el.id = `ucs-santa-el-${arg}`;
-            (this.bga.gameui as any).addTooltipHtml?.(el.id, `<b>${ss?.name ?? _('Secret Santa')}</b><br>${_('Build a completed sweater matching this request for +3 VP.')}`);
+            // ss.name is marked with clienttranslate server-side (Material::secretSantas); translate it
+            // for display here. Same pattern for the Fad title and Bonus card name/text below.
+            (this.bga.gameui as any).addTooltipHtml?.(el.id, `<b>${ss?.name ? _(ss.name) : _('Secret Santa')}</b><br>${_('Build a completed sweater matching this request for +3 VP.')}`);
             slot.appendChild(el);
             row.appendChild(slot);
         });
@@ -341,12 +343,12 @@ export class Game {
         const row = document.createElement('div');
         row.className = 'ucs-gameplay-row';
         const gp = this.gamedatas.gameplay;
-        row.appendChild(this.gameplayPileEl('perfectfit', 'Perfect Fit', gp?.perfectfit));
-        row.appendChild(this.gameplayPileEl('trendyyarn', 'Trendy Yarn', gp?.trendyyarn));
+        row.appendChild(this.gameplayPileEl('perfectfit', _('Perfect Fit'), gp?.perfectfit));
+        row.appendChild(this.gameplayPileEl('trendyyarn', _('Trendy Yarn'), gp?.trendyyarn));
         // Express shows a DISPLAY of claimable Fads (players+1); Casual shows the single revealed Fad.
         const fadEl = this.gamedatas.express
             ? this.fadDisplayEl(gp?.express)
-            : this.gameplayPileEl('fad', 'Fads', gp?.fad);
+            : this.gameplayPileEl('fad', _('Fads'), gp?.fad);
         fadEl.id = 'ucs-fad-zone'; // hook for the round-end assignment dim (kept readable above the overlay)
         row.appendChild(fadEl);
         zone.appendChild(row);
@@ -420,16 +422,16 @@ export class Game {
         el.classList.add('ucs-art2');
         if (type === 'perfectfit') {
             el.classList.add(`ucs-gp-perfectfit-${arg}`);
-            (this.bga.gameui as any).addTooltipHtml?.(this.gpId(el), `<strong>Perfect Fit ${arg}</strong><br>Cards of value ${arg} are the super-trump this round.`);
+            (this.bga.gameui as any).addTooltipHtml?.(this.gpId(el), `<strong>${_('Perfect Fit')} ${arg}</strong><br>${_('Cards of this value are the super-trump this round.')}`);
         } else if (type === 'trendyyarn') {
             const color = this.material.colors[arg] ?? String(arg);
             el.classList.add(`ucs-gp-trendyyarn-${color}`);
-            (this.bga.gameui as any).addTooltipHtml?.(this.gpId(el), `<strong>Trendy Yarn: ${color}</strong><br>${color.charAt(0).toUpperCase() + color.slice(1)} is the trump colour this round.`);
+            (this.bga.gameui as any).addTooltipHtml?.(this.gpId(el), `<strong>${_('Trendy Yarn')}: ${colourName(color)}</strong><br>${_('This colour is the trump colour this round.')}`);
         } else {
             const fad = this.material.fads[arg];
-            const title = fad?.title ?? `Fad ${arg}`;
+            const title = fad?.title ? _(fad.title) : `${_('Fad')} ${arg}`;
             el.classList.add('ucs-gp-fad', `ucs-gp-fad-${arg}`); // ucs-gp-fad = styling/hook; -${arg} = sprite face
-            (this.bga.gameui as any).addTooltipHtml?.(this.gpId(el), `<strong>${title}</strong><br>Round scoring bonus (applies to all players).`);
+            (this.bga.gameui as any).addTooltipHtml?.(this.gpId(el), `<strong>${title}</strong><br>${_('Round scoring bonus (applies to all players).')}`);
         }
         return el;
     }
@@ -442,7 +444,7 @@ export class Game {
 
     private renderDraftPool() {
         const zone = document.getElementById('ucs-draft-pool')!;
-        zone.innerHTML = `<div class="ucs-zone-label">Draft Pool</div>`;
+        zone.innerHTML = `<div class="ucs-zone-label">${_('Draft Pool')}</div>`;
         const row = document.createElement('div');
         row.className = 'ucs-card-row';
         // While leading with a patch, the numbered pool cards are clickable copy sources (a patch can't
@@ -473,7 +475,7 @@ export class Game {
 
     private renderTradeArea() {
         const zone = document.getElementById('ucs-trade-area')!;
-        zone.innerHTML = `<div class="ucs-zone-label">Trade Area (this trick)</div>`;
+        zone.innerHTML = `<div class="ucs-zone-label">${_('Trade Area (this trick)')}</div>`;
         const row = document.createElement('div');
         row.className = 'ucs-card-row';
         // Show in play order (trickOrder) when available.
@@ -504,7 +506,7 @@ export class Game {
             row.appendChild(wrap);
         });
         if (!cards.length) {
-            row.innerHTML = `<div class="ucs-empty">No cards played yet</div>`;
+            row.innerHTML = `<div class="ucs-empty">${_('No cards played yet')}</div>`;
         }
         zone.appendChild(row);
     }
@@ -535,10 +537,13 @@ export class Game {
         if (!card) { el.style.display = 'none'; el.innerHTML = ''; return; }
         el.style.display = '';
         el.classList.toggle('ucs-bonus-used', !!card.used);
-        el.innerHTML = `<span class="ucs-bonus-icon">🎁</span><span class="ucs-bonus-name">${card.name}</span>`;
+        // card.name / card.text are marked with clienttranslate server-side (Material::bonusCards);
+        // translate for display.
+        const name = card.name ? _(card.name) : '';
+        el.innerHTML = `<span class="ucs-bonus-icon">🎁</span><span class="ucs-bonus-name">${name}</span>`;
         // Tooltip carries the full publisher card art (sized via inline --ucs-card-w/h) beneath the text.
         const art = `<div class="ucs-art2 ucs-bonus-${card.bonusId}" style="--ucs-card-w:150px;--ucs-card-h:233px;width:150px;height:233px;border-radius:6px;margin:6px auto 0"></div>`;
-        (this.bga.gameui as any).addTooltipHtml?.(el.id, `<b>${card.name}</b>${card.text ? `<br>${card.text}` : ''}${art}`);
+        (this.bga.gameui as any).addTooltipHtml?.(el.id, `<b>${name}</b>${card.text ? `<br>${_(card.text)}` : ''}${art}`);
     }
 
     /**
@@ -857,7 +862,7 @@ export class Game {
             ? { buildNo: this.pendingBuildNo, slot: this.floatingPatchSlot } : null;
 
         if (!cards.length && regularSlot == null && !selPatch) {
-            zone.innerHTML = `<div class="ucs-empty">No sweaters yet</div>`;
+            zone.innerHTML = `<div class="ucs-empty">${_('No sweaters yet')}</div>`;
             return;
         }
 

@@ -21,6 +21,37 @@ export function iconGlyph(icon: string): string {
     return ICON_GLYPH[icon] ?? icon;
 }
 
+// Translated display names for the data-driven colour / icon / orientation values. Each `_()` call
+// takes a literal so BGA's translation scanner picks it up; the lookup runs at render time. Falls
+// back to the raw value for anything unexpected. These are the single source of truth for turning a
+// card's colour/icon/slot into player-facing text (tooltips, read-outs).
+export function colourName(colour: string): string {
+    switch (colour) {
+        case 'green': return _('Green');
+        case 'red': return _('Red');
+        case 'yellow': return _('Yellow');
+        case 'purple': return _('Purple');
+        default: return colour;
+    }
+}
+export function iconName(icon: string): string {
+    switch (icon) {
+        case 'snowman': return _('Snowman');
+        case 'candycane': return _('Candy Cane');
+        case 'bell': return _('Bell');
+        case 'tree': return _('Tree');
+        default: return icon;
+    }
+}
+export function orientationName(slot: string): string {
+    switch (slot) {
+        case 'L': return _('Left');
+        case 'R': return _('Right');
+        case 'B': return _('Bottom');
+        default: return slot;
+    }
+}
+
 /** Resolve a card row to its static face via the material map. */
 export function faceOf(card: SweaterCard, material: UcsMaterial): CardFace {
     const key = `${card.type}_${card.type_arg}`;
@@ -123,12 +154,12 @@ export function createCardBack(): HTMLElement {
 /** Tooltip HTML describing a card (colour + value; icon/orientation once known). */
 export function cardTooltip(card: SweaterCard, material: UcsMaterial): string {
     const face = faceOf(card, material);
-    const colour = face.color.charAt(0).toUpperCase() + face.color.slice(1);
+    const colour = colourName(face.color);
     if (face.patch) {
-        return `<strong>${colour} Patch</strong><br>Wild. Starting a new sweater it "floats" (no orientation) `
-            + `until a second card joins; its value &amp; icon are chosen at round-end scoring.`;
+        return `<strong>${colour} ${_('Patch')}</strong><br>`
+            + _('Wild. Starting a new sweater it "floats" (no orientation) until a second card joins; its value & icon are chosen at round-end scoring.');
     }
-    const icon = face.icon ?? '?';
-    const slot = face.slot ?? '?';
-    return `<strong>${colour} ${face.value}</strong><br>Icon: ${icon}<br>Orientation: ${slot}`;
+    const icon = face.icon ? iconName(face.icon) : '?';
+    const slot = face.slot ? orientationName(face.slot) : '?';
+    return `<strong>${colour} ${face.value}</strong><br>${_('Icon:')} ${icon}<br>${_('Orientation:')} ${slot}`;
 }

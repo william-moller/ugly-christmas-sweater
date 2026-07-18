@@ -12,11 +12,6 @@ not of the code.
 
 ## Release-blocking (BGA pre-release checklist)
 
-- **Strings ready for translation** — checklist: "strings in your source code are ready for
-  translation". Every user-facing string wrapped (`_()` in PHP, `clienttranslate()` / `_()` in TS),
-  `CardView.ts::cardTooltip` and the round-parameter tooltips in `Game.ts` included. Worth doing as
-  one sweep *after* the layout work below, so new strings land already wrapped rather than being
-  swept twice. See also the colour-word gap under Rules gaps.
 - **Tooltip coverage sweep** — checklist: "non-self explanatory graphic elements should have tool
   tips". *Blocked on the playing-area layout work below:* which elements need explaining is defined
   by which zones exist, and a reworked zone throws the sweep away. While there, use BGA's tooltip
@@ -61,4 +56,10 @@ is the detail.
 - **Avid Secret Santa variant** — `modules/php/Game.php:449`. Deals 3 at game start; all must be
   completed or the player doesn't qualify for scoring. Also needs a `gameoptions.jsonc` entry — see
   the note at its line 70, which lists 2P/3P player-count tuning as outstanding too.
-- **Colour word is not translated in `cardLabel()`** — `modules/php/Game.php:694`.
+- **Colour word is not translated in `cardLabel()`** — `modules/php/Game.php:694`. The rest of the
+  translation-readiness sweep is done (client display strings wrapped, `Material` data marked with
+  `clienttranslate`, client translates data at display); this one case is left because the colour is
+  composed into a label server-side, so it renders English even for a translated client. Fixing it
+  means passing colour + value as separate notification args with an `i18n` key across the
+  cardPlayed / drafted / patch notifications (4 state files) and updating the log rendering — a
+  notification restructure with replay implications, not a wrap.
