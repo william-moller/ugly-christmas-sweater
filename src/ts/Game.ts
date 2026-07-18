@@ -152,7 +152,6 @@ export class Game {
                     <div class="ucs-player-header">
                         <span class="ucs-player-name">${mine ? _('Your Knitting Area') : player.name}</span>
                         <span class="ucs-bonus-card" id="ucs-bonus-${player.id}"></span>
-                        ${mine ? '' : `<div class="ucs-draw-pile ucs-oppo-pile" id="ucs-pile-${player.id}"></div>`}
                     </div>
                     <div class="ucs-knitting" id="ucs-knitting-${player.id}"></div>
                     ${mine ? '' : `<div class="ucs-oppo-summary" id="ucs-summary-${player.id}"></div>`}
@@ -384,16 +383,20 @@ export class Game {
     private gameplayPileEl(type: string, label: string, pile: GameplayPile | undefined): HTMLElement {
         const wrap = document.createElement('div');
         wrap.className = 'ucs-gp-pile';
-        wrap.innerHTML = `<div class="ucs-gp-label">${label}</div>`;
 
         const cards = document.createElement('div');
         cards.className = 'ucs-gp-cards';
 
-        // The face-down draw pile + how many cards remain — shown on the LEFT.
+        // The face-down draw pile + how many cards remain — shown on the LEFT. The deck's name is written
+        // OVER the pile back (not a separate label row above) to save vertical space.
         const deck = document.createElement('div');
         deck.className = 'ucs-gp-deck';
         const remaining = pile?.deckCount ?? 0;
-        deck.innerHTML = `<div class="ucs-card ucs-art2 ucs-gp-${type}-back ucs-gp-back ${remaining ? '' : 'ucs-gp-empty'}"></div>`
+        deck.innerHTML =
+            `<div class="ucs-gp-backwrap">`
+            + `<div class="ucs-card ucs-art2 ucs-gp-${type}-back ucs-gp-back ${remaining ? '' : 'ucs-gp-empty'}"></div>`
+            + `<div class="ucs-gp-label">${label}</div>`
+            + `</div>`
             + `<div class="ucs-gp-count">${remaining} left</div>`;
         cards.appendChild(deck);
 
@@ -564,59 +567,19 @@ export class Game {
     }
 
     /**
-     * Draw piles: my own (beside the hand, with a remaining count) and each opponent's (a face-down
-     * pile in their table header, no count). A pile shows a card-back while it holds cards and collapses
-     * to an empty slot once exhausted — it's also the origin element the refill animation slides from.
+     * My own draw pile (beside the hand, with a remaining count): a card-back while it holds cards, an
+     * empty slot once exhausted. Opponents no longer show a draw pile — it conveyed nothing useful.
      */
     private renderPiles() {
         const my = document.getElementById('ucs-my-pile');
-        if (my) {
-            // Coerce to a number: the pile count arrives from the PHP Deck component as a STRING
-            // ("0"), and a non-empty string is truthy — so an exhausted pile would otherwise fall into
-            // the card-back "0 left" branch instead of collapsing to empty.
-            const n = Number(this.gamedatas.counts?.[this.myId]?.pile ?? 0);
-            my.innerHTML = n
-                ? `<div class="ucs-pile-card ucs-card-back"></div><div class="ucs-pile-count">${n} ${_('left')}</div>`
-                : `<div class="ucs-pile-card ucs-pile-empty"></div><div class="ucs-pile-count ucs-pile-count-empty">${_('empty')}</div>`;
-        }
-        Object.values(this.gamedatas.players).forEach((p) => {
-            const pid = Number(p.id);
-            if (pid === this.myId) return;
-            const el = document.getElementById(`ucs-pile-${pid}`);
-            if (!el) return;
-            const n = Number(this.gamedatas.counts?.[pid]?.pile ?? 0); // string "0" is truthy — coerce
-            // No count text for opponents (per design) — just the pile presence; empty → collapse away.
-            el.innerHTML = n ? `<div class="ucs-pile-card ucs-card-back"></div>` : '';
-        });
-    }
-
-    /**
-     * A card-back "drawn" animation for an opponent: a face-down card flies from their draw pile to
-     * their BGA player panel (far right), signalling they refilled a card without revealing it. Purely
-     * decorative — a self-contained fixed-position transform, so it doesn't depend on stock/model state.
-     */
-    private animateOpponentDraw(pid: number) {
-        if (!this.bga.gameui.bgaAnimationsActive?.()) return;
-        const from = document.querySelector(`#ucs-pile-${pid} .ucs-pile-card`) as HTMLElement | null;
-        const to = document.getElementById(`overall_player_board_${pid}`)
-            ?? document.getElementById(`player_board_${pid}`);
-        if (!from || !to) return;
-        const a = from.getBoundingClientRect();
-        const b = to.getBoundingClientRect();
-        const ghost = document.createElement('div');
-        ghost.className = 'ucs-card-back ucs-draw-fly';
-        ghost.style.left = `${a.left}px`;
-        ghost.style.top = `${a.top}px`;
-        ghost.style.width = `${a.width}px`;
-        ghost.style.height = `${a.height}px`;
-        document.body.appendChild(ghost);
-        const dx = (b.left + b.width / 2) - (a.left + a.width / 2);
-        const dy = (b.top + b.height / 2) - (a.top + a.height / 2);
-        requestAnimationFrame(() => {
-            ghost.style.transform = `translate(${dx}px, ${dy}px) scale(0.35)`;
-            ghost.style.opacity = '0';
-        });
-        setTimeout(() => ghost.remove(), 650);
+        if (!my) return;
+        // Coerce to a number: the pile count arrives from the PHP Deck component as a STRING
+        // ("0"), and a non-empty string is truthy — so an exhausted pile would otherwise fall into
+        // the card-back "0 left" branch instead of collapsing to empty.
+        const n = Number(this.gamedatas.counts?.[this.myId]?.pile ?? 0);
+        my.innerHTML = n
+            ? `<div class="ucs-pile-card ucs-card-back"></div><div class="ucs-pile-count">${n} ${_('left')}</div>`
+            : `<div class="ucs-pile-card ucs-pile-empty"></div><div class="ucs-pile-count ucs-pile-count-empty">${_('empty')}</div>`;
     }
 
     /**
@@ -2071,15 +2034,6 @@ export class Game {
         args.pool.forEach((c) => (pool[Number(c.id)] = c));
         this.gamedatas.draftpool = pool;
         this.gamedatas.trick = {};
-        // For each opponent, the drop in pile count is how many cards they drew this refill — fly that
-        // many card-backs from their pile to their panel. (My own draw animates via notif_handUpdate.)
-        const before = this.gamedatas.counts ?? {};
-        Object.values(this.gamedatas.players).forEach((p) => {
-            const pid = Number(p.id);
-            if (pid === this.myId) return;
-            const drew = Math.max(0, (before[pid]?.pile ?? 0) - (args.counts[pid]?.pile ?? 0));
-            for (let i = 0; i < drew; i++) this.animateOpponentDraw(pid);
-        });
         this.gamedatas.counts = args.counts;
         this.renderDraftPool();
         this.renderTradeArea();

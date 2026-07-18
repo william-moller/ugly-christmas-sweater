@@ -806,24 +806,6 @@ html[data-theme=dark] {
   height: 73px;
 }
 
-.ucs-oppo-pile {
-  margin-left: auto;
-}
-
-.ucs-oppo-pile .ucs-pile-card {
-  width: 26px;
-  height: 37px;
-}
-
-.ucs-draw-fly {
-  position: fixed;
-  z-index: 2000;
-  border-radius: 4px;
-  pointer-events: none;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.5);
-  transition: transform 0.6s ease-in-out, opacity 0.6s ease-in-out;
-}
-
 .ucs-gameplay-row {
   display: flex;
   flex-direction: column;
@@ -842,6 +824,30 @@ html[data-theme=dark] {
   text-transform: uppercase;
   letter-spacing: 0.03em;
   opacity: 0.7;
+}
+
+.ucs-gp-backwrap {
+  position: relative;
+  display: inline-block;
+  line-height: 0;
+}
+
+.ucs-gp-backwrap .ucs-gp-label {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 2px;
+  line-height: 1.05;
+  letter-spacing: 0.02em;
+  opacity: 1;
+  color: #fff;
+  text-shadow: 0 1px 2px #000, 0 0 3px #000;
+  background: rgba(0, 0, 0, 0.38);
+  border-radius: 6px;
+  pointer-events: none;
 }
 
 .ucs-gp-cards {
@@ -1006,12 +1012,23 @@ html[data-theme=dark] {
 
 #ucs-secret-santa {
   grid-area: santa;
+  position: relative;
   --ucs-card-w: 128px;
   --ucs-card-h: 200px;
 }
 
 #ucs-my-area {
   grid-area: knit;
+  background: #3f7424;
+  border: 2px solid rgba(0, 0, 0, 0.3);
+  border-radius: 8px;
+  padding: 8px;
+}
+
+#ucs-gameplay,
+#ucs-secret-santa,
+#ucs-my-hand-wrap {
+  background: none;
 }
 
 #ucs-center-stack {
@@ -1423,6 +1440,10 @@ html[data-theme=dark] {
   background: #43d883;
 }
 
+#ucs-draft-pool,
+#ucs-trade-area {
+  position: relative;
+}
 #ucs-draft-pool .ucs-card-row,
 #ucs-trade-area .ucs-card-row {
   justify-content: center;
@@ -1437,7 +1458,9 @@ html[data-theme=dark] {
   width: calc(var(--ucs-players, 4) * var(--ucs-trade-slot) + (var(--ucs-players, 4) - 1) * 12px + 16px + 6px);
 }
 
-#ucs-trade-area .ucs-zone-label {
+#ucs-draft-pool .ucs-zone-label,
+#ucs-trade-area .ucs-zone-label,
+#ucs-secret-santa .ucs-zone-label {
   position: absolute;
   right: 100%;
   top: 0;

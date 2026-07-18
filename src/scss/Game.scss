@@ -414,23 +414,6 @@ html[data-theme="dark"] {
     width: 52px;
     height: 73px;
 }
-// Opponent pile: a small face-down card in the header, pushed to the right, no count text.
-.ucs-oppo-pile {
-    margin-left: auto;
-}
-.ucs-oppo-pile .ucs-pile-card {
-    width: 26px;
-    height: 37px;
-}
-// The decorative card-back that flies from an opponent's pile to their player panel on a refill.
-.ucs-draw-fly {
-    position: fixed;
-    z-index: 2000;
-    border-radius: 4px;
-    pointer-events: none;
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.5);
-    transition: transform 0.6s ease-in-out, opacity 0.6s ease-in-out;
-}
 
 // ---- Gameplay decks (Perfect Fit / Trendy Yarn / Fad — public round parameters) -----------------
 // Stacked vertically: the three parameters sit one above the other in the narrow left column.
@@ -450,6 +433,30 @@ html[data-theme="dark"] {
     text-transform: uppercase;
     letter-spacing: 0.03em;
     opacity: 0.7;
+}
+// A deck's name is written OVER its draw-pile back (rather than a label row above the pile) to save
+// vertical space. The wrap is the pile's positioning context; the label is a centred, legible overlay.
+.ucs-gp-backwrap {
+    position: relative;
+    display: inline-block;
+    line-height: 0; // no baseline gap under the card
+}
+.ucs-gp-backwrap .ucs-gp-label {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 2px;
+    line-height: 1.05;
+    letter-spacing: 0.02em;
+    opacity: 1;
+    color: #fff;
+    text-shadow: 0 1px 2px #000, 0 0 3px #000; // readable over the busy pile-back art
+    background: rgba(0, 0, 0, 0.38);
+    border-radius: 6px;
+    pointer-events: none;
 }
 .ucs-gp-cards {
     display: flex;
@@ -608,13 +615,30 @@ html[data-theme="dark"] {
 #ucs-gameplay { grid-area: params; }
 #ucs-secret-santa {
     grid-area: santa;
+    position: relative; // anchor for the vertical zone label sitting just outside the left edge
     // Bumped to 1.6x the base card so the objective art is readable without crowding the centre stack.
     // The card and its sprite both size off these vars (see .ucs-card / .ucs-art2), so the whole thing
     // scales, rotation included.
     --ucs-card-w: 128px;
     --ucs-card-h: 200px;
 }
-#ucs-my-area { grid-area: knit; } // takes the base card size; .ucs-knitting wraps builds across it
+#ucs-my-area {
+    grid-area: knit; // takes the base card size; .ucs-knitting wraps builds across it
+    // A slightly darker green than the box-cover table, framed, so my own Knitting Area reads as a
+    // distinct workspace rather than blending into the backdrop.
+    background: #3f7424;
+    border: 2px solid rgba(0, 0, 0, 0.3);
+    border-radius: 8px;
+    padding: 8px;
+}
+
+// These zones don't need their own raised panel — let the box-green table show through. Only the panel
+// fill is dropped; padding/position stay, so the components sit exactly where they did.
+#ucs-gameplay,
+#ucs-secret-santa,
+#ucs-my-hand-wrap {
+    background: none;
+}
 
 #ucs-center-stack {
     grid-area: center;
@@ -1030,6 +1054,7 @@ html[data-theme="dark"] {
 // gets a black frame to set it apart as the current trick's play space.
 #ucs-draft-pool,
 #ucs-trade-area {
+    position: relative; // anchor for the vertical zone label sitting just outside the left edge
     // Centre the card row within the zone so a partial pool/trick stays visually centred.
     .ucs-card-row {
         justify-content: center;
@@ -1051,9 +1076,12 @@ html[data-theme="dark"] {
         + 6px                                           // this border
     );
 }
-// The zone label lives OUTSIDE the frame, running up the left border (rotated 90°), so the owner
-// captions inside no longer collide with it.
-#ucs-trade-area .ucs-zone-label {
+// Zone labels live OUTSIDE their frame, running up the left edge (rotated 90°) instead of taking a row
+// of vertical space above the cards — saves height, and keeps the Trade Area's owner captions clear of
+// the label. Shared by the Draft Pool, Trade Area and Secret Santa zones.
+#ucs-draft-pool .ucs-zone-label,
+#ucs-trade-area .ucs-zone-label,
+#ucs-secret-santa .ucs-zone-label {
     position: absolute;
     right: 100%;          // to the left of the frame
     top: 0;
