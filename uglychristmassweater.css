@@ -1000,7 +1000,7 @@ html[data-theme=dark] {
 
 #ucs-upper {
   display: grid;
-  grid-template-columns: 210px auto minmax(0, 1fr) 210px;
+  grid-template-columns: auto auto minmax(0, 1fr) 210px;
   grid-template-areas: "params santa center oppo" "params knit  knit   knit";
   gap: 12px;
   align-items: start;
@@ -1008,6 +1008,8 @@ html[data-theme=dark] {
 
 #ucs-gameplay {
   grid-area: params;
+  --ucs-card-w: 128px;
+  --ucs-card-h: 200px;
 }
 
 #ucs-secret-santa {
@@ -1443,6 +1445,8 @@ html[data-theme=dark] {
 #ucs-draft-pool,
 #ucs-trade-area {
   position: relative;
+  --ucs-card-w: 128px;
+  --ucs-card-h: 200px;
 }
 #ucs-draft-pool .ucs-card-row,
 #ucs-trade-area .ucs-card-row {
@@ -1495,8 +1499,8 @@ html[data-theme=dark] {
 }
 
 #ucs-my-hand-wrap {
-  --ucs-card-w: 96px;
-  --ucs-card-h: 149px;
+  --ucs-card-w: 128px;
+  --ucs-card-h: 200px;
   position: relative;
   z-index: 100;
 }

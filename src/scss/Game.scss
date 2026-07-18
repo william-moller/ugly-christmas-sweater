@@ -603,7 +603,9 @@ html[data-theme="dark"] {
 // Santa is dealt, and it's why the centre stack doesn't land on the true page centre — see $side-col-w.
 #ucs-upper {
     display: grid;
-    grid-template-columns: $side-col-w auto minmax(0, 1fr) $side-col-w;
+    // params sizes to its content (the round-parameter cards are now large, so a fixed side-col-w would
+    // clip them into the santa track); santa is likewise auto; the centre stack takes the rest.
+    grid-template-columns: auto auto minmax(0, 1fr) $side-col-w;
     grid-template-areas:
         "params santa center oppo"
         "params knit  knit   knit";
@@ -612,7 +614,12 @@ html[data-theme="dark"] {
 }
 
 // Left column: the three round parameters, stacked one above the other, spanning both grid rows.
-#ucs-gameplay { grid-area: params; }
+#ucs-gameplay {
+    grid-area: params;
+    // Match the Secret Santa card size so the round-parameter cards read large and clear.
+    --ucs-card-w: 128px;
+    --ucs-card-h: 200px;
+}
 #ucs-secret-santa {
     grid-area: santa;
     position: relative; // anchor for the vertical zone label sitting just outside the left edge
@@ -1055,6 +1062,9 @@ html[data-theme="dark"] {
 #ucs-draft-pool,
 #ucs-trade-area {
     position: relative; // anchor for the vertical zone label sitting just outside the left edge
+    // Match the Secret Santa card size so pool / trade cards read large and clear.
+    --ucs-card-w: 128px;
+    --ucs-card-h: 200px;
     // Centre the card row within the zone so a partial pool/trick stays visually centred.
     .ucs-card-row {
         justify-content: center;
@@ -1125,8 +1135,9 @@ html[data-theme="dark"] {
 // Game.ts); match --ucs-card-w/h here so the inner face content (sized via calc off --ucs-card-w)
 // scales with the frame. The mobile breakpoint below scales the whole fan back down.
 #ucs-my-hand-wrap {
-    --ucs-card-w: 96px;
-    --ucs-card-h: 149px;
+    // Match the Secret Santa card size (kept in sync with the CardManager cardWidth/cardHeight in Game.ts).
+    --ucs-card-w: 128px;
+    --ucs-card-h: 200px;
     // Keep the (attached) hand painting above the tabletop zones where they overlap. The floating hand
     // is lifted separately via the HandStock `floatZIndex` option in Game.ts. Below the popin (z-1000).
     position: relative;
