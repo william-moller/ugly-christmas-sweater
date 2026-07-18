@@ -598,10 +598,11 @@ html[data-theme="dark"] {
 #ucs-gameplay { grid-area: params; }
 #ucs-secret-santa {
     grid-area: santa;
-    // Bumped to 2x the base card so the objective art is readable. The card and its sprite both size
-    // off these vars (see .ucs-card / .ucs-art2), so the whole thing scales, rotation included.
-    --ucs-card-w: 160px;
-    --ucs-card-h: 250px;
+    // Bumped to 1.6x the base card so the objective art is readable without crowding the centre stack.
+    // The card and its sprite both size off these vars (see .ucs-card / .ucs-art2), so the whole thing
+    // scales, rotation included.
+    --ucs-card-w: 128px;
+    --ucs-card-h: 200px;
 }
 #ucs-my-area { grid-area: knit; } // takes the base card size; .ucs-knitting wraps builds across it
 

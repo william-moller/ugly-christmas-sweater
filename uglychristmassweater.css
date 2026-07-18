@@ -972,8 +972,8 @@ html[data-theme=dark] {
 
 #ucs-secret-santa {
   grid-area: santa;
-  --ucs-card-w: 160px;
-  --ucs-card-h: 250px;
+  --ucs-card-w: 128px;
+  --ucs-card-h: 200px;
 }
 
 #ucs-my-area {
