@@ -21,6 +21,11 @@ not of the code.
   tips". *Blocked on the playing-area layout work below:* which elements need explaining is defined
   by which zones exist, and a reworked zone throws the sweep away. While there, use BGA's tooltip
   system for the draw pile rather than a native `title=` attribute (`src/ts/Game.ts:129`).
+- **Help text on the special cards, via a hover icon** — Perfect Fit, Trendy Yarn, Fads and Secret
+  Santa each get a small "?" (or ⓘ) affordance that reveals what the card does on hover. Distinct
+  from the coverage sweep above: those cards already have plain tooltips, but a visible icon signals
+  "there's help here" rather than relying on the player discovering the hover. Rules text lives in
+  `.claude/game-rules.md`; wrap the strings (see the translation item above).
 - **Responsive / mobile** — checklist: the game must work on a mobile device. Related checklist
   line: if elements don't occupy all available horizontal space, they should be centered.
 - **Statistics** — checklist wants meaningful stats. *Open question:* which ones beyond the five

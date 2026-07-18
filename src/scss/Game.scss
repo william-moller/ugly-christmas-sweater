@@ -596,7 +596,13 @@ html[data-theme="dark"] {
 
 // Left column: the three round parameters, stacked one above the other, spanning both grid rows.
 #ucs-gameplay { grid-area: params; }
-#ucs-secret-santa { grid-area: santa; }
+#ucs-secret-santa {
+    grid-area: santa;
+    // Bumped to 2x the base card so the objective art is readable. The card and its sprite both size
+    // off these vars (see .ucs-card / .ucs-art2), so the whole thing scales, rotation included.
+    --ucs-card-w: 160px;
+    --ucs-card-h: 250px;
+}
 #ucs-my-area { grid-area: knit; } // takes the base card size; .ucs-knitting wraps builds across it
 
 #ucs-center-stack {
@@ -1007,14 +1013,20 @@ html[data-theme="dark"] {
 }
 
 // A Trade Area card captioned with who played it this trick (label not carried into the pool).
+// The wrapper is exactly card-width (the owner caption is taken out of flow, below) so a Trade Area
+// card occupies the same horizontal span as a Draft Pool card. Both rows are centred in
+// #ucs-center-stack, so a collected card sits directly below its pool spot and slides straight up.
 .ucs-trade-card {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 3px;
+    position: relative;
+    width: var(--ucs-card-w);
 }
 
 .ucs-trade-owner {
+    position: absolute;
+    bottom: 100%; // caption floats just above the card, out of the flow that sets wrapper width
+    left: 50%;
+    transform: translateX(-50%);
+    margin-bottom: 3px;
     max-width: calc(var(--ucs-card-w) + 12px);
     font-size: 11px;
     font-weight: 700;

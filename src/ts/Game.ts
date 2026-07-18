@@ -69,6 +69,11 @@ export class Game {
     private draftOrderCardIds: number[] = [];
     private draftOrderMode: 'idle' | 'dealt' = 'idle';
 
+    // Left-to-right order the Draft Pool should render in, so cards collected from the Trade Area keep
+    // their trade positions and slide straight up (the server nulls trick_order on the way to the pool,
+    // so there's no ordering key left in the data — see notif_trickCleanup). Null = fall back to slot.
+    private poolRenderOrder: number[] | null = null;
+
     // Monotonic counter for assigning ids to gameplay-card elements (so tooltips can attach).
     private gpSeq = 0;
 
@@ -273,6 +278,21 @@ export class Game {
         return map ? Object.values(map) : [];
     }
 
+    /**
+     * Draft Pool cards in the order they should render. After a trick collect, poolRenderOrder holds the
+     * Trade Area's left-to-right order so cards keep their spots and slide straight up; otherwise (a
+     * freshly dealt or carried-over pool) fall back to the draft slot (location_arg). Cards absent from
+     * poolRenderOrder (shouldn't happen mid-trick) sort after the ordered ones, by slot.
+     */
+    private poolCardsInDisplayOrder(): SweaterCard[] {
+        const order = this.poolRenderOrder;
+        const rank = (c: SweaterCard): number => {
+            const i = order ? order.indexOf(Number(c.id)) : -1;
+            return i >= 0 ? i : 1000 + Number(c.location_arg);
+        };
+        return this.cardArray(this.gamedatas.draftpool).sort((a, b) => rank(a) - rank(b));
+    }
+
     private renderAll() {
         this.renderGameplay();
         this.renderSecretSanta();
@@ -428,7 +448,7 @@ export class Game {
         // While leading with a patch, the numbered pool cards are clickable copy sources (a patch can't
         // copy another patch). Otherwise, during the Draft phase they're clickable draft picks.
         const copying = this.patchCopyPatchId != null;
-        this.cardArray(this.gamedatas.draftpool).forEach((card) => {
+        this.poolCardsInDisplayOrder().forEach((card) => {
             const el = createCardElement(card, this.material);
             this.attachTooltip(el, card);
             if (copying) {
@@ -1997,6 +2017,11 @@ export class Game {
             const el = document.getElementById(`ucs-card-${c.id}`);
             if (el) oldRects[Number(c.id)] = el.getBoundingClientRect();
         });
+        // Render the new pool in the Trade Area's left-to-right order, so each card lands directly below
+        // where it sat and the FLIP below is a straight vertical slide (the server dropped trick_order).
+        this.poolRenderOrder = Object.keys(oldRects)
+            .map(Number)
+            .sort((a, b) => oldRects[a].left - oldRects[b].left);
 
         const pool: CardMapT = {};
         args.pool.forEach((c) => (pool[Number(c.id)] = c));
@@ -2098,6 +2123,7 @@ export class Game {
         this.gamedatas.roundNo = args.round;
         this.gamedatas.leaderId = args.leaderId;
         this.gamedatas.draftOrderCards = [];
+        this.poolRenderOrder = null; // carry-over pool: order by draft slot, not the last trick's layout
         this.showHandEndBanner(false);
         this.hideDraftOrder();
         this.renderAll();
