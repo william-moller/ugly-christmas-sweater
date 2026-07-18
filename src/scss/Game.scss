@@ -45,6 +45,7 @@
 @use "sass:list";
 @use "sweater-sprites"; // GENERATED per-card sprite face classes (scripts/build-sprites.mjs)
 @use "secondary-sprites"; // GENERATED Stage-2 card faces (scripts/build-secondary-sprites.mjs)
+@use "icon-sprites"; // GENERATED sweater-icon art classes (scripts/build-icons.mjs)
 
 $card-w: 80px;
 $card-h: 125px; // bridge-card ratio 0.643 (675x1050 after bleed trim); every --ucs-card-h below is w * 1.556
@@ -341,8 +342,8 @@ html[data-theme="dark"] {
     gap: calc(var(--ucs-card-w) * 0.06);
     padding: calc(var(--ucs-card-w) * 0.06) calc(var(--ucs-card-w) * 0.11);
     border-radius: calc(var(--ucs-card-w) * 0.12);
-    background: rgba(24, 24, 24, 0.82);
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.5);
+    background: rgba(248, 244, 236, 0.94); // light chip: the real icon art has near-white detail that
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.45); // greys on dark, so show it on a light surface
     z-index: 2;
     pointer-events: none;
     line-height: 1;
@@ -350,10 +351,10 @@ html[data-theme="dark"] {
 .ucs-wild-value {
     font-size: calc(var(--ucs-card-w) * 0.42);
     font-weight: 800;
-    color: #fff;
+    color: #1a1a1a;
 }
 .ucs-wild-icon {
-    font-size: calc(var(--ucs-card-w) * 0.40);
+    --ucs-icon-size: calc(var(--ucs-card-w) * 0.46);
 }
 
 .ucs-card-back {
@@ -986,13 +987,24 @@ html[data-theme="dark"] {
 }
 .ucs-assign-opt:hover { background: #5c5c5c; }
 .ucs-assign-opt.ucs-assign-icon {
-    font-size: 18px;
     min-width: 34px;
+    padding: 2px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: #f2ede0; // light so the real icon art (near-white detail) reads cleanly
+    border-color: #c9bfa8;
+    .ucs-icon { --ucs-icon-size: 24px; }
 }
 .ucs-assign-opt.ucs-assign-chosen {
     background: #2ecc71;
     border-color: #27ae60;
     color: #06240f;
+}
+// Icon buttons stay light when chosen (their art greys on a saturated fill); show selection with a ring.
+.ucs-assign-opt.ucs-assign-icon.ucs-assign-chosen {
+    background: #dff5e6;
+    box-shadow: 0 0 0 2px #2ecc71 inset;
 }
 .ucs-assign-confirm {
     margin-top: 2px;

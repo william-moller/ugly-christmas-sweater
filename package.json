@@ -7,6 +7,7 @@
       "build:ts": "rollup -c",
       "build:scss": "sass --no-source-map src/scss/Game.scss uglychristmassweater.css",
       "build:sprites": "node scripts/build-sprites.mjs && node scripts/build-secondary-sprites.mjs",
+      "build:icons": "node scripts/build-icons.mjs",
       "clean:remote": "node scripts/clean-remote.mjs",
       "deploy": "node scripts/deploy.mjs",
       "ship": "npm run build && npm run deploy -- --yes",

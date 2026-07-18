@@ -8,19 +8,6 @@
  * game log chips, and for pickers/read-outs.
  */
 
-/** Unicode glyphs for the four icons (patch wild-badge, log chips, pickers). */
-const ICON_GLYPH: { [icon: string]: string } = {
-    snowman: '☃',     // ☃
-    candycane: '\u{1F36C}', // 🍬
-    bell: '\u{1F514}',     // 🔔
-    tree: '\u{1F384}',     // 🎄
-};
-
-/** Glyph for an icon name (falls back to the raw name if unknown) — used by pickers/read-outs. */
-export function iconGlyph(icon: string): string {
-    return ICON_GLYPH[icon] ?? icon;
-}
-
 // Translated display names for the data-driven colour / icon / orientation values. Each `_()` call
 // takes a literal so BGA's translation scanner picks it up; the lookup runs at render time. Falls
 // back to the raw value for anything unexpected. These are the single source of truth for turning a
@@ -88,10 +75,9 @@ export function cardFaceInner(card: SweaterCard, material: UcsMaterial): string 
     if (wildValue == null && wildIcon == null) return ''; // unresolved patch — art's own "?" suffices
 
     const valueLabel = wildValue != null ? String(wildValue) : '';
-    const iconLabel = wildIcon ? (ICON_GLYPH[wildIcon] ?? wildIcon) : '';
     return `<div class="ucs-wild-badge">`
         + `<span class="ucs-wild-value">${valueLabel}</span>`
-        + (iconLabel ? `<span class="ucs-wild-icon">${iconLabel}</span>` : '')
+        + (wildIcon ? `<span class="ucs-icon ucs-icon-${wildIcon} ucs-wild-icon"></span>` : '')
         + `</div>`;
 }
 

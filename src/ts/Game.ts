@@ -4,7 +4,7 @@ import { RoundReview } from "./States/RoundReview";
 import { AssignPatches } from "./States/AssignPatches";
 import { BillyChoice } from "./States/BillyChoice";
 import { TinaTink } from "./States/TinaTink";
-import { createCardElement, cardTooltip, cardLogChip, faceOf, isPatch, cardFaceInner, faceSpriteClass, iconGlyph, colourName } from "./CardView";
+import { createCardElement, cardTooltip, cardLogChip, faceOf, isPatch, cardFaceInner, faceSpriteClass, colourName } from "./CardView";
 import { BgaAnimations, BgaCards } from "./libs";
 
 type CardMapT = { [cardId: number]: SweaterCard };
@@ -1743,7 +1743,7 @@ export class Game {
         this.material.icons.forEach((ic) => {
             const b = document.createElement('button');
             b.className = 'ucs-assign-opt ucs-assign-icon' + (sel.icon === ic ? ' ucs-assign-chosen' : '');
-            b.innerHTML = iconGlyph(ic);
+            b.innerHTML = `<span class="ucs-icon ucs-icon-${ic}"></span>`;
             b.title = ic;
             b.onclick = () => { sel.icon = ic; this.renderKnitting(this.myId); };
             iconRow.appendChild(b);
