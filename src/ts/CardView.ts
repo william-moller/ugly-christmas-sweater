@@ -39,6 +39,56 @@ export function orientationName(slot: string): string {
     }
 }
 
+// VP values shown in the round-parameter / Secret Santa tooltips. These mirror Material.php
+// (VP_FAD, VP_SECRET_SANTA); the client is never sent the scoring constants, so keep them in sync
+// by hand if the PHP values change.
+const VP_FAD = 3;
+const VP_SECRET_SANTA = 3;
+
+/**
+ * HTML tooltip for a Fad round-parameter card: its printed title plus the concrete scoring every player
+ * can earn this round. `fad` is a Material::fads() entry — either { title, objectives:[{match,value}×2] }
+ * (one colour + one icon objective, each scored independently) or { title, clash:true } (the "Clash Is In"
+ * card, which instead scores an all-different sweater).
+ */
+export function fadTooltip(fad: any): string {
+    const title = fad?.title ? _(fad.title) : _('Fad');
+    let lines: string;
+    if (fad?.clash) {
+        lines = `<li>${_('Three pieces all different colours and all different icons')} — <b>+${VP_FAD} ${_('VP')}</b></li>`;
+    } else {
+        lines = (fad?.objectives ?? []).map((o: any) => {
+            // colourName/iconName are the single source of truth for the player-facing value text.
+            const what = o.match === 'icon'
+                ? `${_('All')} ${iconName(o.value)} ${_('icons')}`
+                : `${_('All')} ${colourName(o.value)}`;
+            return `<li>${what} — <b>+${VP_FAD} ${_('VP')}</b></li>`;
+        }).join('');
+    }
+    const note = fad?.clash ? '' : `<div class="ucs-tt-note">${_('A single sweater can score both.')}</div>`;
+    return `<div class="ucs-tt"><strong>${title}</strong>`
+        + `<div class="ucs-tt-sub">${_('Fad — each player scores this round for a completed sweater:')}</div>`
+        + `<ul class="ucs-tt-list">${lines}</ul>${note}</div>`;
+}
+
+/**
+ * HTML tooltip for a Secret Santa objective: the family member's name plus the three pieces the completed
+ * sweater must cover. `ss` is a Material::secretSantas() entry — { name, needs:['<color|icon>:<value>'×3] };
+ * each piece counts toward EITHER its colour or its icon (orientation ignored), so the needs are shown as
+ * a plain checklist.
+ */
+export function secretSantaTooltip(ss: any): string {
+    const name = ss?.name ? _(ss.name) : _('Secret Santa');
+    const needs = (ss?.needs ?? []).map((n: string) => {
+        const [kind, value] = String(n).split(':');
+        return `<li>${kind === 'icon' ? iconName(value) : colourName(value)}</li>`;
+    }).join('');
+    return `<div class="ucs-tt"><strong>${name}</strong>`
+        + `<div class="ucs-tt-sub">${_('Your private objective — complete a sweater covering all three:')}</div>`
+        + `<ul class="ucs-tt-list">${needs}</ul>`
+        + `<div class="ucs-tt-note">${_('Worth')} <b>+${VP_SECRET_SANTA} ${_('VP')}</b> ${_('when satisfied.')}</div></div>`;
+}
+
 /** Resolve a card row to its static face via the material map. */
 export function faceOf(card: SweaterCard, material: UcsMaterial): CardFace {
     const key = `${card.type}_${card.type_arg}`;

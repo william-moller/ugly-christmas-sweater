@@ -1891,3 +1891,27 @@ table.ucs-scorepad th, table.ucs-scorepad td {
   background-color: #5c1414;
   transform: rotate(90deg);
 }
+
+.ucs-tt {
+  max-width: 15rem;
+}
+.ucs-tt strong {
+  display: block;
+  margin-bottom: 3px;
+}
+.ucs-tt .ucs-tt-sub {
+  font-size: 0.85em;
+  opacity: 0.85;
+}
+.ucs-tt .ucs-tt-list {
+  margin: 4px 0 0;
+  padding-left: 1.1em;
+}
+.ucs-tt .ucs-tt-list li {
+  margin: 1px 0;
+}
+.ucs-tt .ucs-tt-note {
+  margin-top: 4px;
+  font-size: 0.85em;
+  opacity: 0.85;
+}

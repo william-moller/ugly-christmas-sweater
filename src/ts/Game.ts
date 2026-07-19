@@ -4,7 +4,7 @@ import { RoundReview } from "./States/RoundReview";
 import { AssignPatches } from "./States/AssignPatches";
 import { BillyChoice } from "./States/BillyChoice";
 import { TinaTink } from "./States/TinaTink";
-import { createCardElement, cardTooltip, cardLogChip, faceOf, isPatch, cardFaceInner, faceSpriteClass, colourName } from "./CardView";
+import { createCardElement, cardTooltip, cardLogChip, faceOf, isPatch, cardFaceInner, faceSpriteClass, colourName, fadTooltip, secretSantaTooltip } from "./CardView";
 import { BgaAnimations, BgaCards } from "./libs";
 
 type CardMapT = { [cardId: number]: SweaterCard };
@@ -322,9 +322,9 @@ export class Game {
             const el = document.createElement('div');
             el.className = `ucs-card ucs-santa-card ucs-art2 ucs-santa-${arg}`;
             el.id = `ucs-santa-el-${arg}`;
-            // ss.name is marked with clienttranslate server-side (Material::secretSantas); translate it
-            // for display here. Same pattern for the Fad title and Bonus card name/text below.
-            (this.bga.gameui as any).addTooltipHtml?.(el.id, `<b>${ss?.name ? _(ss.name) : _('Secret Santa')}</b><br>${_('Build a completed sweater matching this request for +3 VP.')}`);
+            // secretSantaTooltip translates the (clienttranslate-marked) name and lists the 3 required
+            // pieces; deferred via addTip since el is appended below, after this call.
+            this.addTip(el.id, secretSantaTooltip(ss));
             slot.appendChild(el);
             row.appendChild(slot);
         });
@@ -425,16 +425,15 @@ export class Game {
         el.classList.add('ucs-art2');
         if (type === 'perfectfit') {
             el.classList.add(`ucs-gp-perfectfit-${arg}`);
-            (this.bga.gameui as any).addTooltipHtml?.(this.gpId(el), `<strong>${_('Perfect Fit')} ${arg}</strong><br>${_('Cards of this value are the super-trump this round.')}`);
+            this.addTip(this.gpId(el), `<strong>${_('Perfect Fit')} ${arg}</strong><br>${_('Cards of this value are the super-trump this round.')}`);
         } else if (type === 'trendyyarn') {
             const color = this.material.colors[arg] ?? String(arg);
             el.classList.add(`ucs-gp-trendyyarn-${color}`);
-            (this.bga.gameui as any).addTooltipHtml?.(this.gpId(el), `<strong>${_('Trendy Yarn')}: ${colourName(color)}</strong><br>${_('This colour is the trump colour this round.')}`);
+            this.addTip(this.gpId(el), `<strong>${_('Trendy Yarn')}: ${colourName(color)}</strong><br>${_('This colour is the trump colour this round.')}`);
         } else {
             const fad = this.material.fads[arg];
-            const title = fad?.title ? _(fad.title) : `${_('Fad')} ${arg}`;
             el.classList.add('ucs-gp-fad', `ucs-gp-fad-${arg}`); // ucs-gp-fad = styling/hook; -${arg} = sprite face
-            (this.bga.gameui as any).addTooltipHtml?.(this.gpId(el), `<strong>${title}</strong><br>${_('Round scoring bonus (applies to all players).')}`);
+            this.addTip(this.gpId(el), fadTooltip(fad));
         }
         return el;
     }
@@ -443,6 +442,22 @@ export class Game {
     private gpId(el: HTMLElement): string {
         if (!el.id) el.id = `ucs-gp-${++this.gpSeq}`;
         return el.id;
+    }
+
+    /**
+     * Attach an HTML tooltip to an element by id, DOM-safely. BGA's addTooltipHtml binds its hover
+     * handler to the element *at call time*, so attaching to a not-yet-appended node silently never
+     * fires (the card renders, but hovering shows nothing). Our zones build their cards detached and
+     * append them later within the same synchronous render, so we defer the attach to the next frame —
+     * by which point the element is in the live DOM — guarding in case it was removed/replaced meanwhile.
+     * (Hand cards go through bga-cards' stock, which appends before attaching, so they never needed this.)
+     */
+    private addTip(id: string, html: string) {
+        if (!id) return;
+        const gameui = this.bga.gameui as any;
+        requestAnimationFrame(() => {
+            if (document.getElementById(id)) gameui.addTooltipHtml?.(id, html);
+        });
     }
 
     private renderDraftPool() {
@@ -1109,8 +1124,9 @@ export class Game {
     }
 
     private attachTooltip(el: HTMLElement, card: SweaterCard) {
-        // gameui.addTooltipHtml works on an element id; ours are unique (ucs-card-<id>).
-        (this.bga.gameui as any).addTooltipHtml?.(el.id, cardTooltip(card, this.material));
+        // gameui.addTooltipHtml works on an element id; ours are unique (ucs-card-<id>). Deferred via
+        // addTip because callers build the card detached and append it after this call (see addTip).
+        this.addTip(el.id, cardTooltip(card, this.material));
     }
 
     // ===================================================================================

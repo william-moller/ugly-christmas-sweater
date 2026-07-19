@@ -191,6 +191,54 @@ function orientationName(slot) {
         default: return slot;
     }
 }
+// VP values shown in the round-parameter / Secret Santa tooltips. These mirror Material.php
+// (VP_FAD, VP_SECRET_SANTA); the client is never sent the scoring constants, so keep them in sync
+// by hand if the PHP values change.
+const VP_FAD = 3;
+const VP_SECRET_SANTA = 3;
+/**
+ * HTML tooltip for a Fad round-parameter card: its printed title plus the concrete scoring every player
+ * can earn this round. `fad` is a Material::fads() entry — either { title, objectives:[{match,value}×2] }
+ * (one colour + one icon objective, each scored independently) or { title, clash:true } (the "Clash Is In"
+ * card, which instead scores an all-different sweater).
+ */
+function fadTooltip(fad) {
+    const title = fad?.title ? _(fad.title) : _('Fad');
+    let lines;
+    if (fad?.clash) {
+        lines = `<li>${_('Three pieces all different colours and all different icons')} — <b>+${VP_FAD} ${_('VP')}</b></li>`;
+    }
+    else {
+        lines = (fad?.objectives ?? []).map((o) => {
+            // colourName/iconName are the single source of truth for the player-facing value text.
+            const what = o.match === 'icon'
+                ? `${_('All')} ${iconName(o.value)} ${_('icons')}`
+                : `${_('All')} ${colourName(o.value)}`;
+            return `<li>${what} — <b>+${VP_FAD} ${_('VP')}</b></li>`;
+        }).join('');
+    }
+    const note = fad?.clash ? '' : `<div class="ucs-tt-note">${_('A single sweater can score both.')}</div>`;
+    return `<div class="ucs-tt"><strong>${title}</strong>`
+        + `<div class="ucs-tt-sub">${_('Fad — each player scores this round for a completed sweater:')}</div>`
+        + `<ul class="ucs-tt-list">${lines}</ul>${note}</div>`;
+}
+/**
+ * HTML tooltip for a Secret Santa objective: the family member's name plus the three pieces the completed
+ * sweater must cover. `ss` is a Material::secretSantas() entry — { name, needs:['<color|icon>:<value>'×3] };
+ * each piece counts toward EITHER its colour or its icon (orientation ignored), so the needs are shown as
+ * a plain checklist.
+ */
+function secretSantaTooltip(ss) {
+    const name = ss?.name ? _(ss.name) : _('Secret Santa');
+    const needs = (ss?.needs ?? []).map((n) => {
+        const [kind, value] = String(n).split(':');
+        return `<li>${kind === 'icon' ? iconName(value) : colourName(value)}</li>`;
+    }).join('');
+    return `<div class="ucs-tt"><strong>${name}</strong>`
+        + `<div class="ucs-tt-sub">${_('Your private objective — complete a sweater covering all three:')}</div>`
+        + `<ul class="ucs-tt-list">${needs}</ul>`
+        + `<div class="ucs-tt-note">${_('Worth')} <b>+${VP_SECRET_SANTA} ${_('VP')}</b> ${_('when satisfied.')}</div></div>`;
+}
 /** Resolve a card row to its static face via the material map. */
 function faceOf(card, material) {
     const key = `${card.type}_${card.type_arg}`;
@@ -592,9 +640,9 @@ class Game {
             const el = document.createElement('div');
             el.className = `ucs-card ucs-santa-card ucs-art2 ucs-santa-${arg}`;
             el.id = `ucs-santa-el-${arg}`;
-            // ss.name is marked with clienttranslate server-side (Material::secretSantas); translate it
-            // for display here. Same pattern for the Fad title and Bonus card name/text below.
-            this.bga.gameui.addTooltipHtml?.(el.id, `<b>${ss?.name ? _(ss.name) : _('Secret Santa')}</b><br>${_('Build a completed sweater matching this request for +3 VP.')}`);
+            // secretSantaTooltip translates the (clienttranslate-marked) name and lists the 3 required
+            // pieces; deferred via addTip since el is appended below, after this call.
+            this.addTip(el.id, secretSantaTooltip(ss));
             slot.appendChild(el);
             row.appendChild(slot);
         });
@@ -688,18 +736,17 @@ class Game {
         el.classList.add('ucs-art2');
         if (type === 'perfectfit') {
             el.classList.add(`ucs-gp-perfectfit-${arg}`);
-            this.bga.gameui.addTooltipHtml?.(this.gpId(el), `<strong>${_('Perfect Fit')} ${arg}</strong><br>${_('Cards of this value are the super-trump this round.')}`);
+            this.addTip(this.gpId(el), `<strong>${_('Perfect Fit')} ${arg}</strong><br>${_('Cards of this value are the super-trump this round.')}`);
         }
         else if (type === 'trendyyarn') {
             const color = this.material.colors[arg] ?? String(arg);
             el.classList.add(`ucs-gp-trendyyarn-${color}`);
-            this.bga.gameui.addTooltipHtml?.(this.gpId(el), `<strong>${_('Trendy Yarn')}: ${colourName(color)}</strong><br>${_('This colour is the trump colour this round.')}`);
+            this.addTip(this.gpId(el), `<strong>${_('Trendy Yarn')}: ${colourName(color)}</strong><br>${_('This colour is the trump colour this round.')}`);
         }
         else {
             const fad = this.material.fads[arg];
-            const title = fad?.title ? _(fad.title) : `${_('Fad')} ${arg}`;
             el.classList.add('ucs-gp-fad', `ucs-gp-fad-${arg}`); // ucs-gp-fad = styling/hook; -${arg} = sprite face
-            this.bga.gameui.addTooltipHtml?.(this.gpId(el), `<strong>${title}</strong><br>${_('Round scoring bonus (applies to all players).')}`);
+            this.addTip(this.gpId(el), fadTooltip(fad));
         }
         return el;
     }
@@ -708,6 +755,23 @@ class Game {
         if (!el.id)
             el.id = `ucs-gp-${++this.gpSeq}`;
         return el.id;
+    }
+    /**
+     * Attach an HTML tooltip to an element by id, DOM-safely. BGA's addTooltipHtml binds its hover
+     * handler to the element *at call time*, so attaching to a not-yet-appended node silently never
+     * fires (the card renders, but hovering shows nothing). Our zones build their cards detached and
+     * append them later within the same synchronous render, so we defer the attach to the next frame —
+     * by which point the element is in the live DOM — guarding in case it was removed/replaced meanwhile.
+     * (Hand cards go through bga-cards' stock, which appends before attaching, so they never needed this.)
+     */
+    addTip(id, html) {
+        if (!id)
+            return;
+        const gameui = this.bga.gameui;
+        requestAnimationFrame(() => {
+            if (document.getElementById(id))
+                gameui.addTooltipHtml?.(id, html);
+        });
     }
     renderDraftPool() {
         const zone = document.getElementById('ucs-draft-pool');
@@ -1367,8 +1431,9 @@ class Game {
         return Number(a.type_arg) - Number(b.type_arg);
     }
     attachTooltip(el, card) {
-        // gameui.addTooltipHtml works on an element id; ours are unique (ucs-card-<id>).
-        this.bga.gameui.addTooltipHtml?.(el.id, cardTooltip(card, this.material));
+        // gameui.addTooltipHtml works on an element id; ours are unique (ucs-card-<id>). Deferred via
+        // addTip because callers build the card detached and append it after this call (see addTip).
+        this.addTip(el.id, cardTooltip(card, this.material));
     }
     // ===================================================================================
     //  Selection API — called by the PlayCard / DraftCard state handlers
