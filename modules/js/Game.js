@@ -311,16 +311,40 @@ function cardLogChip(card, material) {
     const face = faceOf(card, material);
     const color = face?.color ?? String(card.type);
     const wildValue = card.wildValue != null && card.wildValue !== '' ? Number(card.wildValue) : null;
+    // Native `title` tooltip: log HTML is injected by the framework (main log + replay/chat log) with no
+    // live node we could addTooltipHtml onto, so a plain-text title is the robust way to make the chip
+    // hoverable. Escaped for the attribute; our label strings never contain quotes, but be defensive.
+    const t = ` title="${cardLogTitle(card, material).replace(/"/g, '&quot;')}"`;
     if (face?.patch) {
-        const patchChip = `<span class="ucs-log-card ucs-log-patch ucs-color-${color}">★</span>`;
+        const patchChip = `<span class="ucs-log-card ucs-log-patch ucs-color-${color}"${t}>★</span>`;
         if (wildValue != null) {
-            const valueChip = `<span class="ucs-log-card ucs-color-${color}">${wildValue}</span>`;
+            const valueChip = `<span class="ucs-log-card ucs-color-${color}"${t}>${wildValue}</span>`;
             return `${patchChip} ${_('as')} ${valueChip}`;
         }
         return patchChip;
     }
     const valueLabel = wildValue != null ? String(wildValue) : String(face?.value ?? '?');
-    return `<span class="ucs-log-card ucs-color-${color}">${valueLabel}</span>`;
+    return `<span class="ucs-log-card ucs-color-${color}"${t}>${valueLabel}</span>`;
+}
+/**
+ * Plain-text description of a card for a log chip's native `title` tooltip (colour + value · icon ·
+ * orientation; a patch reads as its wild identity). Kept plain — unlike the BGA HTML tooltips elsewhere —
+ * because the framework injects log HTML with no node we can bind gameui.addTooltipHtml to.
+ */
+function cardLogTitle(card, material) {
+    const face = faceOf(card, material);
+    const colour = colourName(face?.color ?? String(card.type));
+    const wildValue = card.wildValue != null && card.wildValue !== '' ? Number(card.wildValue) : null;
+    if (face?.patch) {
+        const base = `${colour} ${_('Patch')} (${_('wild')})`;
+        return wildValue != null ? `${base} ${_('as')} ${wildValue}` : base;
+    }
+    const parts = [`${colour} ${wildValue != null ? wildValue : (face?.value ?? '?')}`];
+    if (face?.icon)
+        parts.push(iconName(face.icon));
+    if (face?.slot)
+        parts.push(orientationName(face.slot));
+    return parts.join(' · ');
 }
 /** A face-down placeholder (e.g. opponents' hand backs). */
 function createCardBack() {
