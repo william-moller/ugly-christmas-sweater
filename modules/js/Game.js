@@ -387,6 +387,11 @@ class Game {
         this.playableIds = [];
         this.onPlay = null;
         this.selectedPlayId = null;
+        // The played card's on-screen rect captured at Confirm time (keyed by card id), so the trade-area
+        // flight launches from exactly where the card sat when the user acted. Capturing later (in
+        // notif_cardPlayed) is too late: by then disablePlayable has run and the floating hand has toggled
+        // back to attached, moving the card — the flight would start from a stale, wrong spot.
+        this.playFromRect = {};
         // Leading with a patch: the patch card awaiting a copy source, and the pool card chosen to copy.
         // While patchCopyPatchId is set, the numbered Draft Pool cards render as clickable copy options
         // (in parallel with the action-bar buttons in renderPatchCopyPanel). null = not choosing a copy.
@@ -1004,6 +1009,21 @@ class Game {
             }, durationSec * 1000 + 60);
         });
     }
+    /**
+     * The on-screen rect of a card in my hand fan, via the stock's own element lookup. We must NOT build
+     * the id ourselves: bga-cards prefixes every card element with the manager `type`, so the real id is
+     * `ucs-sweater-ucs-hand-<id>` (and the front face `…-front`), not the `ucs-hand-<id>` our getId
+     * returns. getCardElement hides that. Returns null if the card isn't in the stock.
+     */
+    handCardRect(card) {
+        try {
+            const el = this.handStock?.getCardElement?.(card);
+            return el ? el.getBoundingClientRect() : null;
+        }
+        catch {
+            return null;
+        }
+    }
     /** A card-sized source rect centred on a host element (used to launch a card out of a player panel). */
     cardRectAtCenter(host, w, h) {
         const r = host.getBoundingClientRect();
@@ -1543,6 +1563,12 @@ class Game {
         this.selectedPlayId = cardId; // the stock keeps the pending card highlighted while confirming
         this.confirmAction(() => {
             const cb = this.onPlay;
+            // Snapshot where the card sits RIGHT NOW — still in the hand, exactly where the user
+            // sees it — so notif_cardPlayed can fly the trade card in from here (see playFromRect).
+            const card = this.gamedatas.hand[cardId];
+            const rect = card ? this.handCardRect(card) : null;
+            if (rect)
+                this.playFromRect[cardId] = rect;
             this.selectedPlayId = null;
             this.hidePanel();
             cb && cb(cardId, copyFromCardId);
@@ -2290,10 +2316,19 @@ class Game {
     async notif_cardPlayed(args) {
         const id = Number(args.card_id);
         const mine = Number(args.player_id) === this.myId;
-        // Capture where the card starts BEFORE any DOM changes: my own play launches from its card in
-        // the hand fan; an opponent's play launches from their on-table player panel on the right.
-        const handEl = mine ? document.getElementById(`ucs-hand-${id}-front`) : null;
-        const fromMine = handEl ? handEl.getBoundingClientRect() : null;
+        // Where the card starts: my own play launches from its card in the hand fan; an opponent's play
+        // launches from their on-table player panel on the right. For my play we use the rect captured
+        // at Confirm time (playFromRect) — the card was exactly where I saw it then. Re-querying the hand
+        // element here is too late: disablePlayable has run and the floating hand has re-attached, so the
+        // card has moved and the flight would jump from the wrong spot. Fall back to a live query only if
+        // the snapshot is missing (e.g. auto-confirm-off edge, or an F5 mid-flight).
+        let fromMine = mine ? (this.playFromRect[id] ?? null) : null;
+        delete this.playFromRect[id];
+        if (mine && !fromMine) {
+            // Snapshot missing (e.g. F5 mid-flight): the card is still in the stock here (removeCard
+            // runs below), so read it live.
+            fromMine = this.handCardRect(args.card);
+        }
         this.gamedatas.trick[id] = args.card;
         // If it left my hand, drop it; either way the player's hand count decreases.
         delete this.gamedatas.hand[id];

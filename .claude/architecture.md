@@ -76,6 +76,25 @@ TypeScript + SCSS. **Edit `src/`, never the generated `modules/js/Game.js` or `u
 - `src/ts/types.d.ts` — gamedatas / notif / args types.
 - `src/scss/Game.scss` — the single stylesheet.
 
+### Client animations (FLIP flights)
+
+Card motion between zones uses a **FLIP** helper (`flipCardFrom` in `Game.ts`): the destination
+element is rendered at its final spot, then transformed back to a captured source rect (`translate` +
+`scale`, deltas divided by the tabletop scale) and transitioned to identity, so it appears to fly in
+from the source. It returns a promise, so a promise `notif_*` can `await` it.
+
+The origin of a **card played from my hand** (`notif_cardPlayed` → Trade Area) is snapshotted **when
+I confirm the play**, not read in the notification handler. By the time the notif fires,
+`disablePlayable` has run and the floating `HandStock` has toggled back to attached (see the
+float↔attach note in `Game.scss` around `#ucs-my-hand-row`), so the card has moved — reading it then
+launches the flight from the wrong place (it "snaps" to a fallback centre first). So
+`completePlay`'s submit closure stores the rect in `playFromRect[cardId]` and `notif_cardPlayed`
+consumes it. Read a hand card's rect via **`handCardRect(card)`**, which calls
+`handStock.getCardElement(card)` — **never** a hand-built element id (bga-cards prefixes ids with the
+manager `type`; see [`../../.claude/framework.md`](../../.claude/framework.md)). Opponents' plays have
+no snapshot; they launch from the player-panel centre (`cardRectAtCenter`), which is also the fallback
+if the snapshot is missing (e.g. an F5 mid-flight).
+
 ## Build / toolchain
 
 TypeScript + SCSS are enabled (`package.json`):
