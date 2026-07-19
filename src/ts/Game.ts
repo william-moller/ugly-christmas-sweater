@@ -5,7 +5,7 @@ import { AssignPatches } from "./States/AssignPatches";
 import { BillyChoice } from "./States/BillyChoice";
 import { TinaTink } from "./States/TinaTink";
 import { createCardElement, cardTooltip, cardLogChip, faceOf, isPatch, cardFaceInner, faceSpriteClass, colourName, fadTooltip, secretSantaTooltip } from "./CardView";
-import { BgaAnimations, BgaCards } from "./libs";
+import { BgaAnimations, BgaCards, BgaHelp } from "./libs";
 
 type CardMapT = { [cardId: number]: SweaterCard };
 
@@ -187,7 +187,32 @@ export class Game {
 
         this.setupNotifications();
         this.maybeAddDebugButton();
+        this.setupHelpButton();
         console.log("Ending game setup");
+    }
+
+    /**
+     * The lower-left "?" help button — a fixed round button that opens a popin showing the printed
+     * End-of-Round Scoring reference (img/scoreref.png). Uses the bga-help dojo module (see libs.ts /
+     * _reference/castlecombo): HelpManager appends its #bga-help_buttons container to the BGA-standard
+     * #left-side element; the button itself is position:fixed, so we defensively create #left-side if a
+     * given skin lacks it (the fixed button still anchors to the viewport corner either way).
+     */
+    private setupHelpButton() {
+        if (!document.getElementById('left-side')) {
+            const ls = document.createElement('div');
+            ls.id = 'left-side';
+            document.body.appendChild(ls);
+        }
+        new BgaHelp.HelpManager(this, {
+            buttons: [
+                new BgaHelp.BgaHelpPopinButton({
+                    title: _('End of Round Scoring'),
+                    html: `<img class="ucs-help-scoreref" src="${g_gamethemeurl}img/scoreref.png" alt="${_('End of Round Scoring reference')}">`,
+                    buttonBackground: '#8b0f03', // the game's festive red (matches the log/patch accent)
+                }),
+            ],
+        });
     }
 
     /**

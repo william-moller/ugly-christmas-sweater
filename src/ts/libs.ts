@@ -14,4 +14,9 @@ import type { BgaCards as BgaCardsType } from "../../bga-cards";
 const BgaAnimations: typeof BgaAnimationsType = await globalThis.importEsmLib('bga-animations', '1.x');
 const BgaCards: typeof BgaCardsType = await globalThis.importEsmLib('bga-cards', '1.x');
 
-export { BgaAnimations, BgaCards };
+// bga-help is a small local dojo (AMD) module shipped in modules/js/ (not a BGA-hosted ESM lib), so it
+// loads via importDojoLibs from our own theme URL — same pattern as castlecombo (see _reference). It
+// provides the lower-left "?" help button + popin dialog. Typed loosely (importDojoLibs returns any[]).
+const [BgaHelp] = await globalThis.importDojoLibs([g_gamethemeurl + 'modules/js/bga-help.js']);
+
+export { BgaAnimations, BgaCards, BgaHelp };

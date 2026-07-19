@@ -376,6 +376,10 @@ is constructed — so `setup()` can use `BgaCards` / `BgaAnimations` synchronous
 */
 const BgaAnimations = await globalThis.importEsmLib('bga-animations', '1.x');
 const BgaCards = await globalThis.importEsmLib('bga-cards', '1.x');
+// bga-help is a small local dojo (AMD) module shipped in modules/js/ (not a BGA-hosted ESM lib), so it
+// loads via importDojoLibs from our own theme URL — same pattern as castlecombo (see _reference). It
+// provides the lower-left "?" help button + popin dialog. Typed loosely (importDojoLibs returns any[]).
+const [BgaHelp] = await globalThis.importDojoLibs([g_gamethemeurl + 'modules/js/bga-help.js']);
 
 class Game {
     constructor(bga) {
@@ -533,7 +537,31 @@ class Game {
         this.showHandEndBanner(!!gamedatas.handEndTriggered);
         this.setupNotifications();
         this.maybeAddDebugButton();
+        this.setupHelpButton();
         console.log("Ending game setup");
+    }
+    /**
+     * The lower-left "?" help button — a fixed round button that opens a popin showing the printed
+     * End-of-Round Scoring reference (img/scoreref.png). Uses the bga-help dojo module (see libs.ts /
+     * _reference/castlecombo): HelpManager appends its #bga-help_buttons container to the BGA-standard
+     * #left-side element; the button itself is position:fixed, so we defensively create #left-side if a
+     * given skin lacks it (the fixed button still anchors to the viewport corner either way).
+     */
+    setupHelpButton() {
+        if (!document.getElementById('left-side')) {
+            const ls = document.createElement('div');
+            ls.id = 'left-side';
+            document.body.appendChild(ls);
+        }
+        new BgaHelp.HelpManager(this, {
+            buttons: [
+                new BgaHelp.BgaHelpPopinButton({
+                    title: _('End of Round Scoring'),
+                    html: `<img class="ucs-help-scoreref" src="${g_gamethemeurl}img/scoreref.png" alt="${_('End of Round Scoring reference')}">`,
+                    buttonBackground: '#8b0f03', // the game's festive red (matches the log/patch accent)
+                }),
+            ],
+        });
     }
     /**
      * Studio-only inspector button. Pure client side — dumps current state to the console (handy for
