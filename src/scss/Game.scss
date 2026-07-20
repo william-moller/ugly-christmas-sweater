@@ -819,12 +819,18 @@ html[data-theme="dark"] {
 
 // The snowman and candy-cane art is near-white and washes out on the light chips these icons always
 // sit on (panel tally, wild-value badge, patch-assign picker); darken just those two so they read.
-// Brightness drops the white fill to a legible mid-grey while the shape's own dark detail stays put;
-// the bell and tree are saturated enough to read as-is. Global on purpose — .ucs-icon art is only ever
+// The bell and tree are saturated enough to read as-is. Global on purpose — .ucs-icon art is only ever
 // shown on a light surface (see _icon-sprites.scss), so this is safe everywhere it appears.
-.ucs-icon-snowman,
+//
+// Candy cane: a near-white base with red stripes — a straight brightness cut reads well.
 .ucs-icon-candycane {
     filter: brightness(0.5) contrast(1.1);
+}
+// Snowman: a light body with light linework. Use contrast (NOT brightness) so only the lines darken —
+// contrast pushes the darker linework down while carrying the near-white body back toward white, so
+// the body keeps its light fill instead of greying to a shaded blob the way brightness did.
+.ucs-icon-snowman {
+    filter: contrast(1.9);
 }
 
 // Tina Can Tink (bonus): my placed pieces become clickable to move/swap; the chosen one/two glow.
