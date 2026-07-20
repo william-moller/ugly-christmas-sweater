@@ -25,7 +25,7 @@ const ART_DIR = 'C:/Users/Will/Desktop/Programming/BGA/UglyChristmasSweater/ArtF
 // (the snowman) reads on the light chips it sits on, which neither a CSS brightness (greys the whole
 // body) nor contrast (pivots at mid-grey, so it lightens the above-midpoint strokes) can achieve.
 const ICONS = [
-    { key: 'snowman', src: 'snowmanicon', boost: 2.0 },
+    { key: 'snowman', src: 'snowmanicon', boost: 2.6 },
     { key: 'candycane', src: 'candycaneicon' },
     { key: 'bell', src: 'bellicon' },
     { key: 'tree', src: 'treeicon' },
