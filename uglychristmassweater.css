@@ -1131,6 +1131,68 @@ html[data-theme=dark] {
   min-height: var(--ucs-card-h);
 }
 
+.ucs-panel-tally {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  margin: 3px 0 1px;
+}
+
+.ucs-tally-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 7px;
+}
+
+.ucs-tally-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.ucs-tally-swatch {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 15px;
+  height: 20px;
+  border-radius: 3px;
+  border: 1px solid rgba(255, 255, 255, 0.85);
+  box-shadow: 0 1px 1px rgba(0, 0, 0, 0.35);
+  flex: 0 0 auto;
+}
+
+.ucs-tally-patch {
+  font-size: 12px;
+  font-weight: 800;
+  color: #fff;
+  line-height: 1;
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.75);
+}
+
+.ucs-tally-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 3px;
+  background: #f3ede1;
+  box-shadow: 0 1px 1px rgba(0, 0, 0, 0.35);
+  flex: 0 0 auto;
+}
+.ucs-tally-icon .ucs-icon {
+  --ucs-icon-size: 15px;
+}
+
+.ucs-tally-count {
+  min-width: 0.8em;
+}
+
 .ucs-tina-selectable {
   cursor: pointer;
   outline: 2px dashed #2e86de;

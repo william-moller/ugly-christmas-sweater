@@ -4,7 +4,7 @@ import { RoundReview } from "./States/RoundReview";
 import { AssignPatches } from "./States/AssignPatches";
 import { BillyChoice } from "./States/BillyChoice";
 import { TinaTink } from "./States/TinaTink";
-import { createCardElement, cardTooltip, cardLogChip, faceOf, isPatch, cardFaceInner, faceSpriteClass, colourName, fadTooltip, secretSantaTooltip } from "./CardView";
+import { createCardElement, cardTooltip, cardLogChip, faceOf, isPatch, cardFaceInner, faceSpriteClass, colourName, iconName, fadTooltip, secretSantaTooltip } from "./CardView";
 import { BgaAnimations, BgaCards, BgaHelp } from "./libs";
 
 type CardMapT = { [cardId: number]: SweaterCard };
@@ -570,7 +570,59 @@ export class Game {
             this.renderKnitting(Number(player.id));
             this.renderOppoSummary(Number(player.id));
             this.renderBonus(Number(player.id));
+            this.renderPanelTally(Number(player.id));
         });
+    }
+
+    /**
+     * Per-player knitting tally injected into the BGA player board (playerPanels.getElement): one
+     * valueless swatch for each sweater colour, then one chip for each icon, each carrying a running
+     * count of how many cards that player currently has in their knitting area of that colour / icon.
+     * A numbered card contributes +1 to its colour AND +1 to its icon. A patch has a colour but no
+     * printed icon, so it contributes +1 to its colour only, and flags that colour's swatch with a
+     * capital 'P' so everyone can see at a glance who has knitted which patches. All colours / icons
+     * always show (0 when none), so the panel reads as a stable grid. Rebuilt from gamedatas.knitting
+     * each render pass, so it stays live as cards are knitted (renderPlayers runs on setup and after
+     * every knitting change).
+     */
+    private renderPanelTally(playerId: number) {
+        const host = this.bga.playerPanels?.getElement(playerId);
+        if (!host) return; // no panel (e.g. spectator view of a since-removed player) — nothing to do
+        // Create the container once, then only refresh its contents on later passes.
+        let box = document.getElementById(`ucs-panel-tally-${playerId}`);
+        if (!box) {
+            box = document.createElement('div');
+            box.id = `ucs-panel-tally-${playerId}`;
+            box.className = 'ucs-panel-tally';
+            host.appendChild(box);
+        }
+        const colorCounts: { [c: string]: number } = {};
+        const iconCounts: { [i: string]: number } = {};
+        const patchColors = new Set<string>(); // colours this player holds at least one patch of
+        this.cardArray(this.gamedatas.knitting)
+            .filter((c) => Number(c.location_arg) === playerId)
+            .forEach((c) => {
+                const face = faceOf(c, this.material);
+                if (!face || !face.color) return;
+                colorCounts[face.color] = (colorCounts[face.color] ?? 0) + 1;
+                if (face.patch) { patchColors.add(face.color); return; } // patch: colour only, no icon
+                if (face.icon) iconCounts[face.icon] = (iconCounts[face.icon] ?? 0) + 1;
+            });
+        const colorRow = this.material.colors.map((col) => {
+            const n = colorCounts[col] ?? 0;
+            const hasPatch = patchColors.has(col);
+            const title = hasPatch ? `${colourName(col)}: ${n} (${_('includes Patch')})` : `${colourName(col)}: ${n}`;
+            return `<span class="ucs-tally-chip" title="${title}">`
+                + `<span class="ucs-tally-swatch ucs-color-${col}">${hasPatch ? '<span class="ucs-tally-patch">P</span>' : ''}</span>`
+                + `<span class="ucs-tally-count">${n}</span></span>`;
+        }).join('');
+        const iconRow = this.material.icons.map((ic) => {
+            const n = iconCounts[ic] ?? 0;
+            return `<span class="ucs-tally-chip" title="${iconName(ic)}: ${n}">`
+                + `<span class="ucs-tally-icon"><span class="ucs-icon ucs-icon-${ic}"></span></span>`
+                + `<span class="ucs-tally-count">${n}</span></span>`;
+        }).join('');
+        box.innerHTML = `<div class="ucs-tally-row">${colorRow}</div><div class="ucs-tally-row">${iconRow}</div>`;
     }
 
     /**

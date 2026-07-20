@@ -51,8 +51,6 @@ not of the code.
   nobody? That answer decides both whether pieces are retained and who the reveal is exposed to.
 - **Player preferences** — `gamepreferences.jsonc`. *Open question:* which knobs? Animation speed
   is the conventional one.
-- **Player panel improvements** — *open question:* what needs to change? Not actionable until we
-  decide what's wrong with it today.
 - **Patch assignment UI: compact grid + one-at-a-time** — at end of round, choosing a patch's value
   and icon currently renders one tall single-column button list per patch, stacked side by side. Two
   problems: (1) the buttons waste space — lay them out like a keypad, ~4 numbers wide, and the same

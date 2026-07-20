@@ -76,6 +76,19 @@ TypeScript + SCSS. **Edit `src/`, never the generated `modules/js/Game.js` or `u
 - `src/ts/types.d.ts` — gamedatas / notif / args types.
 - `src/scss/Game.scss` — the single stylesheet.
 
+### Player-panel knitting tally
+
+Each BGA player board carries a per-player read-out of what that player has knitted, injected into the
+game-specific div from `this.bga.playerPanels.getElement(playerId)` (`renderPanelTally` in `Game.ts`,
+called from `renderPlayers` so it refreshes on setup and after every knitting change). Row 1 is one
+valueless swatch per sweater colour, row 2 one chip per icon, each with a running count. A numbered
+card counts toward **both** its colour and its icon; a **patch** has a colour but no printed icon, so
+it counts toward its colour only and marks that colour's swatch with a capital **P** (there is exactly
+one patch per colour, so the P is a boolean flag, not a count). Colours/icons come from
+`material.colors` / `material.icons` (server-canonical, `Material::COLORS`/`ICONS`) and all always
+render, 0 included, so the grid is stable. Icons sit on a light chip because the icon sprite art has
+near-white detail that greys out on a dark panel.
+
 ### Client animations (FLIP flights)
 
 Card motion between zones uses a **FLIP** helper (`flipCardFrom` in `Game.ts`): the destination
