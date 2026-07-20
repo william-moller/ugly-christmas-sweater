@@ -760,9 +760,12 @@ html[data-theme="dark"] {
     box-shadow: 0 0 8px rgba(46, 134, 222, 0.7);
 }
 
-// ---- Opponents' compact knitting: small colour+number chips, sweaters in a single row -----------
+// ---- Opponents' compact knitting: small colour+number chips, wrapped to the panel width ---------
 .ucs-knitting-compact {
-    flex-wrap: nowrap; // sweaters in a single left-to-right row (area width to be set once specified)
+    // Inherit the base `wrap` from .ucs-knitting: the opponents column is a fixed $side-col-w, so a
+    // fifth-plus mini-build has to drop to the next row rather than run off the panel edge and slide
+    // under the neighbouring player card. Tighter gap than the full area, and no min-height so a short
+    // area doesn't reserve a full card of vertical space.
     gap: 6px;
     min-height: 0;
     align-items: flex-start;

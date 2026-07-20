@@ -1014,8 +1014,9 @@ export class Game {
      * orientation letter / icon), laid out in the same L-R-over-B sweater silhouette as the full
      * area — a started sweater keeps its whole footprint, with still-empty L/R/B slots drawn as
      * dotted placeholders (matching `renderKnitting`), so an incomplete sweater reads as gaps in
-     * the sweater shape rather than a shorter cluster. All sweaters sit in a single left-to-right
-     * row. Inline opponents column only — the click-to-enlarge popin keeps the detailed silhouette.
+     * the sweater shape rather than a shorter cluster. Sweaters flow left-to-right and wrap onto
+     * further rows within the fixed-width opponents column, so any number stays inside the panel.
+     * Inline opponents column only — the click-to-enlarge popin keeps the detailed silhouette.
      */
     private renderKnittingCompact(zone: HTMLElement, playerId: number, cards: SweaterCard[]) {
         zone.classList.add('ucs-knitting-compact');

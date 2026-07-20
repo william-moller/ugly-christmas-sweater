@@ -1143,7 +1143,6 @@ html[data-theme=dark] {
 }
 
 .ucs-knitting-compact {
-  flex-wrap: nowrap;
   gap: 6px;
   min-height: 0;
   align-items: flex-start;
