@@ -817,6 +817,16 @@ html[data-theme="dark"] {
     min-width: 0.8em;
 }
 
+// The snowman and candy-cane art is near-white and washes out on the light chips these icons always
+// sit on (panel tally, wild-value badge, patch-assign picker); darken just those two so they read.
+// Brightness drops the white fill to a legible mid-grey while the shape's own dark detail stays put;
+// the bell and tree are saturated enough to read as-is. Global on purpose — .ucs-icon art is only ever
+// shown on a light surface (see _icon-sprites.scss), so this is safe everywhere it appears.
+.ucs-icon-snowman,
+.ucs-icon-candycane {
+    filter: brightness(0.5) contrast(1.1);
+}
+
 // Tina Can Tink (bonus): my placed pieces become clickable to move/swap; the chosen one/two glow.
 .ucs-tina-selectable {
     cursor: pointer;
