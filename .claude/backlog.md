@@ -34,11 +34,6 @@ not of the code.
   like the gaps.
 - **How-to-play rules summary** — in-client summary so players don't need the rulebook PDF.
 - **Playing-area layout** — improve. Overlaps the centering checklist line above.
-- **Knitting area overflows into the player panel past 4 sweaters** — an opponent's knitting area
-  lays sweaters out in a row that doesn't wrap or constrain to its container, so a fifth (or later)
-  completed sweater spills off the right edge of the knitting area and slides under/behind the player
-  card on the right. Fix so the row wraps (or scrolls/shrinks) within the knitting-area bounds
-  regardless of sweater count. Reproduced with an opponent holding >4 sweaters.
 - **Knitting area: normalise sweater art registration across cards** — the sweater silhouette is
   drawn at a slightly different horizontal position on each card face, so an assembled sweater built
   from mismatched cards (the normal case) doesn't tile cleanly: the L/R/B pieces jog left/right of
