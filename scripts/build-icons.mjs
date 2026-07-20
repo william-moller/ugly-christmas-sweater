@@ -24,8 +24,11 @@ const ART_DIR = 'C:/Users/Will/Desktop/Programming/BGA/UglyChristmasSweater/ArtF
 // keeps its light fill while the light-grey outline strokes go dark — so a white-on-white line icon
 // (the snowman) reads on the light chips it sits on, which neither a CSS brightness (greys the whole
 // body) nor contrast (pivots at mid-grey, so it lightens the above-midpoint strokes) can achieve.
+// `thicken` then grows the dark strokes (grayscale erosion, radius in source px): the snowman lines are
+// thin, so at the ~7x downscale to the ~18px render size they anti-alias back to light grey no matter
+// how dark the tone is — widening them by a couple of source px is what actually makes them read small.
 const ICONS = [
-    { key: 'snowman', src: 'snowmanicon', boost: 2.6 },
+    { key: 'snowman', src: 'snowmanicon', boost: 2.6, thicken: 4 },
     { key: 'candycane', src: 'candycaneicon' },
     { key: 'bell', src: 'bellicon' },
     { key: 'tree', src: 'treeicon' },
@@ -33,7 +36,7 @@ const ICONS = [
 const CELL = 128;       // square sprite cell (retina-crisp at the ~20-40px it renders)
 const THRESH = 42;      // colour distance from sampled bg treated as background
 
-async function keyed(src, boost) {
+async function keyed(src, boost, thicken) {
     const { data, info } = await sharp(join(ART_DIR, `${src}.png`)).ensureAlpha().raw()
         .toBuffer({ resolveWithObject: true });
     const { width, height, channels } = info;
@@ -50,6 +53,26 @@ async function keyed(src, boost) {
             for (let c = 0; c < 3; c++) data[i + c] = Math.max(0, Math.round(255 - (255 - data[i + c]) * boost));
         }
     }
+    // Grayscale erosion: each opaque pixel takes the darkest RGB in its (2r+1)² neighbourhood, so dark
+    // strokes bleed outward into the adjacent light body — thickening the lines without touching alpha.
+    if (thicken) {
+        const src2 = Uint8Array.from(data);
+        for (let y = 0; y < height; y++) for (let x = 0; x < width; x++) {
+            const i = (y * width + x) * channels;
+            if (src2[i + 3] === 0) continue; // leave transparent pixels transparent
+            let mr = 255, mg = 255, mb = 255;
+            for (let dy = -thicken; dy <= thicken; dy++) for (let dx = -thicken; dx <= thicken; dx++) {
+                const ny = y + dy, nx = x + dx;
+                if (ny < 0 || ny >= height || nx < 0 || nx >= width) continue;
+                const j = (ny * width + nx) * channels;
+                if (src2[j + 3] < 128) continue; // only pull colour from opaque-ish neighbours
+                if (src2[j] < mr) mr = src2[j];
+                if (src2[j + 1] < mg) mg = src2[j + 1];
+                if (src2[j + 2] < mb) mb = src2[j + 2];
+            }
+            data[i] = mr; data[i + 1] = mg; data[i + 2] = mb;
+        }
+    }
     // trim the now-transparent border, then fit into a centred square cell.
     const trimmed = await sharp(data, { raw: { width, height, channels } }).png().trim({ threshold: 1 }).toBuffer();
     return sharp({ create: { width: CELL, height: CELL, channels: 4, background: { r: 0, g: 0, b: 0, alpha: 0 } } })
@@ -58,7 +81,7 @@ async function keyed(src, boost) {
 }
 
 async function main() {
-    const cells = await Promise.all(ICONS.map(i => keyed(i.src, i.boost)));
+    const cells = await Promise.all(ICONS.map(i => keyed(i.src, i.boost, i.thicken)));
     await sharp({ create: { width: ICONS.length * CELL, height: CELL, channels: 4, background: { r: 0, g: 0, b: 0, alpha: 0 } } })
         .composite(cells.map((input, i) => ({ input, left: i * CELL, top: 0 })))
         .png().toFile(join(REPO, 'img', 'icons.png'));
