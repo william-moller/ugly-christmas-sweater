@@ -752,8 +752,9 @@ html[data-theme="dark"] {
 // ---- Player-panel knitting tally: per-colour + per-icon counts of cards knitted -----------------
 // Injected into each BGA player board (playerPanels.getElement). Row 1 is the four sweater colours
 // as valueless swatches, row 2 the four icons; each carries a running count of that player's knitted
-// cards. Kept compact to fit the narrow (~200px) panel; the count text inherits the panel's own ink
-// so it stays legible whichever theme BGA paints the board in.
+// cards. Swatches/icons match the 20x28 game-log card chip (.ucs-log-card); four per row still fit
+// the narrow (~200px) panel. The count text inherits the panel's own ink so it stays legible
+// whichever theme BGA paints the board in.
 .ucs-panel-tally {
     display: flex;
     flex-direction: column;
@@ -769,47 +770,48 @@ html[data-theme="dark"] {
 .ucs-tally-chip {
     display: inline-flex;
     align-items: center;
-    gap: 3px;
-    font-size: 12px;
+    gap: 4px;
+    font-size: 15px;
     font-weight: 700;
     line-height: 1;
 }
 // The valueless colour swatch — a mini card face carrying only the sweater colour (reuses the
-// .ucs-color-* background; no .ucs-card-pattern child, so it reads as a solid swatch). Slightly wider
-// than tall so the patch 'P' (when present) sits legibly centred on it.
+// .ucs-color-* background; no .ucs-card-pattern child, so it reads as a solid swatch). Sized to the
+// 20x28 game-log card chip (.ucs-log-card) so the panel read-out matches the icons in the turn log.
 .ucs-tally-swatch {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 15px;
-    height: 20px;
-    border-radius: 3px;
+    width: 20px;
+    height: 28px;
+    border-radius: 4px;
     border: 1px solid rgba(255, 255, 255, 0.85);
-    box-shadow: 0 1px 1px rgba(0, 0, 0, 0.35);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
     flex: 0 0 auto;
 }
 // Capital 'P' overlaid on a colour swatch when the player has knitted at least one patch of that
 // colour — a glanceable "who holds which patches" marker (the count already reflects how many cards).
 .ucs-tally-patch {
-    font-size: 12px;
+    font-size: 16px;
     font-weight: 800;
     color: #fff;
     line-height: 1;
     text-shadow: 0 1px 1px rgba(0, 0, 0, 0.75);
 }
-// The icon sits on a light chip: the icon art has near-white detail that greys on a dark surface,
-// so it must not sit directly on a (possibly dark) player panel.
+// The icon sits on a light chip (same 20x28 card footprint as the colour swatch and the log chip):
+// the icon art has near-white detail that greys on a dark surface, so it must not sit directly on a
+// (possibly dark) player panel.
 .ucs-tally-icon {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 18px;
-    height: 18px;
-    border-radius: 3px;
+    width: 20px;
+    height: 28px;
+    border-radius: 4px;
     background: #f3ede1;
-    box-shadow: 0 1px 1px rgba(0, 0, 0, 0.35);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
     flex: 0 0 auto;
-    .ucs-icon { --ucs-icon-size: 15px; }
+    .ucs-icon { --ucs-icon-size: 18px; }
 }
 .ucs-tally-count {
     min-width: 0.8em;
