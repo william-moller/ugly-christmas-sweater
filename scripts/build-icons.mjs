@@ -19,8 +19,13 @@ const REPO = join(dirname(fileURLToPath(import.meta.url)), '..');
 const ART_DIR = 'C:/Users/Will/Desktop/Programming/BGA/UglyChristmasSweater/ArtFiles/PANDA PDF/Jpeg';
 
 // order = sprite cell order; `key` is the icon name used in Material::icons / card data.
+// `boost` darkens the icon's linework by pushing each kept pixel away from white in proportion to how
+// far it already is (v' = 255 - (255 - v) * boost). Because it pivots at white, the near-white body
+// keeps its light fill while the light-grey outline strokes go dark — so a white-on-white line icon
+// (the snowman) reads on the light chips it sits on, which neither a CSS brightness (greys the whole
+// body) nor contrast (pivots at mid-grey, so it lightens the above-midpoint strokes) can achieve.
 const ICONS = [
-    { key: 'snowman', src: 'snowmanicon' },
+    { key: 'snowman', src: 'snowmanicon', boost: 2.0 },
     { key: 'candycane', src: 'candycaneicon' },
     { key: 'bell', src: 'bellicon' },
     { key: 'tree', src: 'treeicon' },
@@ -28,7 +33,7 @@ const ICONS = [
 const CELL = 128;       // square sprite cell (retina-crisp at the ~20-40px it renders)
 const THRESH = 42;      // colour distance from sampled bg treated as background
 
-async function keyed(src) {
+async function keyed(src, boost) {
     const { data, info } = await sharp(join(ART_DIR, `${src}.png`)).ensureAlpha().raw()
         .toBuffer({ resolveWithObject: true });
     const { width, height, channels } = info;
@@ -39,6 +44,11 @@ async function keyed(src) {
         const d = Math.hypot(data[i] - bg[0], data[i + 1] - bg[1], data[i + 2] - bg[2]);
         if (d < THRESH) data[i + 3] = 0;
         else if (d < THRESH * 1.6) data[i + 3] = Math.round(255 * (d - THRESH) / (THRESH * 0.6));
+        // Darken the linework only (pivot at white), on kept pixels — see the `boost` note above. Alpha
+        // is left untouched so the keyed/feathered edges are preserved.
+        if (boost && data[i + 3] > 0) {
+            for (let c = 0; c < 3; c++) data[i + c] = Math.max(0, Math.round(255 - (255 - data[i + c]) * boost));
+        }
     }
     // trim the now-transparent border, then fit into a centred square cell.
     const trimmed = await sharp(data, { raw: { width, height, channels } }).png().trim({ threshold: 1 }).toBuffer();
@@ -48,7 +58,7 @@ async function keyed(src) {
 }
 
 async function main() {
-    const cells = await Promise.all(ICONS.map(i => keyed(i.src)));
+    const cells = await Promise.all(ICONS.map(i => keyed(i.src, i.boost)));
     await sharp({ create: { width: ICONS.length * CELL, height: CELL, channels: 4, background: { r: 0, g: 0, b: 0, alpha: 0 } } })
         .composite(cells.map((input, i) => ({ input, left: i * CELL, top: 0 })))
         .png().toFile(join(REPO, 'img', 'icons.png'));

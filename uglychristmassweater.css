@@ -1197,10 +1197,6 @@ html[data-theme=dark] {
   filter: brightness(0.5) contrast(1.1);
 }
 
-.ucs-icon-snowman {
-  filter: contrast(1.9);
-}
-
 .ucs-tina-selectable {
   cursor: pointer;
   outline: 2px dashed #2e86de;
