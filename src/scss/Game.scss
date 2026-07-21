@@ -91,6 +91,17 @@ html {
     background: transparent;
 }
 
+// ---- "Card size" preference (gamepreferences 101) -----------------------------------------------
+// BGA applies the selected value's `cssPref` class to <html> (on reload — the pref is needReload).
+// It sets a single multiplier that the interactive real-face zones scale their --ucs-card-w/h by
+// (see #ucs-my-hand-wrap / #ucs-center-stack / #ucs-my-area). Deliberately scoped to the card faces
+// you actually read and act on; the abstracted opponent sweaters, the panel tally chips and the
+// round-parameter reference cards keep their fixed sizes. Medium is the default (multiplier 1);
+// the `var(..., 1)` fallbacks below mean an unclassed <html> also renders at Medium.
+html.ucs-cards-small  { --ucs-card-scale: 0.85; }
+html.ucs-cards-medium { --ucs-card-scale: 1; }
+html.ucs-cards-large  { --ucs-card-scale: 1.18; }
+
 // =====================================================================================
 //  Dark-mode theme tokens
 //  BGA adds html[data-theme="dark"] when the player picks dark mode (and flips its OWN
@@ -624,6 +635,11 @@ html[data-theme="dark"] {
 }
 #ucs-my-area {
     grid-area: knit; // takes the base card size; .ucs-knitting wraps builds across it
+    // Real card faces (my own sweater builds) — scale with the "Card size" preference (see html
+    // .ucs-cards-*). Kept off the shared #ucs-table base var so the fixed-width #ucs-upper params
+    // column (which also reads that base) is not dragged wider and made to overflow $side-col-w.
+    --ucs-card-w: calc(#{$card-w} * var(--ucs-card-scale, 1));
+    --ucs-card-h: calc(#{$card-h} * var(--ucs-card-scale, 1));
     // A slightly darker green than the box-cover table, framed, so my own Knitting Area reads as a
     // distinct workspace rather than blending into the backdrop.
     background: #3f7424;
@@ -643,6 +659,10 @@ html[data-theme="dark"] {
 #ucs-center-stack {
     grid-area: center;
     min-width: 0;
+    // Draft Pool + Trade Area (the trick) — real card faces you pick from, so they scale with the
+    // "Card size" preference. This column is a flexible 1fr track, so larger cards don't overflow it.
+    --ucs-card-w: calc(#{$card-w} * var(--ucs-card-scale, 1));
+    --ucs-card-h: calc(#{$card-h} * var(--ucs-card-scale, 1));
     display: flex;
     flex-direction: column;
     align-items: center; // centralise the draft / trade zones
@@ -1210,8 +1230,11 @@ html[data-theme="dark"] {
 // Game.ts); match --ucs-card-w/h here so the inner face content (sized via calc off --ucs-card-w)
 // scales with the frame. The mobile breakpoint below scales the whole fan back down.
 #ucs-my-hand-wrap {
-    --ucs-card-w: 96px;
-    --ucs-card-h: 149px;
+    // Base 96/149; the "Card size" preference (gamepreferences 101) scales it via --ucs-card-scale.
+    // Game.ts::setupHandStock reads the same preference and scales the bga-cards frame px to match
+    // (the frame is fixed in JS, not by this variable), so the fan geometry and the inner face agree.
+    --ucs-card-w: calc(96px * var(--ucs-card-scale, 1));
+    --ucs-card-h: calc(149px * var(--ucs-card-scale, 1));
     // Keep the (attached) hand painting above the tabletop zones where they overlap. The floating hand
     // is lifted separately via the HandStock `floatZIndex` option in Game.ts. Below the popin (z-1000).
     position: relative;

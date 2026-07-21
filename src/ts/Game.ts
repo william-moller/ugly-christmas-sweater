@@ -190,6 +190,15 @@ export class Game {
         // F5 mid-final-draft). Live-computed server-side, so it's absent again once the next round deals.
         this.showHandEndBanner(!!gamedatas.handEndTriggered);
 
+        // Re-lay the hand fan live when the "Hand sort order" preference (102) changes — it is not
+        // needReload. Card size (101) IS needReload, so BGA re-runs setup wholesale for it and it needs
+        // no live handler; the confirm gate (100) is read on demand at action time, likewise none.
+        if (this.bga.userPreferences) {
+            this.bga.userPreferences.onChange = (prefId: number) => {
+                if (Number(prefId) === 102) this.renderHand();
+            };
+        }
+
         this.setupNotifications();
         this.maybeAddDebugButton();
         this.setupHelpButton();
@@ -243,6 +252,22 @@ export class Game {
     }
 
     /**
+     * Card-size multiplier from the "Card size" preference (gamepreferences 101). Mirrors the CSS
+     * `--ucs-card-scale` map in Game.scss (html.ucs-cards-*). The preference is needReload, so reading
+     * it once at setup — rather than reacting live — is sufficient; a change re-runs setup wholesale.
+     */
+    private cardSizeScale(): number {
+        try {
+            const raw = Number(this.bga.userPreferences?.get?.(101));
+            if (raw === 1) return 0.85;  // Small
+            if (raw === 3) return 1.18;  // Large
+        } catch (e) {
+            // Reading the preference can throw if it isn't loaded for this table; fall back to Medium.
+        }
+        return 1; // Medium (default)
+    }
+
+    /**
      * Create the CardManager + fanned HandStock (bga-cards) that power my hand. The stock renders the
      * cards as an overlapping, fan-shaped arc; each front face reuses the shared `cardFaceInner` so it
      * matches the custom-DOM cards in the other zones. Selection is wired to the existing play flow via
@@ -252,14 +277,18 @@ export class Game {
         this.animationManager = new BgaAnimations.Manager({
             animationsActive: () => this.bga.gameui.bgaAnimationsActive(),
         });
+        // The bga-cards frame px are fixed here in JS (the fan geometry is computed from them), so the
+        // "Card size" preference has to scale them at construction — the CSS variable alone can't. This
+        // reruns on every setup, and pref 101 is needReload, so a size change re-enters here cleanly.
+        const scale = this.cardSizeScale();
         this.cardsManager = new BgaCards.Manager({
             animationManager: this.animationManager,
             type: 'ucs-sweater',
             // The hand is the primary interaction on a desktop table, so its cards run larger than the
             // 64/90 used elsewhere. The inner face content (sized off --ucs-card-w) is matched to this in
             // SCSS (#ucs-my-hand-wrap), and the mobile breakpoint scales the whole fan back down.
-            cardWidth: 96,
-            cardHeight: 149, // bridge ratio 0.643 (bleed-trimmed art) + #ucs-my-hand-wrap's --ucs-card-h
+            cardWidth: Math.round(96 * scale),
+            cardHeight: Math.round(149 * scale), // bridge ratio 0.643; matches #ucs-my-hand-wrap's --ucs-card-h
             getId: (c: SweaterCard) => `ucs-hand-${c.id}`,
             isCardVisible: () => true,
             setupFrontDiv: (c: SweaterCard, div: HTMLElement) => {
@@ -1215,8 +1244,40 @@ export class Game {
         if (hand.length) this.handStock.addCards(hand);
     }
 
-    /** Sort the hand by colour then value for a tidy, stable layout. */
+    /** Hand fan order, from the "Hand sort order" game preference (gamepreferences 102). */
+    private handSortMode(): 1 | 2 | 3 {
+        try {
+            const raw = Number(this.bga.userPreferences?.get?.(102));
+            return (raw === 1 || raw === 3) ? raw : 2; // default: by colour
+        } catch (e) {
+            // Reading the preference can throw if it isn't loaded for this table; fall back to the
+            // classic colour sort rather than leaving the hand unordered.
+            return 2;
+        }
+    }
+
+    /**
+     * Comparator for the fanned hand, honouring the "Hand sort order" preference (102):
+     *   1 Draw order — by card id (deal/draw order); the fan doesn't regroup as you draw;
+     *   2 By colour  — colour (type) then ascending value (type_arg); the tidy default;
+     *   3 By icon    — printed icon, then colour, then value; patches (no icon) sort last.
+     * Total & stable in every mode, so a card drawn on refill drops into a deterministic slot
+     * rather than tacking onto the end (see notif_handUpdate's incremental addCards).
+     */
     private handSort(a: SweaterCard, b: SweaterCard): number {
+        const mode = this.handSortMode();
+        if (mode === 1) return Number(a.id) - Number(b.id);
+        if (mode === 3) {
+            const ia = faceOf(a, this.material)?.icon ?? '';
+            const ib = faceOf(b, this.material)?.icon ?? '';
+            if (ia !== ib) {
+                // Patches carry no icon — send them to the end instead of grouping under ''.
+                if (!ia) return 1;
+                if (!ib) return -1;
+                return ia < ib ? -1 : 1;
+            }
+            // same icon — fall through to the colour/value tail-break below.
+        }
         if (a.type !== b.type) return a.type < b.type ? -1 : 1;
         return Number(a.type_arg) - Number(b.type_arg);
     }

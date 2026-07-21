@@ -20,5 +20,52 @@
       }
     },
     "default": 1
+  },
+
+  // Size of the real card faces (Game.scss keys `--ucs-card-scale` off the cssPref class on <html>).
+  // Scales ONLY the zones that show actual card art you interact with — the fanned hand, the centre
+  // stack (draft pool + trade area/trick) and your own knitting area — not the abstracted opponent
+  // sweaters, the panel tally chips or the round-parameter reference cards. `needReload` is mandatory
+  // for a cssPref class to take effect (BGA only applies it on reload); the reload also lets
+  // Game.ts::setupHandStock read this value and size the bga-cards hand frame to match.
+  "101": {
+    "name": "Card size",
+    "needReload": true,
+    "values": {
+      "1": {
+        "name": "Small (phones)",
+        "cssPref": "ucs-cards-small"
+      },
+      "2": {
+        "name": "Medium (tablets / laptops)",
+        "cssPref": "ucs-cards-medium"
+      },
+      "3": {
+        "name": "Large (desktop monitors)",
+        "cssPref": "ucs-cards-large"
+      }
+    },
+    "default": 2
+  },
+
+  // Order the cards are laid out in your fanned hand (read in Game.ts::handSort; the stock re-sorts
+  // whenever the hand is rendered). Applied live via userPreferences.onChange — no reload needed.
+  //   Draw order — the id order cards were dealt/drawn in (no reshuffle as you draw).
+  //   By colour  — grouped by sweater colour, then ascending value (the classic tidy layout).
+  //   By icon    — grouped by printed icon, then colour, then value; patches (no icon) sort last.
+  "102": {
+    "name": "Hand sort order",
+    "values": {
+      "1": {
+        "name": "Draw order"
+      },
+      "2": {
+        "name": "By colour"
+      },
+      "3": {
+        "name": "By icon"
+      }
+    },
+    "default": 2
   }
 }

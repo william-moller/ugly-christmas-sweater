@@ -49,8 +49,6 @@ not of the code.
   data-model change that also has to reshuffle them at round end). *Open question — ask the publisher:*
   is peeking at covered cards meant to be allowed for anyone, only the owner of that knitting area, or
   nobody? That answer decides both whether pieces are retained and who the reveal is exposed to.
-- **Player preferences** — `gamepreferences.jsonc`. *Open question:* which knobs? Animation speed
-  is the conventional one.
 - **Patch assignment UI: compact grid + one-at-a-time** — at end of round, choosing a patch's value
   and icon currently renders one tall single-column button list per patch, stacked side by side. Two
   problems: (1) the buttons waste space — lay them out like a keypad, ~4 numbers wide, and the same

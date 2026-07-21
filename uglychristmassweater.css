@@ -498,6 +498,18 @@ html {
   background: transparent;
 }
 
+html.ucs-cards-small {
+  --ucs-card-scale: 0.85;
+}
+
+html.ucs-cards-medium {
+  --ucs-card-scale: 1;
+}
+
+html.ucs-cards-large {
+  --ucs-card-scale: 1.18;
+}
+
 :root {
   --ucs-panel-bg: rgba(0, 0, 0, 0.04);
   --ucs-panel-bg-soft: rgba(0, 0, 0, 0.03);
@@ -1019,6 +1031,8 @@ html[data-theme=dark] {
 
 #ucs-my-area {
   grid-area: knit;
+  --ucs-card-w: calc(80px * var(--ucs-card-scale, 1));
+  --ucs-card-h: calc(125px * var(--ucs-card-scale, 1));
   background: #3f7424;
   border: 2px solid rgba(0, 0, 0, 0.3);
   border-radius: 8px;
@@ -1034,6 +1048,8 @@ html[data-theme=dark] {
 #ucs-center-stack {
   grid-area: center;
   min-width: 0;
+  --ucs-card-w: calc(80px * var(--ucs-card-scale, 1));
+  --ucs-card-h: calc(125px * var(--ucs-card-scale, 1));
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -1561,8 +1577,8 @@ html[data-theme=dark] {
 }
 
 #ucs-my-hand-wrap {
-  --ucs-card-w: 96px;
-  --ucs-card-h: 149px;
+  --ucs-card-w: calc(96px * var(--ucs-card-scale, 1));
+  --ucs-card-h: calc(149px * var(--ucs-card-scale, 1));
   position: relative;
   z-index: 100;
 }
