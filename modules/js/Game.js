@@ -599,24 +599,6 @@ class Game {
         });
     }
     /**
-     * Card-size multiplier from the "Card size" preference (gamepreferences 101). Mirrors the CSS
-     * `--ucs-card-scale` map in Game.scss (html.ucs-cards-*). The preference is needReload, so reading
-     * it once at setup — rather than reacting live — is sufficient; a change re-runs setup wholesale.
-     */
-    cardSizeScale() {
-        try {
-            const raw = Number(this.bga.userPreferences?.get?.(101));
-            if (raw === 1)
-                return 0.85; // Small
-            if (raw === 3)
-                return 1.18; // Large
-        }
-        catch (e) {
-            // Reading the preference can throw if it isn't loaded for this table; fall back to Medium.
-        }
-        return 1; // Medium (default)
-    }
-    /**
      * Create the CardManager + fanned HandStock (bga-cards) that power my hand. The stock renders the
      * cards as an overlapping, fan-shaped arc; each front face reuses the shared `cardFaceInner` so it
      * matches the custom-DOM cards in the other zones. Selection is wired to the existing play flow via
@@ -626,18 +608,16 @@ class Game {
         this.animationManager = new BgaAnimations.Manager({
             animationsActive: () => this.bga.gameui.bgaAnimationsActive(),
         });
-        // The bga-cards frame px are fixed here in JS (the fan geometry is computed from them), so the
-        // "Card size" preference has to scale them at construction — the CSS variable alone can't. This
-        // reruns on every setup, and pref 101 is needReload, so a size change re-enters here cleanly.
-        const scale = this.cardSizeScale();
         this.cardsManager = new BgaCards.Manager({
             animationManager: this.animationManager,
             type: 'ucs-sweater',
             // The hand is the primary interaction on a desktop table, so its cards run larger than the
             // 64/90 used elsewhere. The inner face content (sized off --ucs-card-w) is matched to this in
-            // SCSS (#ucs-my-hand-wrap), and the mobile breakpoint scales the whole fan back down.
-            cardWidth: Math.round(96 * scale),
-            cardHeight: Math.round(149 * scale), // bridge ratio 0.643; matches #ucs-my-hand-wrap's --ucs-card-h
+            // SCSS (#ucs-my-hand-wrap). The "Card size" preference resizes the whole fan with a CSS
+            // transform on #ucs-my-hand (NOT these px) — changing the frame px throws off the fan's arc
+            // math; the transform scales the finished arc uniformly. The mobile breakpoint does the same.
+            cardWidth: 96,
+            cardHeight: 149, // bridge ratio 0.643 (bleed-trimmed art) + #ucs-my-hand-wrap's --ucs-card-h
             getId: (c) => `ucs-hand-${c.id}`,
             isCardVisible: () => true,
             setupFrontDiv: (c, div) => {

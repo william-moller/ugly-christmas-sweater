@@ -614,7 +614,10 @@ html[data-theme="dark"] {
 // Santa is dealt, and it's why the centre stack doesn't land on the true page centre — see $side-col-w.
 #ucs-upper {
     display: grid;
-    grid-template-columns: $side-col-w auto minmax(0, 1fr) $side-col-w;
+    // params track scales with the "Card size" preference (its cards resize; see #ucs-gameplay); the
+    // santa track is `auto` so it grows on its own; centre is flexible; the oppo track stays fixed
+    // (opponents are abstracted mini-sweaters that don't scale).
+    grid-template-columns: calc(#{$side-col-w} * var(--ucs-card-scale, 1)) auto minmax(0, 1fr) $side-col-w;
     grid-template-areas:
         "params santa center oppo"
         "params knit  knit   knit";
@@ -623,15 +626,22 @@ html[data-theme="dark"] {
 }
 
 // Left column: the three round parameters, stacked one above the other, spanning both grid rows.
-#ucs-gameplay { grid-area: params; }
+// Real card faces (each parameter's deck + revealed card), so they track the "Card size" preference.
+// The `params` grid track is scaled to match (see #ucs-upper) so the widened cards don't overflow it.
+#ucs-gameplay {
+    grid-area: params;
+    --ucs-card-w: calc(#{$card-w} * var(--ucs-card-scale, 1));
+    --ucs-card-h: calc(#{$card-h} * var(--ucs-card-scale, 1));
+}
 #ucs-secret-santa {
     grid-area: santa;
     position: relative; // anchor for the vertical zone label sitting just outside the left edge
     // Bumped to 1.6x the base card so the objective art is readable without crowding the centre stack.
     // The card and its sprite both size off these vars (see .ucs-card / .ucs-art2), so the whole thing
-    // scales, rotation included.
-    --ucs-card-w: 128px;
-    --ucs-card-h: 200px;
+    // scales, rotation included. Also tracks the "Card size" preference (its `santa` grid track is
+    // `auto`, so it just grows).
+    --ucs-card-w: calc(128px * var(--ucs-card-scale, 1));
+    --ucs-card-h: calc(200px * var(--ucs-card-scale, 1));
 }
 #ucs-my-area {
     grid-area: knit; // takes the base card size; .ucs-knitting wraps builds across it
@@ -1230,11 +1240,11 @@ html[data-theme="dark"] {
 // Game.ts); match --ucs-card-w/h here so the inner face content (sized via calc off --ucs-card-w)
 // scales with the frame. The mobile breakpoint below scales the whole fan back down.
 #ucs-my-hand-wrap {
-    // Base 96/149; the "Card size" preference (gamepreferences 101) scales it via --ucs-card-scale.
-    // Game.ts::setupHandStock reads the same preference and scales the bga-cards frame px to match
-    // (the frame is fixed in JS, not by this variable), so the fan geometry and the inner face agree.
-    --ucs-card-w: calc(96px * var(--ucs-card-scale, 1));
-    --ucs-card-h: calc(149px * var(--ucs-card-scale, 1));
+    // Fixed 96/149 to match the bga-cards frame px (set in Game.ts). The "Card size" preference does
+    // NOT scale this variable — it scales the whole finished fan via a transform on #ucs-my-hand below
+    // (changing the frame size or this var distorts the fan's arc), so the inner face stays in step.
+    --ucs-card-w: 96px;
+    --ucs-card-h: 149px;
     // Keep the (attached) hand painting above the tabletop zones where they overlap. The floating hand
     // is lifted separately via the HandStock `floatZIndex` option in Game.ts. Below the popin (z-1000).
     position: relative;
@@ -1250,7 +1260,13 @@ html[data-theme="dark"] {
     // state. The library centres the fan within the holder, so this still matches the floating centre.
     flex: 1 1 100%;
     width: 100%;
-    min-height: 186px;
+    // "Card size" preference: scale the whole finished fan uniformly (the reliable lever — the fan's
+    // internal geometry misbehaves if the frame px change; see Game.ts::setupHandStock). transform
+    // doesn't reserve layout space, so grow min-height by the same factor to keep an enlarged fan from
+    // clipping / overlapping the zone above. The mobile breakpoint composes its own scale on top.
+    transform: scale(var(--ucs-card-scale, 1));
+    transform-origin: top center;
+    min-height: calc(186px * var(--ucs-card-scale, 1));
 }
 
 // While a play is required, the stock marks legal cards selectable and the rest unselectable.
@@ -1480,11 +1496,12 @@ table.ucs-scorepad {
     }
     // The enlarged desktop hand would overflow a phone/tablet width, so scale the whole fan back
     // down to roughly the original footprint (bga-cards fixes the frame px in JS, so a transform is
-    // the reliable lever regardless of how it sizes internally).
+    // the reliable lever regardless of how it sizes internally). Compose with the "Card size"
+    // preference so a player who also picked Small/Large still nudges it proportionally.
     #ucs-my-hand {
-        transform: scale(0.68);
+        transform: scale(calc(0.68 * var(--ucs-card-scale, 1)));
         transform-origin: top center;
-        min-height: 128px;
+        min-height: calc(128px * var(--ucs-card-scale, 1));
     }
     #ucs-opponents {
         flex-direction: row;
