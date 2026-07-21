@@ -809,6 +809,10 @@ html[data-theme="dark"] {
     height: 28px;
     border-radius: 4px;
     background: #f3ede1;
+    // Matches the colour swatch's 1px border so both chips share the same 22px footprint (default
+    // content-box): without it the borderless icon chips render 2px narrower and the columns drift
+    // progressively out of line. A soft neutral hairline (white would vanish on the light chip).
+    border: 1px solid rgba(0, 0, 0, 0.12);
     box-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
     flex: 0 0 auto;
     .ucs-icon { --ucs-icon-size: 18px; }
