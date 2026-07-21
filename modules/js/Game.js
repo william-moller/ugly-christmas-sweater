@@ -649,6 +649,17 @@ class Game {
         });
         this.handStock.setSelectionMode('none');
         this.handStock.onSelectionChange = (selection, last) => this.handSelectionChanged(selection, last);
+        // bga-cards' fanned HandStock settles each card at its add-time angle (a lopsided ramp), and its
+        // own updateCardPositions() re-layout doesn't correct it for our populate flow. Chain our
+        // symmetric re-lay (applySymmetricFan) onto that method so it runs right after every library
+        // re-layout — add, remove, and the float-toggle that fires while scrolling — so the arc is
+        // correct in every state. Idempotent + guarded: a future lib rename simply skips the patch.
+        const stock = this.handStock;
+        if (typeof stock.updateCardPositions === 'function' && !stock.__ucsFanPatched) {
+            const original = stock.updateCardPositions.bind(stock);
+            stock.updateCardPositions = () => { original(); this.applySymmetricFan(); };
+            stock.__ucsFanPatched = true;
+        }
     }
     // ===================================================================================
     //  Rendering (gamedatas is the single source of truth; mutate then re-render a zone)
@@ -1565,6 +1576,33 @@ class Game {
         this.handStock.removeAll();
         if (hand.length)
             this.handStock.addCards(hand);
+    }
+    /**
+     * Re-lay the fanned hand symmetrically. bga-cards' own updateCardPositions() leaves each card at
+     * the add-time angle it had when it was the newest card in the stock — a lopsided monotonic ramp
+     * rather than a symmetric arc — and calling its version again doesn't fix it (confirmed live). So
+     * we overwrite the two CSS variables it drives the fan with, computed from the true centre. This
+     * mirrors the shipped 1.x getCardTransform math exactly: middleIndex = index - (N-1)/2 for every
+     * card, angle grows linearly with it, y with its square. Set up as a post-hook on the stock's
+     * updateCardPositions (see setupHandStock) so it re-runs after every library re-layout — add,
+     * remove, and the float-toggle on scroll — keeping the arc correct in every state.
+     */
+    applySymmetricFan() {
+        const fan = document.querySelector('#ucs-my-hand .hand-stock');
+        if (!fan)
+            return;
+        const cards = Array.from(fan.querySelectorAll(':scope > .bga-cards_card'));
+        const n = cards.length;
+        if (!n)
+            return;
+        const middle = (n - 1) / 2;
+        cards.forEach((el, i) => {
+            const mid = i - middle;
+            const y = 2 * mid * mid;
+            const a = mid * (10 + Math.min(10, n)) / (n / 2);
+            el.style.setProperty('--bga-cards_hand-stock-card-y', `${y}px`);
+            el.style.setProperty('--bga-cards_hand-stock-card-a', `${a}deg`);
+        });
     }
     /** Hand fan order, from the "Hand sort order" game preference (gamepreferences 102). */
     handSortMode() {
