@@ -1588,9 +1588,7 @@ html[data-theme=dark] {
 #ucs-my-hand {
   flex: 1 1 100%;
   width: 100%;
-  transform: scale(var(--ucs-card-scale, 1));
-  transform-origin: top center;
-  min-height: calc(186px * var(--ucs-card-scale, 1));
+  min-height: 186px;
 }
 
 #ucs-my-hand.ucs-hand-choosing .bga-cards_selectable-card {
@@ -1854,9 +1852,9 @@ table.ucs-scorepad th, table.ucs-scorepad td {
     gap: 18px;
   }
   #ucs-my-hand {
-    transform: scale(calc(0.68 * var(--ucs-card-scale, 1)));
+    transform: scale(0.68);
     transform-origin: top center;
-    min-height: calc(128px * var(--ucs-card-scale, 1));
+    min-height: 128px;
   }
   #ucs-opponents {
     flex-direction: row;

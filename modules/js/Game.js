@@ -613,9 +613,10 @@ class Game {
             type: 'ucs-sweater',
             // The hand is the primary interaction on a desktop table, so its cards run larger than the
             // 64/90 used elsewhere. The inner face content (sized off --ucs-card-w) is matched to this in
-            // SCSS (#ucs-my-hand-wrap). The "Card size" preference resizes the whole fan with a CSS
-            // transform on #ucs-my-hand (NOT these px) — changing the frame px throws off the fan's arc
-            // math; the transform scales the finished arc uniformly. The mobile breakpoint does the same.
+            // SCSS (#ucs-my-hand-wrap). The "Card size" preference deliberately does NOT resize the hand:
+            // scaling the frame px here distorts the fan's arc, and a CSS transform on the holder breaks
+            // the floating (position:fixed) hand (see the note in #ucs-my-hand). The hand stays fixed at
+            // 96/149; the preference scales the tabletop / parameter / knitting faces instead.
             cardWidth: 96,
             cardHeight: 149, // bridge ratio 0.643 (bleed-trimmed art) + #ucs-my-hand-wrap's --ucs-card-h
             getId: (c) => `ucs-hand-${c.id}`,

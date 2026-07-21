@@ -1260,13 +1260,13 @@ html[data-theme="dark"] {
     // state. The library centres the fan within the holder, so this still matches the floating centre.
     flex: 1 1 100%;
     width: 100%;
-    // "Card size" preference: scale the whole finished fan uniformly (the reliable lever — the fan's
-    // internal geometry misbehaves if the frame px change; see Game.ts::setupHandStock). transform
-    // doesn't reserve layout space, so grow min-height by the same factor to keep an enlarged fan from
-    // clipping / overlapping the zone above. The mobile breakpoint composes its own scale on top.
-    transform: scale(var(--ucs-card-scale, 1));
-    transform-origin: top center;
-    min-height: calc(186px * var(--ucs-card-scale, 1));
+    min-height: 186px;
+    // NB: do NOT put a `transform` on this element for a size preference. bga-cards floats the hand
+    // with `position: fixed` when it scrolls below the fold, and a transform on an ancestor makes
+    // fixed descendants anchor to it instead of the viewport — floating breaks and the un-floated fan
+    // spreads across this full-width holder into a shallow ramp. (The mobile breakpoint's transform is
+    // tolerable only because that layout doesn't rely on the floating hand.) The "Card size" preference
+    // therefore deliberately does not resize the hand; see the note in Game.ts::setupHandStock.
 }
 
 // While a play is required, the stock marks legal cards selectable and the rest unselectable.
@@ -1496,12 +1496,11 @@ table.ucs-scorepad {
     }
     // The enlarged desktop hand would overflow a phone/tablet width, so scale the whole fan back
     // down to roughly the original footprint (bga-cards fixes the frame px in JS, so a transform is
-    // the reliable lever regardless of how it sizes internally). Compose with the "Card size"
-    // preference so a player who also picked Small/Large still nudges it proportionally.
+    // the reliable lever regardless of how it sizes internally).
     #ucs-my-hand {
-        transform: scale(calc(0.68 * var(--ucs-card-scale, 1)));
+        transform: scale(0.68);
         transform-origin: top center;
-        min-height: calc(128px * var(--ucs-card-scale, 1));
+        min-height: 128px;
     }
     #ucs-opponents {
         flex-direction: row;
