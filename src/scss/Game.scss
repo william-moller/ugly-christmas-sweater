@@ -1241,8 +1241,8 @@ html[data-theme="dark"] {
 // scales with the frame. The mobile breakpoint below scales the whole fan back down.
 #ucs-my-hand-wrap {
     // Fixed 96/149 to match the bga-cards frame px (set in Game.ts). The "Card size" preference does
-    // NOT scale this variable — it scales the whole finished fan via a transform on #ucs-my-hand below
-    // (changing the frame size or this var distorts the fan's arc), so the inner face stays in step.
+    // NOT touch the hand — neither this var nor a transform on #ucs-my-hand (both distort the fan / break
+    // its floating); it scales the tabletop / parameter / knitting faces instead. See #ucs-my-hand below.
     --ucs-card-w: 96px;
     --ucs-card-h: 149px;
     // Keep the (attached) hand painting above the tabletop zones where they overlap. The floating hand
