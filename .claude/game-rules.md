@@ -106,7 +106,7 @@ For **completed** sweaters only:
 | Sweater Build | **+2** | Each completed sweater (L+R+B). |
 | Three Consecutive Numbers | **+2** | The sweater's 3 values form a run of 3 consecutive numbers. **No wrap** (11-12-1 invalid). |
 | Fad | **+3** per Fad objective | Sweater entirely matches the Fad **colour** *or* the Fad **icon**. Fad cards list two objectives (e.g. "All Green / All Trees"); each scores independently. *Clash Is In* Fad: sweater must be all **different** colours and icons. |
-| All-Matching Non-Fad | **+1** | Sweater all one colour **or** one icon that is **not** the active Fad. (Under *Clash Is In*, all four colours/icons count as non-fad matches.) |
+| All-Matching Non-Fad | **+1 each** | Scored **independently** for colour and for icon: +1 if the sweater is all one colour that is **not** the active Fad, **and** +1 if it is all one icon that is not the active Fad — so a sweater matching both a non-Fad colour and a non-Fad icon scores **+2** (per the designer's ruling on the BGG forums; the printed rulebook's "colour *or* icon" wording is misleading). (Under *Clash Is In*, all-one-colour and all-one-icon each count as a non-Fad match.) |
 | Secret Santa | **+3** | A completed sweater satisfies your Secret Santa's colour + icon request. Each card counts toward **either** its icon or colour (not both); orientation ignored. Scores **once**. |
 
 ## Between rounds & game end

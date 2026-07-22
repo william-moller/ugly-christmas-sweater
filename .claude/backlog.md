@@ -13,19 +13,10 @@ not of the code.
 ## Release-blocking (BGA pre-release checklist)
 
 - **Tooltip coverage sweep** — checklist: "non-self explanatory graphic elements should have tool
-  tips". *Blocked on the playing-area layout work below:* which elements need explaining is defined
-  by which zones exist, and a reworked zone throws the sweep away. While there, use BGA's tooltip
-  system for the draw pile rather than a native `title=` attribute (`src/ts/Game.ts:129`).
-- **Help text on the special cards, via a hover icon** — Perfect Fit, Trendy Yarn, Fads and Secret
-  Santa each get a small "?" (or ⓘ) affordance that reveals what the card does on hover. Distinct
-  from the coverage sweep above: those cards already have plain tooltips, but a visible icon signals
-  "there's help here" rather than relying on the player discovering the hover. Rules text lives in
-  `.claude/game-rules.md`; wrap the strings (see the translation item above).
+  tips". While there, use BGA's tooltip system for the draw pile rather than a native `title=`
+  attribute (`src/ts/Game.ts:129`).
 - **Responsive / mobile** — checklist: the game must work on a mobile device. Related checklist
   line: if elements don't occupy all available horizontal space, they should be centered.
-- **Statistics** — checklist wants meaningful stats. *Open question:* which ones beyond the five
-  already declared in `stats.jsonc`? Candidates: tricks won, cards traded, patches used, VP by
-  source.
 - **Cleanup: `console.log`** — checklist: remove tracing from JS before alpha (`src/ts/`).
 
 ## Polish / UX
@@ -33,7 +24,6 @@ not of the code.
 - **Animations** — more of them. *Open question:* which moments? Trick resolution and scoring look
   like the gaps.
 - **How-to-play rules summary** — in-client summary so players don't need the rulebook PDF.
-- **Playing-area layout** — improve. Overlaps the centering checklist line above.
 - **Knitting area: normalise sweater art registration across cards** — the sweater silhouette is
   drawn at a slightly different horizontal position on each card face, so an assembled sweater built
   from mismatched cards (the normal case) doesn't tile cleanly: the L/R/B pieces jog left/right of

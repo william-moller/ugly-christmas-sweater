@@ -26,7 +26,8 @@ class ResolveTrick extends GameState
             return EndTrickCleanup::class; // safety
         }
 
-        // The top of the draft order holds the "1" card and leads the next trick.
+        // The top of the draft order holds the "1" card and leads the next trick — i.e. won the trick.
+        $this->game->playerStats->inc('tricks_won', 1, $order[0]);
         $this->game->globals->set('leaderId', $order[0]);
         $this->game->globals->set('draftIndex', 0);
 

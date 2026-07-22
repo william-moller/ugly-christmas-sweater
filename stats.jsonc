@@ -10,24 +10,54 @@
 
     // Statistics for each player
     "player": {
-        "sweaters_built": {
+        "tricks_won": {
             "id": 10,
+            "name": "Tricks won (led the draft)",
+            "type": "int"
+        },
+        "sweaters_started": {
+            "id": 11,
+            "name": "Sweaters started",
+            "type": "int"
+        },
+        "sweaters_built": {
+            "id": 12,
             "name": "Sweaters completed",
             "type": "int"
         },
-        "runs_scored": {
-            "id": 11,
-            "name": "Sweaters with three consecutive numbers",
-            "type": "int"
-        },
-        "fad_objectives": {
-            "id": 12,
-            "name": "Fad objectives scored",
-            "type": "int"
-        },
-        "secret_santas": {
+        "patches_scored": {
             "id": 13,
-            "name": "Secret Santas fulfilled",
+            "name": "Patch cards scored (in completed sweaters)",
+            "type": "int"
+        },
+        "points_sweaters": {
+            "id": 14,
+            "name": "Points from completed sweaters",
+            "type": "int"
+        },
+        "points_runs": {
+            "id": 15,
+            "name": "Points from three consecutive numbers",
+            "type": "int"
+        },
+        "points_fad": {
+            "id": 16,
+            "name": "Points from Fad objectives",
+            "type": "int"
+        },
+        "points_secret_santa": {
+            "id": 17,
+            "name": "Points from Secret Santas",
+            "type": "int"
+        },
+        "points_nonfad_color": {
+            "id": 18,
+            "name": "Points from non-Fad matching colours",
+            "type": "int"
+        },
+        "points_nonfad_icon": {
+            "id": 19,
+            "name": "Points from non-Fad matching icons",
             "type": "int"
         }
     }

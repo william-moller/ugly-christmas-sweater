@@ -1271,12 +1271,15 @@ class Game {
         const allSameIcon = !icons.includes(null) && new Set(icons).size === 1;
         const fad = this.fadForBuild(playerId, buildNo);
         if (fad && fad.clash) {
-            // "Clash Is In": +3 when all three differ in BOTH colour and icon; any all-same still +1.
+            // "Clash Is In": +3 when all three differ in BOTH colour and icon; all-one-colour and
+            // all-one-icon each count as a non-Fad match (+1 each).
             const allDiffColor = new Set(colors).size === 3;
             const allDiffIcon = !icons.includes(null) && new Set(icons).size === 3;
             if (allDiffColor && allDiffIcon)
                 vp += VP_FAD;
-            if (allSameColor || allSameIcon)
+            if (allSameColor)
+                vp += VP_NONFAD;
+            if (allSameIcon)
                 vp += VP_NONFAD;
         }
         else {
@@ -1291,7 +1294,10 @@ class Game {
                 vp += VP_FAD;
             if (fadIcon !== null && allSameIcon && icons[0] === fadIcon)
                 vp += VP_FAD;
-            if ((allSameColor && colors[0] !== fadColor) || (allSameIcon && icons[0] !== fadIcon))
+            // +1 colour and +1 icon are independent (designer's BGG ruling): keep in sync with the PHP.
+            if (allSameColor && colors[0] !== fadColor)
+                vp += VP_NONFAD;
+            if (allSameIcon && icons[0] !== fadIcon)
                 vp += VP_NONFAD;
         }
         return vp;
@@ -2403,7 +2409,7 @@ class Game {
             { key: 'built', label: _('Each Sweater Built'), vp: '+2 VP' },
             { key: 'run', label: _('Three Consecutive Numbers'), vp: '+2 VP' },
             { key: 'fad', label: _('Fads'), vp: '+? VP' },
-            { key: 'nonfad', label: _("All Matching 'Non-Fad' Colours and Icons"), vp: '+1 VP' },
+            { key: 'nonfad', label: _("All Matching 'Non-Fad' Colours and Icons"), vp: '+1 VP each' },
             { key: 'ss', label: _('Secret Santa'), vp: '+3 VP' },
         ];
         if (detail.bonus)
