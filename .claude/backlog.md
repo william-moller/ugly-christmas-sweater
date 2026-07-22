@@ -17,7 +17,6 @@ not of the code.
   attribute (`src/ts/Game.ts:129`).
 - **Responsive / mobile** — checklist: the game must work on a mobile device. Related checklist
   line: if elements don't occupy all available horizontal space, they should be centered.
-- **Cleanup: `console.log`** — checklist: remove tracing from JS before alpha (`src/ts/`).
 
 ## Polish / UX
 

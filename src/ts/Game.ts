@@ -89,7 +89,6 @@ export class Game {
     private handStock: any = null;
 
     constructor(bga: Bga<UglyChristmasSweaterPlayer, UglyChristmasSweaterGamedatas>) {
-        console.log('uglychristmassweater constructor');
         this.bga = bga;
 
         // Register the state handlers (one per active-player PHP state).
@@ -106,7 +105,6 @@ export class Game {
         Called on game start and on every page refresh (F5).
     */
     setup(gamedatas: UglyChristmasSweaterGamedatas) {
-        console.log("Starting game setup");
         this.gamedatas = gamedatas;
 
         this.bga.gameArea.getElement().insertAdjacentHTML('beforeend', `
@@ -203,7 +201,6 @@ export class Game {
         this.setupNotifications();
         this.maybeAddDebugButton();
         this.setupHelpButton();
-        console.log("Ending game setup");
     }
 
     /**
@@ -2198,7 +2195,6 @@ export class Game {
     }
 
     setupNotifications() {
-        console.log('notifications subscriptions setup');
         // Promise notifications are auto-wired from the `notif_*` methods below.
         this.bga.notifications.setupPromiseNotifications({
             // logger: console.log

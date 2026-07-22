@@ -448,7 +448,6 @@ class Game {
         this.animationManager = null;
         this.cardsManager = null;
         this.handStock = null;
-        console.log('uglychristmassweater constructor');
         this.bga = bga;
         // Register the state handlers (one per active-player PHP state).
         this.bga.states.register('PlayCard', new PlayCard(this, bga));
@@ -463,7 +462,6 @@ class Game {
         Called on game start and on every page refresh (F5).
     */
     setup(gamedatas) {
-        console.log("Starting game setup");
         this.gamedatas = gamedatas;
         this.bga.gameArea.getElement().insertAdjacentHTML('beforeend', `
             <div id="ucs-table" style="--ucs-players:${Object.keys(gamedatas.players).length}">
@@ -553,7 +551,6 @@ class Game {
         this.setupNotifications();
         this.maybeAddDebugButton();
         this.setupHelpButton();
-        console.log("Ending game setup");
     }
     /**
      * The lower-left "?" help button — a fixed round button that opens a popin showing the printed
@@ -2517,7 +2514,6 @@ class Game {
         return { log, args };
     }
     setupNotifications() {
-        console.log('notifications subscriptions setup');
         // Promise notifications are auto-wired from the `notif_*` methods below.
         this.bga.notifications.setupPromiseNotifications({
         // logger: console.log
