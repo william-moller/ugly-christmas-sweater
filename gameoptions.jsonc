@@ -1,6 +1,41 @@
 {
   // option ids should be between 100 and 199
   // See https://en.doc.boardgamearena.com/Options_and_preferences:_gameoptions.json,_gamepreferences.json for more details
+  //
+  // Options display in FILE (object-key) order, NOT by id — so the blocks below are ordered Game mode,
+  // Difficulty, Bonus cards to read top-to-bottom with the visibility dependencies flowing downward.
+  // The ids themselves (100/101/102) are unchanged and referenced by that number in Game.php and in the
+  // displaycondition blocks, so their file position is independent of their id.
+
+  // Game mode (read in Game::isExpress / Game::isAvid). Three mutually-exclusive modes:
+  //   Casual  = the base game (3 rounds); Difficulty selectable.
+  //   Express = a single round with a Fad display players claim, a Trendy card that rotates on a
+  //             trick cadence, a Perfect Fit replaced when matched, 2 Secret Santas each, and a
+  //             4th-sweater round-end. Full game (Difficulty hidden, stays at Expert default).
+  //   Avid    = the full 3-round base game, but each player is dealt 3 Secret Santas at game start
+  //             that persist all game; you must satisfy all 3 by game end or your final score is 0.
+  //             Difficulty hidden (full game).
+  "101": {
+    "name": "Game mode",
+    "values": {
+      "0": {
+        "name": "Casual",
+        "description": "The base game: 3 rounds, one parameter of each type per round.",
+        "tmdisplay": "Casual"
+      },
+      "1": {
+        "name": "Express",
+        "description": "One round; claimable Fad display, rotating Trendy/Perfect Fit, 2 Secret Santas, ends at the 4th sweater.",
+        "tmdisplay": "Express"
+      },
+      "2": {
+        "name": "Avid",
+        "description": "Full 3-round game; 3 Secret Santas dealt at game start that must ALL be completed by game end or your final score is 0.",
+        "tmdisplay": "Avid"
+      }
+    },
+    "default": 0
+  },
 
   // Difficulty controls which round-parameter decks are revealed each round (read in
   // Game::revealableGameplayTypes). Beginner = Fads only; Novice adds Trendy Yarn (trump colour);
@@ -32,36 +67,6 @@
       { "type": "otheroption", "id": 101, "value": [0] }
     ],
     "notdisplayedmessage": "Difficulty applies to Casual mode only. Express and Avid always play the full game."
-  },
-
-  // Game mode (read in Game::isExpress / Game::isAvid). Three mutually-exclusive modes:
-  //   Casual  = the base game (3 rounds); Difficulty selectable.
-  //   Express = a single round with a Fad display players claim, a Trendy card that rotates on a
-  //             trick cadence, a Perfect Fit replaced when matched, 2 Secret Santas each, and a
-  //             4th-sweater round-end. Full game (Difficulty hidden, stays at Expert default).
-  //   Avid    = the full 3-round base game, but each player is dealt 3 Secret Santas at game start
-  //             that persist all game; you must satisfy all 3 by game end or your final score is 0.
-  //             Difficulty hidden (full game).
-  "101": {
-    "name": "Game mode",
-    "values": {
-      "0": {
-        "name": "Casual",
-        "description": "The base game: 3 rounds, one parameter of each type per round.",
-        "tmdisplay": "Casual"
-      },
-      "1": {
-        "name": "Express",
-        "description": "One round; claimable Fad display, rotating Trendy/Perfect Fit, 2 Secret Santas, ends at the 4th sweater.",
-        "tmdisplay": "Express"
-      },
-      "2": {
-        "name": "Avid",
-        "description": "Full 3-round game; 3 Secret Santas dealt at game start that must ALL be completed by game end or your final score is 0.",
-        "tmdisplay": "Avid"
-      }
-    },
-    "default": 0
   },
 
   // Bonus cards (optional Kickstarter mini-expansion — the 4 "Special Ability" cards). When On, one is
