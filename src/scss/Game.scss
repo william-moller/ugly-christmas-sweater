@@ -1444,6 +1444,17 @@ table.ucs-scorepad {
 .ucs-sp-cur   { background: rgba(214, 158, 46, 0.20); }
 .ucs-sp-cur.ucs-sp-alt { background: rgba(214, 158, 46, 0.26); }
 
+// Avid: a disqualified player's grand total is zeroed and flagged with a red asterisk (explained in
+// the note under the pad).
+.ucs-sp-dq { color: #b71c1c; }
+.ucs-sp-dq-mark { color: #b71c1c; font-weight: 800; }
+.ucs-scorepad-dq-note {
+    margin: 8px 4px 0;
+    font-size: 13px;
+    font-style: italic;
+    color: var(--ucs-heading-ink, #3a352d);
+}
+
 .ucs-sp-totals {
     td, th { border-top-width: 2.5px; }
     .ucs-sp-cat .ucs-sp-lbl { font-size: 17px; font-weight: 800; letter-spacing: 0.03em; }
@@ -1630,6 +1641,38 @@ table.ucs-scorepad {
     background-color: #5c1414; // fallback tint behind the sprite art (.ucs-art2 background-image)
     // The publisher art is drawn to be read in landscape, so the portrait card face is turned 90°.
     transform: rotate(90deg);
+}
+
+// Avid: a player's publicly revealed satisfied Secret Santas, shown compact in their area (below the
+// header). Sits in both my table and the opponents' smaller tables, so the cards are shrunk via the
+// card-size vars (the sprite scales off the same vars). Rotated cards use .ucs-santa-slot to reserve
+// their landscape footprint, so no overlap.
+.ucs-avid-revealed {
+    --ucs-card-w: 34px;
+    --ucs-card-h: 53px;
+    margin: 2px 0 6px;
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 4px 6px;
+}
+.ucs-avid-revealed-label {
+    font-size: 11px;
+    font-weight: 700;
+    opacity: 0.8;
+    letter-spacing: 0.02em;
+}
+.ucs-avid-revealed-cards {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    flex-wrap: wrap;
+}
+.ucs-avid-santa {
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+    outline: 2px solid rgba(46, 160, 67, 0.85); // green "completed" ring
+    outline-offset: -2px;
+    border-radius: 5px;
 }
 
 // ---- Help button (bga-help dojo module) + End-of-Round Scoring popin ----------------------------

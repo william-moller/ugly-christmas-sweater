@@ -59,12 +59,9 @@ not of the code.
 
 ## Rules gaps (anchored in code)
 
-These two carry a `TODO` at the exact line someone would edit; this file is the index, the comment
+This carries a `TODO` at the exact line someone would edit; this file is the index, the comment
 is the detail.
 
-- **Avid Secret Santa variant** — `modules/php/Game.php:449`. Deals 3 at game start; all must be
-  completed or the player doesn't qualify for scoring. Also needs a `gameoptions.jsonc` entry — see
-  the note at its line 70, which lists 2P/3P player-count tuning as outstanding too.
 - **Colour word is not translated in `cardLabel()`** — `modules/php/Game.php:694`. The rest of the
   translation-readiness sweep is done (client display strings wrapped, `Material` data marked with
   `clienttranslate`, client translates data at display); this one case is left because the colour is

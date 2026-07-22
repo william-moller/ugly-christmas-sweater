@@ -41,10 +41,13 @@ class Game extends \Bga\GameFramework\Table
     const DIFF_NOVICE    = 1; // Fads + Trendy Yarn
     const DIFF_EXPERT    = 2; // all three (Fads + Trendy Yarn + Perfect Fit) — base game
 
-    /** Game mode option (gameoptions.jsonc id 101): Casual = base 3-round game, Express = 1-round variant. */
+    /** Game mode option (gameoptions.jsonc id 101): Casual = base 3-round game, Express = 1-round variant,
+     *  Avid = full 3-round game with 3 must-complete Secret Santas dealt at game start. */
     const OPT_MODE     = 101;
     const MODE_CASUAL  = 0;
     const MODE_EXPRESS = 1;
+    const MODE_AVID    = 2;
+    const AVID_SECRET_SANTAS = 3; // Secret Santas dealt per player at game start in Avid mode
 
     /** Bonus cards option (gameoptions.jsonc id 102): deal 1 Special Ability card per player when On. */
     const OPT_BONUS  = 102;
@@ -119,6 +122,13 @@ class Game extends \Bga\GameFramework\Table
         return ((int) ($this->bga->tableOptions->get(self::OPT_MODE) ?? self::MODE_CASUAL)) === self::MODE_EXPRESS;
     }
 
+    /** True when the Avid variant is selected (gameoptions.jsonc id 101): full 3-round game, but each
+     *  player is dealt 3 Secret Santas at game start that must ALL be completed by game end. */
+    public function isAvid(): bool
+    {
+        return ((int) ($this->bga->tableOptions->get(self::OPT_MODE) ?? self::MODE_CASUAL)) === self::MODE_AVID;
+    }
+
     /** True when the Bonus / Special Ability cards option is On (gameoptions.jsonc id 102). Defaults Off. */
     public function bonusEnabled(): bool
     {
@@ -149,9 +159,10 @@ class Game extends \Bga\GameFramework\Table
         return $this->getPlayersNumber() + 1;
     }
 
-    /** Secret Santas dealt to each player: Express = 2, Casual = 1. */
+    /** Secret Santas dealt to each player: Avid = 3 (once, at game start), Express = 2, Casual = 1. */
     public function secretSantasPerPlayer(): int
     {
+        if ($this->isAvid())    return self::AVID_SECRET_SANTAS;
         return $this->isExpress() ? 2 : 1;
     }
 
@@ -200,6 +211,10 @@ class Game extends \Bga\GameFramework\Table
         $this->globals->set('draftOrderCards', []);
         $this->globals->set('draftIndex', 0);
         $this->globals->set('scorepad', 'null'); // cumulative end-of-round scorepad, appended per round
+        // Avid mode: per-player set of Secret Santa card ids already satisfied (and scored) this game.
+        // { pid => [ssCardId, …] }. Tracks cumulative completion across rounds (sweaters are torn down
+        // each round) for the game-end "all 3 or your score is 0" gate. Empty/unused outside Avid.
+        $this->globals->set('avidSSDone', []);
 
         // --- Stats (defined in stats.jsonc) ---------------------------------------------------
         $this->initStat('table', 'rounds', 0);
@@ -459,7 +474,8 @@ class Game extends \Bga\GameFramework\Table
         // 4) Reveal the round's gameplay cards (Perfect Fit / Trendy Yarn / Fad).
         $this->revealGameplayCards();
 
-        // 5) Deal one Secret Santa per player (Casual). TODO: Avid variant deals 3 at game start.
+        // 5) Deal Secret Santas: 1/player in Casual, 2 in Express, 3 in Avid. In Avid they are dealt once
+        //    (round 1) and persist all game — dealSecretSantas() no-ops on later rounds.
         $this->dealSecretSantas();
 
         // 6) Activate the leader to lead the first trick. No trick has resolved yet this round, so the
@@ -603,6 +619,12 @@ class Game extends \Bga\GameFramework\Table
     /** Deal each player their Secret Santa objective(s) for the round: Casual = 1, Express = 2. */
     public function dealSecretSantas(): void
     {
+        // Avid: the 3 Secret Santas are dealt ONCE at game start and persist all game (they must all be
+        // completed by game end). After round 1 there is nothing to do — never discard or re-deal them.
+        if ($this->isAvid() && (int) $this->globals->get('roundNo') > 1) {
+            return;
+        }
+
         // Last round's Secret Santas are spent: DISCARD them out of the game — never back into 'box' — so a
         // Secret Santa someone already held can't be re-dealt later. Only the undealt 'box' is shuffled and
         // drawn from below. (No-op on round 1: no Secret Santas have been dealt yet.)
@@ -642,6 +664,9 @@ class Game extends \Bga\GameFramework\Table
         $result["gameplay"] = $this->getGameplayState();
         // Bonus / Special Ability cards (optional expansion): every player's revealed card ([] when Off).
         $result["bonus"] = $this->bonusEnabled() ? $this->bonusState() : [];
+        // Avid: every player's PUBLICLY revealed satisfied Secret Santas ({} outside Avid). Grows as
+        // players complete them; broadcast again on each roundScored notification.
+        $result["avidRevealed"] = $this->avidRevealedSecretSantas();
 
         // Counts of hidden piles (for display) — per player.
         $result["counts"] = $this->publicCounts();
@@ -663,6 +688,7 @@ class Game extends \Bga\GameFramework\Table
         // lets the client restore the Draft Order cards onto the right cards after an F5 mid-draft.
         $result["draftOrderCards"] = $this->globals->get('draftOrderCards') ?: [];
         $result["express"]     = $this->isExpress();
+        $result["avid"]        = $this->isAvid();
         $result["totalRounds"] = $this->totalRounds();
         // True once this hand's end has been triggered (a player completed their Nth sweater, or hands
         // are exhausted): the client shows the "last trick & draft phase" banner. Live-computed so an F5
@@ -1562,10 +1588,23 @@ class Game extends \Bga\GameFramework\Table
         // Secret Santa: +VP_SECRET_SANTA per Secret Santa card whose colour+icon request is met by at
         // least one COMPLETED sweater (scores once per card, not per sweater). Hidden all round; revealed
         // and applied now (the summary shows the yes/no + which sweater satisfied it).
+        //   Casual/Express — each card is fresh this round (re-dealt/claimed), so "once" means once this
+        //     round: satisfied → +3.
+        //   Avid — the same 3 cards persist all game, so "once" means once per GAME. We track which cards
+        //     have already been satisfied+scored (globals 'avidSSDone') and only award a card the first
+        //     round it is met; a card met again in a later round is skipped (no double-score). The game-end
+        //     "all 3 or your score is 0" gate reads the same tracked set (EndScore::onEnteringState).
+        $avid      = $this->isAvid();
+        $ssDone    = (array) $this->globals->get('avidSSDone');
+        $awardThis = []; // Avid: SS cards NEWLY satisfied+scored this round, per pid (for the scorepad + reveal)
         foreach (array_keys($this->loadPlayersBasicInfos()) as $pid) {
             $pid = (int) $pid;
-            $builds = $this->playerBuilds($pid); // completed-orientation pieces, keyed buildNo => slot => card
+            $builds   = $this->playerBuilds($pid); // completed-orientation pieces, keyed buildNo => slot => card
+            $doneThis = array_map('intval', (array) ($ssDone[$pid] ?? []));
             foreach ($this->playerSecretSantas($pid) as $ss) {
+                if ($avid && in_array((int) $ss['id'], $doneThis, true)) {
+                    continue; // already satisfied+scored in an earlier round (Avid: score once per game)
+                }
                 foreach ($builds as $bySlot) {
                     if (isset($bySlot[Material::SLOT_LEFT], $bySlot[Material::SLOT_RIGHT], $bySlot[Material::SLOT_BOTTOM])
                         && $this->sweaterMatchesNeeds(
@@ -1574,10 +1613,23 @@ class Game extends \Bga\GameFramework\Table
                         )) {
                         $this->bga->playerScore->inc($pid, Material::VP_SECRET_SANTA);
                         $this->playerStats->inc('secret_santas', 1, $pid);
+                        if ($avid) {
+                            $doneThis[]        = (int) $ss['id'];
+                            $awardThis[$pid][] = (int) $ss['id']; // newly revealed this round
+                        }
                         break; // scores once per Secret Santa card
                     }
                 }
             }
+            if ($avid) {
+                $ssDone[$pid] = $doneThis;
+            }
+        }
+        if ($avid) {
+            $this->globals->set('avidSSDone', $ssDone);
+            // roundScorepad() reads this to show the correct per-round Secret Santa VP (score-once-per-game
+            // means an SS met again in a later round must NOT re-count in that round's column).
+            $this->globals->set('avidSSRoundAward', $awardThis);
         }
 
         // Tie-breaker + Fad tracking. Per player, walk this round's builds and accumulate:
@@ -1679,6 +1731,32 @@ class Game extends \Bga\GameFramework\Table
         return $out;
     }
 
+    /**
+     * Avid: the Secret Santas each player has satisfied so far this game, made PUBLIC (revealed face-up in
+     * that player's area as they are completed at round scoring). Keyed by pid → [{id,name,needs}]. Empty
+     * outside Avid. Sourced from the cumulative 'avidSSDone' set that scoreRound maintains, so it survives a
+     * page refresh via getAllDatas and is re-broadcast on each roundScored notification.
+     */
+    public function avidRevealedSecretSantas(): array
+    {
+        if (!$this->isAvid()) {
+            return [];
+        }
+        $ssDone = (array) $this->globals->get('avidSSDone');
+        $out = [];
+        foreach (array_keys($this->loadPlayersBasicInfos()) as $pid) {
+            $pid = (int) $pid;
+            $out[$pid] = [];
+            foreach (array_map('intval', (array) ($ssDone[$pid] ?? [])) as $ssId) {
+                $def = Material::secretSantas()[$ssId] ?? null;
+                if ($def) {
+                    $out[$pid][] = ['id' => $ssId, 'name' => $def['name'], 'needs' => $def['needs']];
+                }
+            }
+        }
+        return $out;
+    }
+
     /** True when a piece satisfies a single Secret Santa requirement ("color:x" / "icon:y"); orientation ignored. */
     private function pieceMatchesNeed(array $card, string $need): bool
     {
@@ -1774,10 +1852,12 @@ class Game extends \Bga\GameFramework\Table
      */
     public function roundScorepad(): array
     {
-        $round    = (int) $this->globals->get('roundNo');
-        $express  = $this->isExpress();
-        $roundFad = $express ? null : $this->activeFad();
-        $scores   = $this->getCollectionFromDb("SELECT `player_id`, `player_score` FROM `player`");
+        $round     = (int) $this->globals->get('roundNo');
+        $express   = $this->isExpress();
+        $avid      = $this->isAvid();
+        $avidAward = $avid ? (array) $this->globals->get('avidSSRoundAward') : [];
+        $roundFad  = $express ? null : $this->activeFad();
+        $scores    = $this->getCollectionFromDb("SELECT `player_id`, `player_score` FROM `player`");
 
         // Prior payload (if any) carries the rounds already recorded; append this round to its history.
         $prev    = json_decode($this->globals->get('scorepad') ?? 'null', true);
@@ -1831,18 +1911,26 @@ class Game extends \Bga\GameFramework\Table
                 if ($parts['fad'] > 0) $fadsCompleted += intdiv($parts['fad'], Material::VP_FAD);
             }
 
-            // Secret Santa: +VP_SECRET_SANTA per satisfied card (scores once per card, over completed builds).
-            $ss = 0;
-            $builds = $this->playerBuilds($pid);
-            foreach ($this->playerSecretSantas($pid) as $sc) {
-                foreach ($builds as $bySlot) {
-                    if (isset($bySlot[Material::SLOT_LEFT], $bySlot[Material::SLOT_RIGHT], $bySlot[Material::SLOT_BOTTOM])
-                        && $this->sweaterMatchesNeeds(
-                            [$bySlot[Material::SLOT_LEFT], $bySlot[Material::SLOT_RIGHT], $bySlot[Material::SLOT_BOTTOM]],
-                            $sc['needs']
-                        )) {
-                        $ss += Material::VP_SECRET_SANTA;
-                        break; // scores once per Secret Santa card
+            // Secret Santa: +VP_SECRET_SANTA per satisfied card.
+            //   Casual/Express — each card is fresh this round, so recompute against this round's builds.
+            //   Avid — cards persist and score once per GAME, so mirror scoreRound: count only the cards
+            //     newly awarded this round (globals 'avidSSRoundAward'), else the column double-counts an
+            //     SS met in more than one round and the bonus delta absorbs a phantom mismatch.
+            if ($avid) {
+                $ss = count((array) ($avidAward[$pid] ?? [])) * Material::VP_SECRET_SANTA;
+            } else {
+                $ss = 0;
+                $builds = $this->playerBuilds($pid);
+                foreach ($this->playerSecretSantas($pid) as $sc) {
+                    foreach ($builds as $bySlot) {
+                        if (isset($bySlot[Material::SLOT_LEFT], $bySlot[Material::SLOT_RIGHT], $bySlot[Material::SLOT_BOTTOM])
+                            && $this->sweaterMatchesNeeds(
+                                [$bySlot[Material::SLOT_LEFT], $bySlot[Material::SLOT_RIGHT], $bySlot[Material::SLOT_BOTTOM]],
+                                $sc['needs']
+                            )) {
+                            $ss += Material::VP_SECRET_SANTA;
+                            break; // scores once per Secret Santa card
+                        }
                     }
                 }
             }
@@ -1872,9 +1960,27 @@ class Game extends \Bga\GameFramework\Table
             'totalRounds' => $this->totalRounds(),
             'fad'         => $roundFad,
             'bonus'       => $this->bonusEnabled(),
+            'avid'        => $avid,
             'players'     => $playersMeta,
             'rounds'      => $history, // each: { round, players: { pid: {built,run,fad,nonfad,ss,bonus,total,...} } }
         ];
+        if ($avid) {
+            // Publicly revealed satisfied Secret Santas per player (grows across rounds) — shown face-up in
+            // each player's area. On the FINAL round, list players who failed to complete all 3 (their final
+            // score is zeroed in EndScore): the summary flags them with an asterisk + note.
+            $payload['avidRevealed'] = $this->avidRevealedSecretSantas();
+            if ($round >= $this->totalRounds()) {
+                $ssDone = (array) $this->globals->get('avidSSDone');
+                $dq = [];
+                foreach (array_keys($this->loadPlayersBasicInfos()) as $pid) {
+                    $pid = (int) $pid;
+                    if (count((array) ($ssDone[$pid] ?? [])) < self::AVID_SECRET_SANTAS) {
+                        $dq[] = $pid;
+                    }
+                }
+                $payload['disqualified'] = $dq;
+            }
+        }
         $this->globals->set('scorepad', json_encode($payload));
         return $payload;
     }

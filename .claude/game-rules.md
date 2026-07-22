@@ -116,12 +116,29 @@ For **completed** sweaters only:
 - **Game ends after round 3.** Sum round scores; highest total wins.
 - **Tiebreakers:** (1) fewest unbuilt sweaters → (2) most total Fad points → (3) physical knit-off *(omitted in the digital version)*.
 
-## Variants (game options)
+## Player-count scaling (automatic, not an option)
+
+Handled in the engine by player count (`Game::perPlayerDeal` / `getPlayersNumber`), not selectable:
 
 - **2-player:** deal all 24 each; play 2 cards/trick; draft 2/trick; can complete a 4th sweater the same draft the 3rd triggers end.
 - **3-player:** deal 16 each; 4 in pool, only 3 drafted per trick.
-- **Casual vs Avid** (Secret Santa mode): *Casual* = optional 1 Secret Santa/round. *Avid* = 3 dealt at game start that **must all** be completed by game end or the player **doesn't qualify for scoring**.
-- **Express:** 1 round. 2 Secret Santas each; Fads = players+1 face-up and **claimed** when fulfilled; Trendy Yarn rotates (every 3rd trick in 2P, every 4th in 3–4P); Perfect Fit replaced whenever matched; round ends at the **4th** sweater. Uses the Round Tracker.
+
+## Game modes (option 101 — mutually exclusive)
+
+The Game mode option offers **Casual / Express / Avid**. Difficulty (option 100) is only selectable in
+Casual; in Express and Avid it stays at its Expert default (the full game). Bonus cards (option 102)
+require Difficulty = Expert, so they're available in Express/Avid and in Casual-at-Expert.
+
+- **Casual:** the base game — 3 rounds, one parameter of each revealed type per round; **1** Secret
+  Santa dealt per player each round (re-dealt every round), optional (satisfy for +3 VP, no penalty).
+- **Express:** 1 round. 2 Secret Santas each; Fads = players+1 face-up and **claimed** when fulfilled;
+  Trendy Yarn rotates (every 3rd trick in 2P, every 4th in 3–4P); Perfect Fit replaced whenever
+  matched; round ends at the **4th** sweater. Uses the Round Tracker.
+- **Avid:** the full 3-round base game, but **3** Secret Santas are dealt to each player **once at game
+  start** and persist all game. Satisfaction is tracked **cumulatively** across rounds; each satisfied
+  Secret Santa still scores **+3 VP**, and each is **revealed publicly** in that player's area the round
+  it is first completed. A player who has **not** satisfied all 3 by game end has their **final score
+  set to 0** (flagged with an asterisk + note on the scoring summary).
 
 ## Bonus Cards (optional Kickstarter expansion — the 4 "Special Ability" cards)
 

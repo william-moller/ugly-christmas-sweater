@@ -5,6 +5,9 @@
   // Difficulty controls which round-parameter decks are revealed each round (read in
   // Game::revealableGameplayTypes). Beginner = Fads only; Novice adds Trendy Yarn (trump colour);
   // Expert adds Perfect Fit (super-trump) = the full base game.
+  // Only selectable in Casual mode (displaycondition on option 101 = 0). In Express and Avid the
+  // selector is hidden, so this option keeps its Expert default (2) — which is exactly what those
+  // full-game modes want (all three parameter decks reveal via the Expert path).
   "100": {
     "name": "Difficulty",
     "values": {
@@ -24,13 +27,21 @@
         "tmdisplay": "Expert"
       }
     },
-    "default": 2
+    "default": 2,
+    "displaycondition": [
+      { "type": "otheroption", "id": 101, "value": [0] }
+    ],
+    "notdisplayedmessage": "Difficulty applies to Casual mode only. Express and Avid always play the full game."
   },
 
-  // Game mode (read in Game::isExpress). Casual = the base game (3 rounds). Express = a single round
-  // with a Fad display players claim, a Trendy card that rotates on a trick cadence, a Perfect Fit
-  // that is replaced when matched, 2 Secret Santas each, and a 4th-sweater round-end. In Express the
-  // Difficulty option above is ignored (all three parameter systems are always active).
+  // Game mode (read in Game::isExpress / Game::isAvid). Three mutually-exclusive modes:
+  //   Casual  = the base game (3 rounds); Difficulty selectable.
+  //   Express = a single round with a Fad display players claim, a Trendy card that rotates on a
+  //             trick cadence, a Perfect Fit replaced when matched, 2 Secret Santas each, and a
+  //             4th-sweater round-end. Full game (Difficulty hidden, stays at Expert default).
+  //   Avid    = the full 3-round base game, but each player is dealt 3 Secret Santas at game start
+  //             that persist all game; you must satisfy all 3 by game end or your final score is 0.
+  //             Difficulty hidden (full game).
   "101": {
     "name": "Game mode",
     "values": {
@@ -43,6 +54,11 @@
         "name": "Express",
         "description": "One round; claimable Fad display, rotating Trendy/Perfect Fit, 2 Secret Santas, ends at the 4th sweater.",
         "tmdisplay": "Express"
+      },
+      "2": {
+        "name": "Avid",
+        "description": "Full 3-round game; 3 Secret Santas dealt at game start that must ALL be completed by game end or your final score is 0.",
+        "tmdisplay": "Avid"
       }
     },
     "default": 0
@@ -50,6 +66,9 @@
 
   // Bonus cards (optional Kickstarter mini-expansion — the 4 "Special Ability" cards). When On, one is
   // dealt face-up to each player at game start and persists all game. Read in Game::bonusEnabled.
+  // Only available when Difficulty = Expert (displaycondition on option 100 = 2). In Casual that means
+  // the creator must pick Expert; in Express and Avid Difficulty is hidden at its Expert default, so
+  // Bonus stays available there too (both are full-game modes).
   "102": {
     "name": "Bonus cards",
     "values": {
@@ -64,10 +83,13 @@
         "tmdisplay": "Bonus cards"
       }
     },
-    "default": 0
+    "default": 0,
+    "displaycondition": [
+      { "type": "otheroption", "id": 100, "value": [2] }
+    ],
+    "notdisplayedmessage": "Bonus cards require Expert difficulty (Casual mode set to Expert, or Express/Avid)."
   }
 
-  // NOTE: the remaining variants (2P/3P player-count tuning, Casual/Avid Secret Santa mode) will go
-  // here too once their engine support lands. Those that require an exact player count should use a
-  // "startcondition" block (minplayers/maxplayers) — see the "collect" reference game for the pattern.
+  // NOTE: 2P/3P play is handled in the engine by player count (Game::getPlayersNumber / perPlayerDeal),
+  // not as a selectable option, so nothing lives here for it.
 }

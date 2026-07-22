@@ -104,12 +104,14 @@ interface UglyChristmasSweaterGamedatas extends Gamedatas<UglyChristmasSweaterPl
     knitting: CardMap;             // all players' knitting-area cards (location_arg = player id)
     gameplay: GameplayState;       // the three round-parameter decks (Perfect Fit / Trendy Yarn / Fad)
     bonus: BonusCardState[];       // each player's revealed Bonus card (optional expansion; [] when Off)
+    avidRevealed: RevealedSantas;  // Avid: each player's publicly revealed satisfied Secret Santas ({} otherwise)
     counts: { [playerId: number]: PlayerCounts };
     material: UcsMaterial;
     roundNo: number;
     leaderId: number;
     draftOrderCards: number[];     // trade-card ids in rank order for the current trick (empty until resolved)
     express: boolean;              // true in the Express variant (single round, claimable Fads, etc.)
+    avid: boolean;                 // true in the Avid variant (3 must-complete Secret Santas dealt at game start)
     totalRounds: number;           // 3 (Casual) or 1 (Express)
     handEndTriggered: boolean;     // hand's end triggered (Nth sweater done / hands empty) → last-trick banner
     isStudio: boolean;             // true only on the Studio environment (gates the DEBUG button)
@@ -125,6 +127,16 @@ interface PlayCardArgs {
 interface DraftCardArgs {
     draftableIds: number[];
 }
+
+/** A Secret Santa objective revealed publicly (Avid): the family member + the three required pieces. */
+interface RevealedSecretSanta {
+    id: number;        // Material::secretSantas() index
+    name: string;      // family member name (clienttranslate-marked)
+    needs: string[];   // three "<color|icon>:<value>" requirements
+}
+
+/** Avid: publicly revealed satisfied Secret Santas, keyed by player id. */
+type RevealedSantas = { [playerId: number]: RevealedSecretSanta[] };
 
 /** One player's per-round category totals — a single column of the scorepad grid. */
 interface ScorepadCell {
@@ -162,6 +174,9 @@ interface Scorepad {
     totalRounds: number;   // 3 (Casual) or 1 (Express)
     fad: { title?: string; objectives?: any[]; clash?: boolean } | null;
     bonus: boolean;        // Bonus cards option on → show the Bonus row
+    avid?: boolean;        // Avid mode
+    avidRevealed?: RevealedSantas;  // Avid: each player's publicly revealed satisfied Secret Santas
+    disqualified?: number[];        // Avid final round: pids who failed all 3 SS (final score zeroed)
     players: ScorepadPlayer[];
     rounds: ScorepadRound[];
 }

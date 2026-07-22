@@ -513,6 +513,7 @@ class Game {
                         <span class="ucs-player-name">${mine ? _('Your Knitting Area') : player.name}</span>
                         <span class="ucs-bonus-card" id="ucs-bonus-${player.id}"></span>
                     </div>
+                    <div class="ucs-avid-revealed" id="ucs-avid-ss-${player.id}" style="display:none"></div>
                     <div class="ucs-knitting" id="ucs-knitting-${player.id}"></div>
                     ${mine ? '' : `<div class="ucs-oppo-summary" id="ucs-summary-${player.id}"></div>`}
                 </div>
@@ -690,13 +691,52 @@ class Game {
     renderAll() {
         this.renderGameplay();
         this.renderSecretSanta();
+        this.renderAvidRevealed();
         this.renderDraftPool();
         this.renderTradeArea();
         this.renderPlayers();
         this.renderPiles();
         this.renderHand();
     }
-    /** My own Secret Santa objective(s) — 1 in Casual, 2 in Express (private; hidden from other players). */
+    /**
+     * Avid: each player's publicly revealed satisfied Secret Santas, shown face-up in their area. A Secret
+     * Santa is revealed the round its colour+icon request is first met by a completed sweater. Rendered for
+     * every player (mine and opponents) from gamedatas.avidRevealed; hidden entirely outside Avid.
+     */
+    renderAvidRevealed() {
+        const revealed = this.gamedatas.avidRevealed ?? {};
+        Object.values(this.gamedatas.players).forEach((player) => {
+            const zone = document.getElementById(`ucs-avid-ss-${player.id}`);
+            if (!zone)
+                return;
+            const list = revealed[Number(player.id)] ?? [];
+            if (!this.gamedatas.avid || !list.length) {
+                zone.style.display = 'none';
+                zone.innerHTML = '';
+                return;
+            }
+            zone.style.display = '';
+            zone.innerHTML = `<span class="ucs-avid-revealed-label">${_('Completed Secret Santas')}</span>`;
+            const row = document.createElement('div');
+            row.className = 'ucs-avid-revealed-cards';
+            list.forEach((ss) => {
+                // A slot reserves the rotated (landscape) footprint so turned cards don't overlap — same
+                // pattern as renderSecretSanta.
+                const slot = document.createElement('div');
+                slot.className = 'ucs-santa-slot';
+                const el = document.createElement('div');
+                el.className = `ucs-card ucs-santa-card ucs-avid-santa ucs-art2 ucs-santa-${ss.id}`;
+                el.id = `ucs-avid-ss-${player.id}-${ss.id}`;
+                // secretSantaTooltip wants a Material::secretSantas() entry; the revealed payload has the
+                // same shape ({name, needs}) so it renders identically.
+                this.addTip(el.id, secretSantaTooltip(ss));
+                slot.appendChild(el);
+                row.appendChild(slot);
+            });
+            zone.appendChild(row);
+        });
+    }
+    /** My own Secret Santa objective(s) — 1 in Casual, 2 in Express, 3 in Avid (private; hidden from others). */
     renderSecretSanta() {
         const zone = document.getElementById('ucs-secret-santa');
         if (!zone)
@@ -2324,6 +2364,18 @@ class Game {
         scroll.className = 'ucs-scorepad-scroll';
         scroll.appendChild(this.buildScorepadTable(detail));
         box.appendChild(scroll);
+        // Avid: explain the asterisk on any zeroed (disqualified) grand total.
+        if (detail.disqualified && detail.disqualified.length) {
+            const names = detail.disqualified
+                .map((pid) => detail.players.find((p) => Number(p.player_id) === Number(pid))?.player_name)
+                .filter(Boolean)
+                .join(', ');
+            const note = document.createElement('div');
+            note.className = 'ucs-scorepad-dq-note';
+            note.innerHTML = `<span class="ucs-sp-dq-mark">*</span> `
+                + _('${players} did not complete all 3 Secret Santas — final score is 0.').replace('${players}', names);
+            box.appendChild(note);
+        }
         const foot = document.createElement('div');
         foot.className = 'ucs-score-foot';
         const okay = document.createElement('button');
@@ -2390,6 +2442,9 @@ class Game {
             html += '</tr>';
         });
         // ---- TOTALS row: per-round contribution, Total column = running grand total (cumulative) ----
+        // Avid: a player who failed to complete all 3 Secret Santas forfeits their game — the server zeroed
+        // their score in EndScore. Show their grand total as 0 with an asterisk (footnote below the table).
+        const disqualified = new Set((detail.disqualified ?? []).map(Number));
         html += `<tr class="ucs-sp-row ucs-sp-totals"><th class="ucs-sp-cat"><span class="ucs-sp-lbl">${_('TOTALS')}</span></th>`;
         players.forEach((p, i) => {
             let lastCum = 0;
@@ -2400,7 +2455,9 @@ class Game {
                 const cls = [i % 2 === 0 ? 'ucs-sp-alt' : '', r === cur ? 'ucs-sp-cur' : ''].join(' ');
                 html += cell(rec ? rec.total : undefined, cls);
             });
-            html += cell(lastCum, `ucs-sp-total ${i % 2 === 0 ? 'ucs-sp-alt' : ''}`);
+            const dq = disqualified.has(Number(p.player_id));
+            const grand = dq ? `0<span class="ucs-sp-dq-mark">*</span>` : String(lastCum);
+            html += `<td class="ucs-sp-num ucs-sp-total ${i % 2 === 0 ? 'ucs-sp-alt' : ''} ${dq ? 'ucs-sp-dq' : ''}">${grand}</td>`;
         });
         html += '</tr>';
         // ---- informational footer counts (not summed into VP) ----
@@ -2699,6 +2756,11 @@ class Game {
     async notif_roundScored(args) {
         // The draft phase is over and we're moving on — the "last trick" banner is spent.
         this.showHandEndBanner(false);
+        // Avid: Secret Santas satisfied this round are now public — refresh every player's revealed row.
+        if (args.avidRevealed) {
+            this.gamedatas.avidRevealed = args.avidRevealed;
+            this.renderAvidRevealed();
+        }
         if (args.round >= this.gamedatas.totalRounds) {
             this.renderRoundSummary(args); // final round: no acknowledgement gate, Okay just closes it
         }

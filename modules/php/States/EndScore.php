@@ -27,6 +27,20 @@ class EndScore extends \Bga\GameFramework\States\GameState
      * The onEnteringState method of state `EndScore` is called just before the end of the game.
      */
     public function onEnteringState() {
+        // Avid mode: a player who did not complete ALL 3 of their Secret Santas by game end does not
+        // qualify — their FINAL score is set to 0 (the round scorepad already flagged them with an
+        // asterisk + note). scoreRound tracks cumulative completion in the 'avidSSDone' global. Do this
+        // BEFORE the tie-break fold below so zeroed players also sort to the bottom.
+        if ($this->game->isAvid()) {
+            $ssDone = (array) $this->game->globals->get('avidSSDone');
+            foreach (array_keys($this->game->loadPlayersBasicInfos()) as $pid) {
+                $pid = (int) $pid;
+                if (count((array) ($ssDone[$pid] ?? [])) < Game::AVID_SECRET_SANTAS) {
+                    static::DbQuery("UPDATE `player` SET `player_score` = 0 WHERE `player_id` = $pid");
+                }
+            }
+        }
+
         // BGA ranks players by player_score, then player_score_aux only — it has no third sort column.
         // We want a TWO-level tie-break (gameinfos "tie_breaker_description"):
         //   #1 fewest unbuilt sweaters   (scoreRound accumulated -(unbuilt) into player_score_aux)

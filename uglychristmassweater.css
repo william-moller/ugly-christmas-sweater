@@ -1794,6 +1794,22 @@ table.ucs-scorepad th, table.ucs-scorepad td {
   background: rgba(214, 158, 46, 0.26);
 }
 
+.ucs-sp-dq {
+  color: #b71c1c;
+}
+
+.ucs-sp-dq-mark {
+  color: #b71c1c;
+  font-weight: 800;
+}
+
+.ucs-scorepad-dq-note {
+  margin: 8px 4px 0;
+  font-size: 13px;
+  font-style: italic;
+  color: var(--ucs-heading-ink, #3a352d);
+}
+
 .ucs-sp-totals td, .ucs-sp-totals th {
   border-top-width: 2.5px;
 }
@@ -1974,6 +1990,37 @@ table.ucs-scorepad th, table.ucs-scorepad td {
   box-sizing: border-box;
   background-color: #5c1414;
   transform: rotate(90deg);
+}
+
+.ucs-avid-revealed {
+  --ucs-card-w: 34px;
+  --ucs-card-h: 53px;
+  margin: 2px 0 6px;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px 6px;
+}
+
+.ucs-avid-revealed-label {
+  font-size: 11px;
+  font-weight: 700;
+  opacity: 0.8;
+  letter-spacing: 0.02em;
+}
+
+.ucs-avid-revealed-cards {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.ucs-avid-santa {
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+  outline: 2px solid rgba(46, 160, 67, 0.85);
+  outline-offset: -2px;
+  border-radius: 5px;
 }
 
 #bga-help_buttons {

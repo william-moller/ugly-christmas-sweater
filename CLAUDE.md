@@ -30,6 +30,6 @@ only what's specific to this game.
 - **Framework:** Modern / Studio (PHP state classes + TypeScript client).
 - **BGA project name:** `uglychristmassweater` · **SFTP remote path:** `/uglychristmassweater/` (in the gitignored `.vscode/sftp.json`).
 - **BGG ID:** `285071` · **publisher BGG ID:** `46595` (both set in `gameinfos.jsonc`).
-- **Game options** (`gameoptions.jsonc`): `100` Difficulty (Beginner/Novice/Expert), `101` Game mode (Casual/Express), `102` Bonus cards (Off/On).
+- **Game options** (`gameoptions.jsonc`): `101` Game mode (Casual/Express/Avid), `100` Difficulty (Beginner/Novice/Expert — shown only in Casual), `102` Bonus cards (Off/On — shown only when Difficulty = Expert). Options display top-to-bottom in file order (mode first, so the visibility dependencies read downward). Avid = full 3-round game with 3 must-complete Secret Santas dealt at game start (`Game::isAvid`); miss any and final score = 0 (zeroed in `States/EndScore`).
 - **Build:** `npm run build` (rollup TS + sass SCSS); `npm run watch`. Edit `src/`, never the generated `modules/js/Game.js` / `uglychristmassweater.css`.
 - **Deploy:** **`npm run ship`** = build + push the game files to BGA (`build` then `deploy -- --yes`). ⚠️ **Never** use the VS Code `SFTP: Sync Local → Remote` — its ignore is broken on Windows and dumps `node_modules/` onto BGA (see `../.claude/deploy.md`). `npm run deploy` alone does a dry-run; `npm run clean:remote -- --yes` purges stray remote files. If the card art changes, re-run `npm run build:sprites` first.
