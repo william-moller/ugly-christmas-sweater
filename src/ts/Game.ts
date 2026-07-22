@@ -864,28 +864,33 @@ export class Game {
         return this.gamedatas.gameplay?.express?.fadClaims ?? {};
     }
 
-    /** Express: the type_arg (fad id in Material::fads) of the Fad locking playerId's build, or null. */
-    private claimedFadForBuild(playerId: number, buildNo: number): number | null {
+    /** Express: the type_args (fad ids in Material::fads) of the Fads locking playerId's build — a sweater
+     *  can claim more than one Fad, so this is a list (empty = unlocked). */
+    private claimedFadsForBuild(playerId: number, buildNo: number): number[] {
         const claims = this.expressClaims();
+        const out: number[] = [];
         for (const fadId of Object.keys(claims)) {
             const c = claims[Number(fadId)];
             if (Number(c.playerId) === playerId && Number(c.buildNo) === buildNo) {
                 const card = (this.gamedatas.gameplay?.express?.fadClaimed ?? [])
                     .find((f) => Number(f.id) === Number(fadId));
-                return card ? Number(card.type_arg) : -1;
+                if (card) out.push(Number(card.type_arg));
             }
         }
-        return null;
+        return out;
     }
 
-    /** The Fad definition scoring a build: Casual's active round Fad, or Express's claimed Fad (or null). */
-    private fadForBuild(playerId: number, buildNo: number): any | null {
+    /** The Fad definitions scoring a build: Casual's active round Fad (a list of ≤1), or Express's claimed
+     *  Fads (a build may have claimed several). Empty = no active Fad for this build. */
+    private fadsForBuild(playerId: number, buildNo: number): any[] {
         if (this.gamedatas.express) {
-            const t = this.claimedFadForBuild(playerId, buildNo);
-            return (t != null && t > 0) ? (this.material.fads[t] ?? null) : null;
+            return this.claimedFadsForBuild(playerId, buildNo)
+                .map((t) => this.material.fads[t])
+                .filter((f) => f != null);
         }
         const active = this.gamedatas.gameplay?.fad?.active;
-        return active ? (this.material.fads[Number(active.type_arg)] ?? null) : null;
+        const f = active ? (this.material.fads[Number(active.type_arg)] ?? null) : null;
+        return f ? [f] : [];
     }
 
     /** A card's effective value (a placed patch carries its chosen wildValue; else its printed value). */
@@ -935,27 +940,26 @@ export class Game {
         const allSameColor = new Set(colors).size === 1;
         const allSameIcon = !icons.includes(null) && new Set(icons).size === 1;
 
-        const fad = this.fadForBuild(playerId, buildNo);
-        if (fad && fad.clash) {
-            // "Clash Is In": +3 when all three differ in BOTH colour and icon; all-one-colour and
-            // all-one-icon each count as a non-Fad match (+1 each).
-            const allDiffColor = new Set(colors).size === 3;
-            const allDiffIcon = !icons.includes(null) && new Set(icons).size === 3;
-            if (allDiffColor && allDiffIcon) vp += VP_FAD;
-            if (allSameColor) vp += VP_NONFAD;
-            if (allSameIcon) vp += VP_NONFAD;
-        } else {
-            let fadColor: string | null = null, fadIcon: string | null = null;
-            (fad?.objectives ?? []).forEach((o: any) => {
-                if (o.match === 'color') fadColor = o.value;
-                if (o.match === 'icon') fadIcon = o.value;
+        // Mirrors the server's fadParts: +3 per Fad objective met (summed across every Fad the sweater
+        // has claimed), and +1 for an all-one colour / icon that NO Fad matched — independently for colour
+        // and icon (designer's BGG ruling). A Clash Fad scores +3 for all-different and matches no single
+        // attribute. Keep in sync with the PHP.
+        const fads = this.fadsForBuild(playerId, buildNo);
+        const allDiffColor = new Set(colors).size === 3;
+        const allDiffIcon = !icons.includes(null) && new Set(icons).size === 3;
+        let colorIsFad = false, iconIsFad = false;
+        for (const f of fads) {
+            if (f.clash) {
+                if (allDiffColor && allDiffIcon) vp += VP_FAD;
+                continue;
+            }
+            (f.objectives ?? []).forEach((o: any) => {
+                if (o.match === 'color' && allSameColor && colors[0] === o.value) { vp += VP_FAD; colorIsFad = true; }
+                if (o.match === 'icon' && allSameIcon && icons[0] === o.value) { vp += VP_FAD; iconIsFad = true; }
             });
-            if (fadColor !== null && allSameColor && colors[0] === fadColor) vp += VP_FAD;
-            if (fadIcon !== null && allSameIcon && icons[0] === fadIcon) vp += VP_FAD;
-            // +1 colour and +1 icon are independent (designer's BGG ruling): keep in sync with the PHP.
-            if (allSameColor && colors[0] !== fadColor) vp += VP_NONFAD;
-            if (allSameIcon && icons[0] !== fadIcon) vp += VP_NONFAD;
         }
+        if (allSameColor && !colorIsFad) vp += VP_NONFAD;
+        if (allSameIcon && !iconIsFad) vp += VP_NONFAD;
         return vp;
     }
 
@@ -1020,10 +1024,11 @@ export class Game {
                 build.id = `ucs-build-${playerId}-${buildNo}`;
                 build.dataset.buildNo = String(buildNo);
                 if (this.isBuildComplete(builds[buildNo])) build.classList.add('ucs-build-complete');
-                // Express: a sweater that has claimed a Fad is locked — it can't be altered, and the
-                // claimed Fad is shown on it. Locked builds draw no draft targets (guards below).
-                const claimedFad = this.claimedFadForBuild(playerId, buildNo);
-                const locked = claimedFad != null;
+                // Express: a sweater that has claimed a Fad is locked — it can't be altered, and every
+                // claimed Fad is shown on it (a sweater may claim more than one). Locked builds draw no
+                // draft targets (guards below).
+                const claimedFads = this.claimedFadsForBuild(playerId, buildNo);
+                const locked = claimedFads.length > 0;
                 if (locked) build.classList.add('ucs-build-locked');
                 const slotEls: { [slot: string]: HTMLElement } = {};
                 builds[buildNo].forEach((card) => {
@@ -1074,13 +1079,13 @@ export class Game {
                         if (!takenSlots.has(s)) build.appendChild(this.makeEmptySlot(s));
                     });
                 }
-                if (locked && claimedFad != null) {
-                    const fad = this.material.fads[claimedFad];
+                claimedFads.forEach((t) => {
+                    const fad = this.material.fads[t];
                     const chip = document.createElement('div');
                     chip.className = 'ucs-build-fad';
                     chip.textContent = fad?.title ?? _('Fad');
                     build.appendChild(chip);
-                }
+                });
                 // A live VP counter on each sweater (public info). Always shown in my own area; for an
                 // opponent it's shown in the enlarged click-to-view popin (targetEl set), not the small
                 // inline read-out (that path uses renderKnittingCompact and returns earlier).

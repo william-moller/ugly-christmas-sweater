@@ -741,11 +741,12 @@ class Game extends \Bga\GameFramework\Table
      * Short public label identifying a card by colour + value, e.g. "Purple 9" — enough to identify
      * the exact card in play (icon + orientation can be inferred). A resolved patch shows its copied
      * value; an unresolved one falls back to "<Colour> Patch".
-     * TODO (i18n): the colour word is composed into the label server-side, so it always renders in
-     * English even for a translated client. Translating it properly means passing colour + value as
-     * separate notification args with an 'i18n' key (colour → clienttranslate('Green') etc.) across
-     * every cardPlayed/drafted/patch notification and updating the log rendering — a notification
-     * restructure, not a wrap. Tracked in .claude/backlog.md; left as-is deliberately.
+     *
+     * i18n: this composes the colour word server-side, so it is English-only — but it is NOT what the
+     * player sees. Every notification that carries a `card_label` also carries the `card` row, and the
+     * client's bgaFormatText swaps `card_label` for a translation-safe colour chip (see cardLogChip /
+     * cardLogTitle, which use colourName()). This string is only the non-displayed fallback for the rare
+     * case the client formatter doesn't run; keep any future notification's `card_label` paired with `card`.
      */
     public function cardLabel(int $cardId): string
     {
@@ -1345,9 +1346,11 @@ class Game extends \Bga\GameFramework\Table
     /**
      * Express: after a placement, let the ACTING player claim any displayed Fad their tableau now
      * satisfies. Only the acting player is evaluated (their sweaters are the only ones that changed) and
-     * this runs between each draft — so two players can never tie for the same Fad. A completed, unlocked
-     * sweater that meets a displayed Fad claims it: the Fad card moves onto that sweater (locking it) and
-     * the claim is recorded. A build claims at most one Fad; a Fad is claimed once.
+     * this runs between each draft — so two players can never tie for the same Fad (the earlier-in-draft-
+     * order player claims it first, and it leaves the display before later players act). A completed,
+     * unlocked sweater claims EVERY displayed Fad it satisfies at once — a single sweater can satisfy (and
+     * claim) more than one Fad, even two Fads that share the same objective (e.g. "All Trees" on two
+     * cards). Each claimed Fad card moves onto that sweater (locking it) and the claim is recorded.
      * @return list<array{fad_id:int, build_no:int, type_arg:int}>
      */
     public function evaluateFadClaims(int $playerId): array
@@ -1361,7 +1364,7 @@ class Game extends \Bga\GameFramework\Table
 
         foreach ($this->playerBuilds($playerId) as $buildNo => $bySlot) {
             if (in_array((int) $buildNo, $locked, true)) {
-                continue; // already locked by a claimed Fad
+                continue; // already locked by a claimed Fad in an earlier draft
             }
             foreach ($this->gameplayCards->getCardsInLocation(self::LOC_FAD_DISPLAY) as $fadCard) {
                 $fad = Material::fads()[(int) $fadCard['type_arg']] ?? null;
@@ -1371,10 +1374,10 @@ class Game extends \Bga\GameFramework\Table
                 $fadId = (int) $fadCard['id'];
                 $claims[$fadId] = ['playerId' => $playerId, 'buildNo' => (int) $buildNo];
                 $this->gameplayCards->moveCard($fadId, self::LOC_FAD_CLAIMED, $playerId);
-                $locked[] = (int) $buildNo;
                 $events[] = ['fad_id' => $fadId, 'build_no' => (int) $buildNo, 'type_arg' => (int) $fadCard['type_arg']];
-                break; // this build is now locked → next build
+                // No break: this sweater claims every displayed Fad it satisfies, not just the first.
             }
+            $locked[] = (int) $buildNo; // this build is now locked → skip it in future evaluations
         }
 
         if (!empty($events)) {
@@ -1384,10 +1387,11 @@ class Game extends \Bga\GameFramework\Table
     }
 
     /**
-     * Express: map of a player's locked buildNo => the Fad definition (Material::fads entry) claimed on
-     * it. Feeding each locked build its OWN claimed Fad into publicSweaterScore reuses the base "Fad +3
-     * per objective, but no +1 non-fad match for the matched attribute" logic — so a claimed monochrome
-     * sweater scores +3 (Fad), not +3 and +1. Unlocked builds pass null (a plain non-Fad +1 if monochrome).
+     * Express: map of a player's locked buildNo => LIST of the Fad definitions (Material::fads entries)
+     * claimed on it. A sweater may claim more than one Fad, so each build maps to a list. Feeding a build's
+     * claimed Fads into publicSweaterScore / sweaterParts reuses the "Fad +3 per objective, no +1 non-Fad
+     * for a matched attribute" logic — so a claimed monochrome sweater scores +3 (Fad), not +3 and +1.
+     * Unlocked builds are absent (callers default to [] — a plain non-Fad +1 per matching attribute).
      */
     public function claimedFadByBuild(int $playerId): array
     {
@@ -1399,7 +1403,7 @@ class Game extends \Bga\GameFramework\Table
             $fadCard = $this->gameplayCards->getCard((int) $fadId);
             $fad = $fadCard ? (Material::fads()[(int) $fadCard['type_arg']] ?? null) : null;
             if ($fad !== null) {
-                $out[(int) $claim['buildNo']] = $fad;
+                $out[(int) $claim['buildNo']][] = $fad;
             }
         }
         return $out;
@@ -1462,12 +1466,49 @@ class Game extends \Bga\GameFramework\Table
     }
 
     /**
-     * Public (non-Secret-Santa) VP of ONE completed sweater, given its pieces keyed by slot and the
-     * active Fad (or null). Covers everything visible to all players: the +2 build, +2 three-
-     * consecutive-numbers, Fad objectives (+3 each), and the +1 all-matching-non-Fad bonus.
+     * Fad + non-Fad VP breakdown for a COMPLETED sweater, given its colours/icons and the list of active
+     * Fads. Casual passes the single round Fad wrapped in a one-element list; Express passes every Fad the
+     * sweater has CLAIMED — a sweater can claim (and score) more than one. Each Fad objective met is +3
+     * (summed across all Fads); an attribute (colour / icon) that is all-one AND matched by NO Fad earns
+     * the +1 non-Fad bonus, independently for colour and icon. A "Clash Is In" Fad scores +3 for all-
+     * different colour+icon and matches no single attribute, so an all-one attribute under Clash still
+     * earns the non-Fad +1. An empty list = no active Fad (every all-one attribute is a non-Fad match).
+     * @return array{fad:int, nonfad_color:int, nonfad_icon:int}
+     */
+    private function fadParts(array $colors, array $icons, array $fads): array
+    {
+        $allSameColor = count(array_unique($colors)) === 1;
+        $allSameIcon  = !in_array(null, $icons, true) && count(array_unique($icons)) === 1;
+        $allDiffColor = count(array_unique($colors)) === 3;
+        $allDiffIcon  = !in_array(null, $icons, true) && count(array_unique($icons)) === 3;
+
+        $fad = 0;
+        $colorIsFad = false; // this sweater's (all-one) colour is claimed by a Fad → not a non-Fad match
+        $iconIsFad  = false;
+        foreach ($fads as $f) {
+            if (!empty($f['clash'])) {
+                if ($allDiffColor && $allDiffIcon) $fad += Material::VP_FAD;
+                continue; // a Clash Fad matches no single colour/icon attribute
+            }
+            foreach ($f['objectives'] ?? [] as $obj) {
+                if ($obj['match'] === 'color' && $allSameColor && $colors[0] === $obj['value']) { $fad += Material::VP_FAD; $colorIsFad = true; }
+                if ($obj['match'] === 'icon'  && $allSameIcon  && $icons[0]  === $obj['value']) { $fad += Material::VP_FAD; $iconIsFad  = true; }
+            }
+        }
+        return [
+            'fad'          => $fad,
+            'nonfad_color' => ($allSameColor && !$colorIsFad) ? Material::VP_NONFAD_MATCH : 0,
+            'nonfad_icon'  => ($allSameIcon  && !$iconIsFad)  ? Material::VP_NONFAD_MATCH : 0,
+        ];
+    }
+
+    /**
+     * Public (non-Secret-Santa) VP of ONE completed sweater, given its pieces keyed by slot and the list
+     * of active Fads (see fadParts). Covers everything visible to all players: the +2 build, +2 three-
+     * consecutive-numbers, Fad objectives (+3 each), and the +1 all-matching-non-Fad bonus (per attribute).
      * Secret Santa is hidden and is NOT scored here. Returns 0 for an incomplete build.
      */
-    public function publicSweaterScore(array $bySlot, ?array $fad): int
+    public function publicSweaterScore(array $bySlot, array $fads): int
     {
         if (!isset($bySlot[Material::SLOT_LEFT], $bySlot[Material::SLOT_RIGHT], $bySlot[Material::SLOT_BOTTOM])) {
             return 0;
@@ -1496,37 +1537,8 @@ class Game extends \Bga\GameFramework\Table
             $vp += Material::VP_RUN;
         }
 
-        $allSameColor = count(array_unique($colors)) === 1;
-        $allSameIcon  = !in_array(null, $icons, true) && count(array_unique($icons)) === 1;
-
-        if ($fad !== null && !empty($fad['clash'])) {
-            // "Clash Is In": +3 when all three pieces differ in BOTH colour and icon. Under Clash an
-            // all-one-colour sweater and an all-one-icon sweater each count as a non-Fad match (+1 each).
-            $allDiffColor = count(array_unique($colors)) === 3;
-            $allDiffIcon  = !in_array(null, $icons, true) && count(array_unique($icons)) === 3;
-            if ($allDiffColor && $allDiffIcon) {
-                $vp += Material::VP_FAD;
-            }
-            if ($allSameColor) $vp += Material::VP_NONFAD_MATCH;
-            if ($allSameIcon)  $vp += Material::VP_NONFAD_MATCH;
-        } else {
-            $fadColor = null;
-            $fadIcon  = null;
-            foreach ($fad['objectives'] ?? [] as $obj) {
-                if ($obj['match'] === 'color') $fadColor = $obj['value'];
-                if ($obj['match'] === 'icon')  $fadIcon  = $obj['value'];
-            }
-            // Fad objectives: +3 each; a single sweater can satisfy both colour and icon.
-            if ($fadColor !== null && $allSameColor && $colors[0] === $fadColor) $vp += Material::VP_FAD;
-            if ($fadIcon  !== null && $allSameIcon  && $icons[0]  === $fadIcon)  $vp += Material::VP_FAD;
-            // +1 for all one colour, and +1 for all one icon, each when NOT the active Fad. Independent:
-            // an all-Green-and-all-Bells sweater under a Red/Candy-Cane Fad scores +1 colour AND +1 icon
-            // (per the designer's BGG ruling).
-            if ($allSameColor && $colors[0] !== $fadColor) $vp += Material::VP_NONFAD_MATCH;
-            if ($allSameIcon  && $icons[0]  !== $fadIcon)  $vp += Material::VP_NONFAD_MATCH;
-        }
-
-        return $vp;
+        $fp = $this->fadParts($colors, $icons, $fads);
+        return $vp + $fp['fad'] + $fp['nonfad_color'] + $fp['nonfad_icon'];
     }
 
     /** Total public (non-Secret-Santa) VP a player has earned from their completed sweaters so far. */
@@ -1538,12 +1550,13 @@ class Game extends \Bga\GameFramework\Table
         // scorer's +3-vs-+1 exclusivity, so there's no double count.
         $express        = $this->isExpress();
         $roundFad       = $express ? null : $this->activeFad();
+        $roundFads      = $roundFad !== null ? [$roundFad] : [];
         $claimedByBuild = $express ? $this->claimedFadByBuild($playerId) : [];
 
         $total = 0;
         foreach ($this->playerBuilds($playerId) as $buildNo => $bySlot) {
-            $fad = $express ? ($claimedByBuild[(int) $buildNo] ?? null) : $roundFad;
-            $total += $this->publicSweaterScore($bySlot, $fad);
+            $fads = $express ? ($claimedByBuild[(int) $buildNo] ?? []) : $roundFads;
+            $total += $this->publicSweaterScore($bySlot, $fads);
         }
         return $total;
     }
@@ -1604,24 +1617,22 @@ class Game extends \Bga\GameFramework\Table
             $pid = (int) $pid;
             $builds   = $this->playerBuilds($pid); // completed-orientation pieces, keyed buildNo => slot => card
             $doneThis = array_map('intval', (array) ($ssDone[$pid] ?? []));
+
+            // Only Secret Santas still open score this round; a single sweater can satisfy at most one, so a
+            // maximum matching between the open cards and this round's completed sweaters decides which score.
+            $eligible = [];
             foreach ($this->playerSecretSantas($pid) as $ss) {
                 if ($avid && in_array((int) $ss['id'], $doneThis, true)) {
                     continue; // already satisfied+scored in an earlier round (Avid: score once per game)
                 }
-                foreach ($builds as $bySlot) {
-                    if (isset($bySlot[Material::SLOT_LEFT], $bySlot[Material::SLOT_RIGHT], $bySlot[Material::SLOT_BOTTOM])
-                        && $this->sweaterMatchesNeeds(
-                            [$bySlot[Material::SLOT_LEFT], $bySlot[Material::SLOT_RIGHT], $bySlot[Material::SLOT_BOTTOM]],
-                            $ss['needs']
-                        )) {
-                        $this->bga->playerScore->inc($pid, Material::VP_SECRET_SANTA);
-                        $this->playerStats->inc('points_secret_santa', Material::VP_SECRET_SANTA, $pid);
-                        if ($avid) {
-                            $doneThis[]        = (int) $ss['id'];
-                            $awardThis[$pid][] = (int) $ss['id']; // newly revealed this round
-                        }
-                        break; // scores once per Secret Santa card
-                    }
+                $eligible[] = $ss;
+            }
+            foreach ($this->matchSecretSantas($eligible, $builds) as $ssId) {
+                $this->bga->playerScore->inc($pid, Material::VP_SECRET_SANTA);
+                $this->playerStats->inc('points_secret_santa', Material::VP_SECRET_SANTA, $pid);
+                if ($avid) {
+                    $doneThis[]        = $ssId;
+                    $awardThis[$pid][] = $ssId; // newly revealed this round
                 }
             }
             if ($avid) {
@@ -1645,8 +1656,9 @@ class Game extends \Bga\GameFramework\Table
         //                         (build, run, Fad, non-Fad colour, non-Fad icon). Secret-Santa points
         //                         are handled in the Secret Santa loop above; runs/Fad/non-Fad are read
         //                         straight off sweaterParts so the stats match the scored VP exactly.
-        $express  = $this->isExpress();
-        $roundFad = $express ? null : $this->activeFad();
+        $express   = $this->isExpress();
+        $roundFad  = $express ? null : $this->activeFad();
+        $roundFads = $roundFad !== null ? [$roundFad] : [];
         foreach (array_keys($this->loadPlayersBasicInfos()) as $pid) {
             $pid = (int) $pid;
             $claimedByBuild = $express ? $this->claimedFadByBuild($pid) : [];
@@ -1674,8 +1686,8 @@ class Game extends \Bga\GameFramework\Table
                     $unbuilt++;
                     continue;
                 }
-                $fad   = $express ? ($claimedByBuild[$buildNo] ?? null) : $roundFad;
-                $parts = $this->sweaterParts($bySlot, $fad);
+                $fads  = $express ? ($claimedByBuild[$buildNo] ?? []) : $roundFads;
+                $parts = $this->sweaterParts($bySlot, $fads);
                 $completed++;
                 $ptsSweaters    += $parts['build'];
                 $ptsRuns        += $parts['run'];
@@ -1784,12 +1796,71 @@ class Game extends \Bga\GameFramework\Table
     }
 
     /**
+     * Which of the given Secret Santa cards a player can satisfy, given their builds — a SINGLE completed
+     * sweater may satisfy AT MOST ONE Secret Santa (even if it meets several), so this is a maximum
+     * bipartite matching between the Secret Santa cards and the player's completed sweaters (each sweater
+     * used once), maximised so the player scores as many as legitimately possible. Returns the matched
+     * Secret Santa ids. Incomplete sweaters never satisfy anything.
+     * @param array $secretSantas list of ['id'=>int,'needs'=>[3]]
+     * @param array $builds       buildNo => slot => card (from playerBuilds)
+     * @return list<int> matched Secret Santa ids
+     */
+    public function matchSecretSantas(array $secretSantas, array $builds): array
+    {
+        // Completed sweaters only, as buildNo => [L, R, B].
+        $sweaters = [];
+        foreach ($builds as $buildNo => $bySlot) {
+            if (isset($bySlot[Material::SLOT_LEFT], $bySlot[Material::SLOT_RIGHT], $bySlot[Material::SLOT_BOTTOM])) {
+                $sweaters[(int) $buildNo] = [$bySlot[Material::SLOT_LEFT], $bySlot[Material::SLOT_RIGHT], $bySlot[Material::SLOT_BOTTOM]];
+            }
+        }
+
+        // Adjacency: each Secret Santa (by index) → the buildNos it satisfies.
+        $adj = [];
+        foreach ($secretSantas as $i => $ss) {
+            $adj[$i] = [];
+            foreach ($sweaters as $buildNo => $three) {
+                if ($this->sweaterMatchesNeeds($three, $ss['needs'])) {
+                    $adj[$i][] = $buildNo;
+                }
+            }
+        }
+
+        // Kuhn's algorithm: augment one Secret Santa at a time onto a free / re-assignable sweater.
+        $matchBuild = []; // buildNo => Secret Santa index currently holding it
+        $matched    = [];
+        foreach ($secretSantas as $i => $ss) {
+            $seen = [];
+            if ($this->augmentSecretSanta($i, $adj, $matchBuild, $seen)) {
+                $matched[] = (int) $ss['id'];
+            }
+        }
+        return $matched;
+    }
+
+    /** Kuhn augmenting-path step for matchSecretSantas: try to seat Secret Santa $i on some sweater. */
+    private function augmentSecretSanta(int $i, array $adj, array &$matchBuild, array &$seen): bool
+    {
+        foreach ($adj[$i] as $buildNo) {
+            if (!empty($seen[$buildNo])) continue;
+            $seen[$buildNo] = true;
+            if (!isset($matchBuild[$buildNo])
+                || $this->augmentSecretSanta($matchBuild[$buildNo], $adj, $matchBuild, $seen)) {
+                $matchBuild[$buildNo] = $i;
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
      * Decompose a completed sweater's public VP into its components for the scoring summary:
      * ['build'=>+2, 'run'=>+2 consecutive, 'fad'=>+3 per Fad objective met, 'nonfad_color'=>+1 all-one-
-     * non-Fad colour, 'nonfad_icon'=>+1 all-one-non-Fad icon, 'nonfad'=> their sum]. Mirrors
+     * non-Fad colour, 'nonfad_icon'=>+1 all-one-non-Fad icon, 'nonfad'=> their sum]. $fads is the list of
+     * active Fads (see fadParts) — one for Casual, the sweater's claimed Fads for Express. Mirrors
      * publicSweaterScore exactly, so build+run+fad+nonfad always sum to that total. All zeros if incomplete.
      */
-    public function sweaterParts(array $bySlot, ?array $fad): array
+    public function sweaterParts(array $bySlot, array $fads): array
     {
         // 'nonfad' stays as the combined colour+icon total (the scorepad shows one non-Fad row);
         // 'nonfad_color' / 'nonfad_icon' split it for the per-source statistics.
@@ -1808,29 +1879,11 @@ class Game extends \Bga\GameFramework\Table
 
         $colors = array_map(fn($c) => $c['type'], $cards);
         $icons  = array_map(fn($c) => $this->effectiveIcon($c), $cards);
-        $allSameColor = count(array_unique($colors)) === 1;
-        $allSameIcon  = !in_array(null, $icons, true) && count(array_unique($icons)) === 1;
-
-        if ($fad !== null && !empty($fad['clash'])) {
-            $allDiffColor = count(array_unique($colors)) === 3;
-            $allDiffIcon  = !in_array(null, $icons, true) && count(array_unique($icons)) === 3;
-            if ($allDiffColor && $allDiffIcon) $parts['fad'] += Material::VP_FAD;
-            if ($allSameColor) $parts['nonfad_color'] += Material::VP_NONFAD_MATCH;
-            if ($allSameIcon)  $parts['nonfad_icon']  += Material::VP_NONFAD_MATCH;
-        } else {
-            $fadColor = null;
-            $fadIcon  = null;
-            foreach ($fad['objectives'] ?? [] as $obj) {
-                if ($obj['match'] === 'color') $fadColor = $obj['value'];
-                if ($obj['match'] === 'icon')  $fadIcon  = $obj['value'];
-            }
-            if ($fadColor !== null && $allSameColor && $colors[0] === $fadColor) $parts['fad'] += Material::VP_FAD;
-            if ($fadIcon  !== null && $allSameIcon  && $icons[0]  === $fadIcon)  $parts['fad'] += Material::VP_FAD;
-            // +1 colour and +1 icon are independent (designer's BGG ruling) — see publicSweaterScore.
-            if ($allSameColor && $colors[0] !== $fadColor) $parts['nonfad_color'] += Material::VP_NONFAD_MATCH;
-            if ($allSameIcon  && $icons[0]  !== $fadIcon)  $parts['nonfad_icon']  += Material::VP_NONFAD_MATCH;
-        }
-        $parts['nonfad'] = $parts['nonfad_color'] + $parts['nonfad_icon'];
+        $fp = $this->fadParts($colors, $icons, $fads);
+        $parts['fad']          = $fp['fad'];
+        $parts['nonfad_color'] = $fp['nonfad_color'];
+        $parts['nonfad_icon']  = $fp['nonfad_icon'];
+        $parts['nonfad']       = $fp['nonfad_color'] + $fp['nonfad_icon'];
         return $parts;
     }
 
@@ -1861,6 +1914,7 @@ class Game extends \Bga\GameFramework\Table
         $avid      = $this->isAvid();
         $avidAward = $avid ? (array) $this->globals->get('avidSSRoundAward') : [];
         $roundFad  = $express ? null : $this->activeFad();
+        $roundFads = $roundFad !== null ? [$roundFad] : [];
         $scores    = $this->getCollectionFromDb("SELECT `player_id`, `player_score` FROM `player`");
 
         // Prior payload (if any) carries the rounds already recorded; append this round to its history.
@@ -1906,8 +1960,8 @@ class Game extends \Bga\GameFramework\Table
                     $unfinished++;
                     continue;
                 }
-                $fadCard = $express ? ($claimedByBuild[$buildNo] ?? null) : $roundFad;
-                $parts   = $this->sweaterParts($bySlot, $fadCard);
+                $fads    = $express ? ($claimedByBuild[$buildNo] ?? []) : $roundFads;
+                $parts   = $this->sweaterParts($bySlot, $fads);
                 $built  += $parts['build'];
                 $run    += $parts['run'];
                 $fad    += $parts['fad'];
@@ -1923,20 +1977,9 @@ class Game extends \Bga\GameFramework\Table
             if ($avid) {
                 $ss = count((array) ($avidAward[$pid] ?? [])) * Material::VP_SECRET_SANTA;
             } else {
-                $ss = 0;
-                $builds = $this->playerBuilds($pid);
-                foreach ($this->playerSecretSantas($pid) as $sc) {
-                    foreach ($builds as $bySlot) {
-                        if (isset($bySlot[Material::SLOT_LEFT], $bySlot[Material::SLOT_RIGHT], $bySlot[Material::SLOT_BOTTOM])
-                            && $this->sweaterMatchesNeeds(
-                                [$bySlot[Material::SLOT_LEFT], $bySlot[Material::SLOT_RIGHT], $bySlot[Material::SLOT_BOTTOM]],
-                                $sc['needs']
-                            )) {
-                            $ss += Material::VP_SECRET_SANTA;
-                            break; // scores once per Secret Santa card
-                        }
-                    }
-                }
+                // Mirror scoreRound: a sweater satisfies at most one Secret Santa, so use the same matching.
+                $ss = count($this->matchSecretSantas($this->playerSecretSantas($pid), $this->playerBuilds($pid)))
+                    * Material::VP_SECRET_SANTA;
             }
 
             $categoryTotal = $built + $run + $fad + $nonfad + $ss;

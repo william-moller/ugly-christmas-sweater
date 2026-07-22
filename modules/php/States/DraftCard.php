@@ -68,6 +68,9 @@ class DraftCard extends GameState
         // pool card is discarded (reshuffled next round) instead of entering their knitting area.
         $billyDiscardIndex = (int) $this->game->globals->get('billyDiscardIndex');
         if ($billyDiscardIndex >= 0 && (int) $this->game->globals->get('draftIndex') === $billyDiscardIndex) {
+            // Capture the card row + label BEFORE the discard move clears its meta — the client renders a
+            // translation-safe colour chip from `card` (card_label is only the non-displayed fallback).
+            $card  = $this->game->cardForNotif($card_id);
             $label = $this->game->cardLabel($card_id);
             $this->game->cards->moveCard($card_id, Game::LOC_DISCARD, 0);
             $this->game->setCardMeta($card_id, [
@@ -78,6 +81,7 @@ class DraftCard extends GameState
                 'player_id'   => $activePlayerId,
                 'player_name' => $this->game->getPlayerNameById($activePlayerId),
                 'card_id'     => $card_id,
+                'card'        => $card,
                 'card_label'  => $label,
             ]);
             return NextDrafter::class;

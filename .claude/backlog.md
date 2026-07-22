@@ -46,16 +46,3 @@ not of the code.
   player has multiple patches to assign, resolve them one at a time: today all menus show at once and
   the second patch's sweater sits fully hidden behind the first patch's selection menu, so the player
   can't see the card they're assigning to.
-
-## Rules gaps (anchored in code)
-
-This carries a `TODO` at the exact line someone would edit; this file is the index, the comment
-is the detail.
-
-- **Colour word is not translated in `cardLabel()`** — `modules/php/Game.php:694`. The rest of the
-  translation-readiness sweep is done (client display strings wrapped, `Material` data marked with
-  `clienttranslate`, client translates data at display); this one case is left because the colour is
-  composed into a label server-side, so it renders English even for a translated client. Fixing it
-  means passing colour + value as separate notification args with an `i18n` key across the
-  cardPlayed / drafted / patch notifications (4 state files) and updating the log rendering — a
-  notification restructure with replay implications, not a wrap.

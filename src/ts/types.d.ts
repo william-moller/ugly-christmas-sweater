@@ -277,6 +277,7 @@ interface NotifCardDiscarded {
     player_id: number;
     player_name: string;
     card_id: number;
+    card: SweaterCard; // drives the translation-safe log chip (card_label is the fallback)
     card_label: string;
 }
 
