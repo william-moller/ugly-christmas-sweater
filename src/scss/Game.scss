@@ -677,7 +677,7 @@ html[data-theme="dark"] {
     grid-template-columns: calc(#{$side-col-w} * var(--ucs-card-scale, 1)) auto minmax(0, 1fr) $side-col-w;
     grid-template-areas:
         "params santa center oppo"
-        "params knit  knit   knit";
+        "params knit  knit   oppo";
     gap: 12px;
     align-items: start;
 }
@@ -700,8 +700,15 @@ html[data-theme="dark"] {
     --ucs-card-w: calc(128px * var(--ucs-card-scale, 1));
     --ucs-card-h: calc(200px * var(--ucs-card-scale, 1));
 }
+// The bottom-row knit column: my Secret Santa row (Express only) sits ABOVE the green Knitting Area box,
+// on the table felt rather than inside the box. The wrapper carries the grid placement; the box below
+// keeps its own frame/fill.
+#ucs-knit-col {
+    grid-area: knit;
+    min-width: 0;
+}
 #ucs-my-area {
-    grid-area: knit; // takes the base card size; .ucs-knitting wraps builds across it
+    // takes the base card size; .ucs-knitting wraps builds across it
     // Real card faces (my own sweater builds) — scale with the "Card size" preference (see html
     // .ucs-cards-*). Kept off the shared #ucs-table base var so the fixed-width #ucs-upper params
     // column (which also reads that base) is not dragged wider and made to overflow $side-col-w.
@@ -1709,9 +1716,12 @@ table.ucs-scorepad {
 // Express: the Fad display now sits in the top `santa` slot. Keep its cards at the normal parameter-card
 // size (the slot's larger Secret-Santa sizing would blow the row out) and cap the width so they wrap two
 // across, preserving the compact footprint the display had in the parameters column.
+// Shrunk below the base parameter-card size so up to players+1 fads (3 rows when 2-wide, in a 3-4 player
+// game) stay no taller than the centre stack — otherwise this column gates the knitting row and leaves a
+// felt gap below the Trade Area. Kept 2-wide via the cap so the column stays narrow.
 #ucs-secret-santa .ucs-fad-display {
-    --ucs-card-w: calc(#{$card-w} * var(--ucs-card-scale, 1));
-    --ucs-card-h: calc(#{$card-h} * var(--ucs-card-scale, 1));
+    --ucs-card-w: calc(66px * var(--ucs-card-scale, 1));
+    --ucs-card-h: calc(66px * 1.556 * var(--ucs-card-scale, 1));
 }
 #ucs-secret-santa .ucs-fad-display .ucs-fad-cards {
     max-width: calc(var(--ucs-card-w) * 2 + 6px);

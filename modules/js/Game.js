@@ -476,8 +476,9 @@ class Game {
                         <div id="ucs-trade-area" class="ucs-zone"></div>
                     </div>
                     <div id="ucs-opponents"></div>
-                    <div id="ucs-my-area" class="ucs-zone">
+                    <div id="ucs-knit-col">
                         <div id="ucs-my-santa" class="ucs-my-santa" style="display:none"></div>
+                        <div id="ucs-my-area" class="ucs-zone"></div>
                     </div>
                 </div>
                 <div id="ucs-placement" class="ucs-zone" style="display:none"></div>

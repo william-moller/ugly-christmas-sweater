@@ -1069,7 +1069,7 @@ html[data-theme=dark] {
 #ucs-upper {
   display: grid;
   grid-template-columns: calc(210px * var(--ucs-card-scale, 1)) auto minmax(0, 1fr) 210px;
-  grid-template-areas: "params santa center oppo" "params knit  knit   knit";
+  grid-template-areas: "params santa center oppo" "params knit  knit   oppo";
   gap: 12px;
   align-items: start;
 }
@@ -1087,8 +1087,12 @@ html[data-theme=dark] {
   --ucs-card-h: calc(200px * var(--ucs-card-scale, 1));
 }
 
-#ucs-my-area {
+#ucs-knit-col {
   grid-area: knit;
+  min-width: 0;
+}
+
+#ucs-my-area {
   --ucs-card-w: calc(80px * var(--ucs-card-scale, 1));
   --ucs-card-h: calc(125px * var(--ucs-card-scale, 1));
   background: #3f7424;
@@ -2056,8 +2060,8 @@ table.ucs-scorepad th, table.ucs-scorepad td {
 }
 
 #ucs-secret-santa .ucs-fad-display {
-  --ucs-card-w: calc(80px * var(--ucs-card-scale, 1));
-  --ucs-card-h: calc(125px * var(--ucs-card-scale, 1));
+  --ucs-card-w: calc(66px * var(--ucs-card-scale, 1));
+  --ucs-card-h: calc(66px * 1.556 * var(--ucs-card-scale, 1));
 }
 
 #ucs-secret-santa .ucs-fad-display .ucs-fad-cards {
