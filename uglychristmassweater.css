@@ -2065,7 +2065,7 @@ table.ucs-scorepad th, table.ucs-scorepad td {
 }
 
 #ucs-secret-santa .ucs-fad-display .ucs-fad-cards {
-  max-width: calc(var(--ucs-card-w) * 2 + 6px);
+  max-width: calc(var(--ucs-card-w) * 3 + 12px);
 }
 
 .ucs-santa-slot {

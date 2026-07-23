@@ -1716,15 +1716,17 @@ table.ucs-scorepad {
 // Express: the Fad display now sits in the top `santa` slot. Keep its cards at the normal parameter-card
 // size (the slot's larger Secret-Santa sizing would blow the row out) and cap the width so they wrap two
 // across, preserving the compact footprint the display had in the parameters column.
-// Shrunk below the base parameter-card size so up to players+1 fads (3 rows when 2-wide, in a 3-4 player
-// game) stay no taller than the centre stack — otherwise this column gates the knitting row and leaves a
-// felt gap below the Trade Area. Kept 2-wide via the cap so the column stays narrow.
+// Shrunk below the base parameter-card size, and capped 3-wide, so the display stays SHORTER than the
+// centre stack (Draft Pool + Trade Area) — whichever of the two is taller sizes grid row 1, and if the
+// fads win, the knitting row is pushed down and a band of felt opens under the Trade Area. Fads are
+// capped at players+1 = 5 (Game.php::fadsOnDisplay), so 3-wide is never more than 2 rows: ~2/3 the
+// centre stack's height, with the margin the 2-wide/3-row version didn't have.
 #ucs-secret-santa .ucs-fad-display {
     --ucs-card-w: calc(66px * var(--ucs-card-scale, 1));
     --ucs-card-h: calc(66px * 1.556 * var(--ucs-card-scale, 1));
 }
 #ucs-secret-santa .ucs-fad-display .ucs-fad-cards {
-    max-width: calc(var(--ucs-card-w) * 2 + 6px);
+    max-width: calc(var(--ucs-card-w) * 3 + 12px); // 3 cards + 2 .ucs-fad-cards gaps
 }
 // The slot reserves the rotated card's landscape footprint (w↔h swapped) so it doesn't overlap.
 .ucs-santa-slot {
