@@ -509,6 +509,63 @@ html[data-theme="dark"] {
     opacity: 0.7;
 }
 
+// ---- Express Round Tracker ----------------------------------------------------------
+// The printed 1..12 tracker card (Express only), sat under the Trendy Yarn deck. Rendered ~2× a base card
+// so the wreaths/numbers stay legible, with an absolutely-positioned overlay: a glowing halo on the current
+// round + a yarn badge on every wreath where a new Trendy Yarn is drawn. The sprite and the overlay both
+// size off the card's --ucs-card-w/h, so the whole thing scales with the "Card size" preference.
+.ucs-rt-card {
+    --ucs-card-w: calc(#{$card-w} * 2 * var(--ucs-card-scale, 1));
+    --ucs-card-h: calc(#{$card-h} * 2 * var(--ucs-card-scale, 1));
+    background-color: #eef1ec; // fallback tint behind the sprite art (.ucs-art2 background-image)
+}
+.ucs-rt-overlay {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+}
+// One box per wreath, the size of a wreath and centred on it (left/top set inline as % of the card face).
+.ucs-rt-cell {
+    position: absolute;
+    width: 26.5%;
+    aspect-ratio: 1;
+    transform: translate(-50%, -50%);
+    border-radius: 50%;
+    box-sizing: border-box;
+}
+// Rounds already played: a faint muted ring so progress reads at a glance.
+.ucs-rt-cell.ucs-rt-past {
+    border: 2px solid rgba(40, 70, 40, 0.4);
+}
+// Current round: a glowing gold halo ring around the wreath (leaves the number visible), gently pulsing.
+.ucs-rt-cell.ucs-rt-now {
+    border: 3px solid #f6c945;
+    animation: ucs-rt-pulse 1.4s ease-in-out infinite;
+}
+@keyframes ucs-rt-pulse {
+    0%, 100% { box-shadow: 0 0 4px 1px rgba(246, 201, 69, 0.7), inset 0 0 4px rgba(246, 201, 69, 0.55); }
+    50%      { box-shadow: 0 0 11px 4px rgba(246, 201, 69, 1), inset 0 0 7px rgba(246, 201, 69, 0.85); }
+}
+// "New Trendy Yarn drawn here" badge, pinned to the top-right of the wreath. A light chip keeps the yarn
+// emoji legible over the busy wreath art. Positions are relative to the (wreath-sized) cell.
+.ucs-rt-yarn {
+    position: absolute;
+    left: 86%;
+    top: 14%;
+    transform: translate(-50%, -50%);
+    width: 42%;
+    aspect-ratio: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: calc(var(--ucs-card-w) * 0.085);
+    line-height: 1;
+    background: rgba(255, 255, 255, 0.92);
+    border: 1px solid #c62828;
+    border-radius: 50%;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+}
+
 // ---- Interaction states -------------------------------------------------------------
 
 @keyframes ucs-pulse {
@@ -1626,6 +1683,38 @@ table.ucs-scorepad {
     display: flex;
     gap: 8px;
     align-items: center;
+}
+// Express: the Secret Santa card(s) move out of the top `santa` slot (taken by the Fad display) into a
+// centred row directly above my Knitting Area. Slightly smaller cards than the top slot, so the row sits
+// neatly over the workspace without eating too much build height.
+.ucs-my-santa {
+    --ucs-card-w: calc(96px * var(--ucs-card-scale, 1));
+    --ucs-card-h: calc(150px * var(--ucs-card-scale, 1));
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    margin-bottom: 6px;
+}
+.ucs-my-santa .ucs-zone-label {
+    text-align: center;
+    margin: 0 0 2px;
+}
+.ucs-my-santa .ucs-santa-cards {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    justify-content: center;
+}
+// Express: the Fad display now sits in the top `santa` slot. Keep its cards at the normal parameter-card
+// size (the slot's larger Secret-Santa sizing would blow the row out) and cap the width so they wrap two
+// across, preserving the compact footprint the display had in the parameters column.
+#ucs-secret-santa .ucs-fad-display {
+    --ucs-card-w: calc(#{$card-w} * var(--ucs-card-scale, 1));
+    --ucs-card-h: calc(#{$card-h} * var(--ucs-card-scale, 1));
+}
+#ucs-secret-santa .ucs-fad-display .ucs-fad-cards {
+    max-width: calc(var(--ucs-card-w) * 2 + 6px);
 }
 // The slot reserves the rotated card's landscape footprint (w↔h swapped) so it doesn't overlap.
 .ucs-santa-slot {

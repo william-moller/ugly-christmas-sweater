@@ -25,13 +25,37 @@ class EndTrickCleanup extends GameState
         $this->game->rotateTrickToPool();
         $drawn = $this->game->refillHands();
 
-        // Public: the new draft pool (was the trade area) and resynced hand/pile counts.
+        // Express: advance the trick counter and rotate this trick's round parameters BEFORE the cleanup
+        // notify, so the Round Tracker marker (which reads `expressTrickNo`) moves forward every trick.
+        // Trendy Yarn changes every trendyRotateEvery() tricks (2P → 3rd, else 4th); Perfect Fit is
+        // replaced if a matching card was played this trick. Both reshuffle their deck when it empties
+        // (see Game::rotateGameplayDeck).
+        $rotated = false;
+        if ($this->game->isExpress()) {
+            $trickNo = ((int) $this->game->globals->get('expressTrickNo')) + 1;
+            $this->game->globals->set('expressTrickNo', $trickNo);
+
+            if ($trickNo % $this->game->trendyRotateEvery() === 0) {
+                $this->game->rotateGameplayDeck('trendyyarn');
+                $rotated = true;
+            }
+            if ((int) $this->game->globals->get('pfMatched') === 1) {
+                $this->game->rotateGameplayDeck('perfectfit');
+                $this->game->globals->set('pfMatched', 0);
+                $rotated = true;
+            }
+        }
+
+        // Public: the new draft pool (was the trade area) and resynced hand/pile counts. In Express the
+        // refreshed tracker state rides along (`express`) so the marker advances on every trick — even the
+        // ones where no parameter rotated.
         $this->notify->all(
             'trickCleanup',
             clienttranslate('The trick is collected; the trade area becomes the next draft pool'),
             [
-                'pool'   => array_values($this->game->cards->getCardsInLocation(Game::LOC_DRAFTPOOL)),
-                'counts' => $this->game->publicCounts(),
+                'pool'    => array_values($this->game->cards->getCardsInLocation(Game::LOC_DRAFTPOOL)),
+                'counts'  => $this->game->publicCounts(),
+                'express' => $this->game->isExpress() ? ($this->game->getGameplayState()['express'] ?? null) : null,
             ]
         );
 
@@ -46,28 +70,12 @@ class EndTrickCleanup extends GameState
             ]);
         }
 
-        // Express: rotate this trick's round parameters. Trendy Yarn changes every trendyRotateEvery()
-        // tricks (2P → 3rd, else 4th); Perfect Fit is replaced if a matching card was played this trick.
-        // Both reshuffle their deck when it empties (see Game::rotateGameplayDeck).
-        if ($this->game->isExpress()) {
-            $trickNo = ((int) $this->game->globals->get('expressTrickNo')) + 1;
-            $this->game->globals->set('expressTrickNo', $trickNo);
-
-            $rotated = false;
-            if ($trickNo % $this->game->trendyRotateEvery() === 0) {
-                $this->game->rotateGameplayDeck('trendyyarn');
-                $rotated = true;
-            }
-            if ((int) $this->game->globals->get('pfMatched') === 1) {
-                $this->game->rotateGameplayDeck('perfectfit');
-                $this->game->globals->set('pfMatched', 0);
-                $rotated = true;
-            }
-            if ($rotated) {
-                $this->notify->all('gameplayRevealed', clienttranslate('Round parameters updated'), [
-                    'gameplay' => $this->game->getGameplayState(),
-                ]);
-            }
+        // Express: when a parameter card actually changed, refresh the revealed Trendy Yarn / Perfect Fit
+        // faces too (the tracker marker already moved via the trickCleanup notify above).
+        if ($rotated) {
+            $this->notify->all('gameplayRevealed', clienttranslate('Round parameters updated'), [
+                'gameplay' => $this->game->getGameplayState(),
+            ]);
         }
 
         if ($this->game->isRoundOver()) {

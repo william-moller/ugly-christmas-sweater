@@ -908,6 +908,62 @@ html[data-theme=dark] {
   opacity: 0.7;
 }
 
+.ucs-rt-card {
+  --ucs-card-w: calc(80px * 2 * var(--ucs-card-scale, 1));
+  --ucs-card-h: calc(125px * 2 * var(--ucs-card-scale, 1));
+  background-color: #eef1ec;
+}
+
+.ucs-rt-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.ucs-rt-cell {
+  position: absolute;
+  width: 26.5%;
+  aspect-ratio: 1;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  box-sizing: border-box;
+}
+
+.ucs-rt-cell.ucs-rt-past {
+  border: 2px solid rgba(40, 70, 40, 0.4);
+}
+
+.ucs-rt-cell.ucs-rt-now {
+  border: 3px solid #f6c945;
+  animation: ucs-rt-pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes ucs-rt-pulse {
+  0%, 100% {
+    box-shadow: 0 0 4px 1px rgba(246, 201, 69, 0.7), inset 0 0 4px rgba(246, 201, 69, 0.55);
+  }
+  50% {
+    box-shadow: 0 0 11px 4px rgb(246, 201, 69), inset 0 0 7px rgba(246, 201, 69, 0.85);
+  }
+}
+.ucs-rt-yarn {
+  position: absolute;
+  left: 86%;
+  top: 14%;
+  transform: translate(-50%, -50%);
+  width: 42%;
+  aspect-ratio: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: calc(var(--ucs-card-w) * 0.085);
+  line-height: 1;
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid #c62828;
+  border-radius: 50%;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+}
+
 @keyframes ucs-pulse {
   0% {
     box-shadow: 0 0 0 3px #ffd54a, 0 0 6px 3px rgba(255, 213, 74, 0.55);
@@ -1975,6 +2031,37 @@ table.ucs-scorepad th, table.ucs-scorepad td {
   display: flex;
   gap: 8px;
   align-items: center;
+}
+
+.ucs-my-santa {
+  --ucs-card-w: calc(96px * var(--ucs-card-scale, 1));
+  --ucs-card-h: calc(150px * var(--ucs-card-scale, 1));
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  margin-bottom: 6px;
+}
+
+.ucs-my-santa .ucs-zone-label {
+  text-align: center;
+  margin: 0 0 2px;
+}
+
+.ucs-my-santa .ucs-santa-cards {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  justify-content: center;
+}
+
+#ucs-secret-santa .ucs-fad-display {
+  --ucs-card-w: calc(80px * var(--ucs-card-scale, 1));
+  --ucs-card-h: calc(125px * var(--ucs-card-scale, 1));
+}
+
+#ucs-secret-santa .ucs-fad-display .ucs-fad-cards {
+  max-width: calc(var(--ucs-card-w) * 2 + 6px);
 }
 
 .ucs-santa-slot {

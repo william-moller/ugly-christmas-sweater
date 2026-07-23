@@ -120,7 +120,9 @@ export class Game {
                         <div id="ucs-trade-area" class="ucs-zone"></div>
                     </div>
                     <div id="ucs-opponents"></div>
-                    <div id="ucs-my-area" class="ucs-zone"></div>
+                    <div id="ucs-my-area" class="ucs-zone">
+                        <div id="ucs-my-santa" class="ucs-my-santa" style="display:none"></div>
+                    </div>
                 </div>
                 <div id="ucs-placement" class="ucs-zone" style="display:none"></div>
                 <div id="ucs-my-hand-wrap" class="ucs-zone">
@@ -394,9 +396,17 @@ export class Game {
         });
     }
 
-    /** My own Secret Santa objective(s) — 1 in Casual, 2 in Express, 3 in Avid (private; hidden from others). */
+    /** My own Secret Santa objective(s) — 1 in Casual, 2 in Express, 3 in Avid (private; hidden from others).
+     *  Casual/Avid render into the top `santa` grid slot; Express hands that slot to the Fad display and
+     *  instead centres the Secret Santa card(s) in a row directly over my Knitting Area (#ucs-my-santa). */
     private renderSecretSanta() {
-        const zone = document.getElementById('ucs-secret-santa');
+        const express = !!this.gamedatas.express;
+        const mySanta = document.getElementById('ucs-my-santa');
+        const santaSlot = document.getElementById('ucs-secret-santa');
+        // In Express the top slot belongs to the Fad display (see renderGameplay), so only touch #ucs-my-santa;
+        // otherwise #ucs-my-santa is unused, so keep it hidden.
+        if (!express && mySanta) { mySanta.style.display = 'none'; mySanta.innerHTML = ''; }
+        const zone = express ? mySanta : santaSlot;
         if (!zone) return;
         const cards = Object.values(this.gamedatas.secretSanta ?? {});
         if (!cards.length) { zone.style.display = 'none'; return; }
@@ -438,13 +448,77 @@ export class Game {
         const gp = this.gamedatas.gameplay;
         row.appendChild(this.gameplayPileEl('perfectfit', _('Perfect Fit'), gp?.perfectfit));
         row.appendChild(this.gameplayPileEl('trendyyarn', _('Trendy Yarn'), gp?.trendyyarn));
-        // Express shows a DISPLAY of claimable Fads (players+1); Casual shows the single revealed Fad.
-        const fadEl = this.gamedatas.express
-            ? this.fadDisplayEl(gp?.express)
-            : this.gameplayPileEl('fad', _('Fads'), gp?.fad);
-        fadEl.id = 'ucs-fad-zone'; // hook for the round-end assignment dim (kept readable above the overlay)
-        row.appendChild(fadEl);
-        zone.appendChild(row);
+        if (this.gamedatas.express) {
+            // Express: the Round Tracker sits under Trendy Yarn (it drives when the yarn rotates), and the
+            // claimable Fad display moves out of this column into the top `santa` slot (renderFadDisplay).
+            row.appendChild(this.roundTrackerEl(gp?.express));
+            zone.appendChild(row);
+            this.renderFadDisplay(gp?.express);
+        } else {
+            // Casual/Avid: the single revealed Fad stays in this column beside Perfect Fit / Trendy Yarn.
+            const fadEl = this.gameplayPileEl('fad', _('Fads'), gp?.fad);
+            fadEl.id = 'ucs-fad-zone'; // hook for the round-end assignment dim (kept readable above the overlay)
+            row.appendChild(fadEl);
+            zone.appendChild(row);
+        }
+    }
+
+    /** Express: render the claimable Fad display into the top `santa` grid slot (vacated by Secret Santa,
+     *  which Express moves over the Knitting Area). Keeps the #ucs-fad-zone id for the round-end dim. */
+    private renderFadDisplay(express: ExpressGameplay | undefined) {
+        const slot = document.getElementById('ucs-secret-santa');
+        if (!slot) return;
+        slot.style.display = '';
+        slot.innerHTML = '';
+        const fadEl = this.fadDisplayEl(express);
+        fadEl.id = 'ucs-fad-zone';
+        slot.appendChild(fadEl);
+    }
+
+    /**
+     * Express Round Tracker: the printed 1–12 tracker card with an overlay that marks the current round
+     * (a glowing halo ring on that wreath, `expressTrickNo + 1`) and pins a yarn badge on every wreath
+     * where a new Trendy Yarn is drawn (every `rotateEvery`th — 3/6/9/12 in 2P, 4/8/12 in 3–4P). Wreath
+     * centres are percentages of the (bleed-trimmed) card face, validated against the art.
+     */
+    private roundTrackerEl(express: ExpressGameplay | undefined): HTMLElement {
+        const wrap = document.createElement('div');
+        wrap.className = 'ucs-gp-pile ucs-rt-pile';
+        wrap.innerHTML = `<div class="ucs-gp-label">${_('Round Tracker')}</div>`;
+
+        const card = document.createElement('div');
+        card.className = 'ucs-card ucs-art2 ucs-roundtracker ucs-rt-card';
+        card.id = 'ucs-round-tracker';
+
+        const rotateEvery = express?.rotateEvery ?? (Object.keys(this.gamedatas.players).length === 2 ? 3 : 4);
+        const current = Math.min(Math.max((express?.trickNo ?? 0) + 1, 1), 12); // current round = completed + 1
+
+        // Wreath centres as % of the card face (3 columns × 4 rows), matching the printed 1..12 grid.
+        const colX = [22.3, 50.6, 79.5];
+        const rowY = [26.8, 46.6, 66.4, 86.3];
+        const overlay = document.createElement('div');
+        overlay.className = 'ucs-rt-overlay';
+        for (let n = 1; n <= 12; n++) {
+            const cell = document.createElement('div');
+            cell.className = 'ucs-rt-cell';
+            cell.style.left = `${colX[(n - 1) % 3]}%`;
+            cell.style.top = `${rowY[Math.floor((n - 1) / 3)]}%`;
+            if (n === current) cell.classList.add('ucs-rt-now');
+            else if (n < current) cell.classList.add('ucs-rt-past');
+            if (n % rotateEvery === 0) {
+                const yarn = document.createElement('div');
+                yarn.className = 'ucs-rt-yarn';
+                yarn.textContent = '🧶';
+                cell.appendChild(yarn);
+            }
+            overlay.appendChild(cell);
+        }
+        card.appendChild(overlay);
+        wrap.appendChild(card);
+
+        this.addTip('ucs-round-tracker', `<b>${_('Round Tracker')}</b><br>`
+            + _('The glowing wreath is the current round. A new Trendy Yarn card is revealed after every round marked with a yarn (🧶) — then the marker keeps moving.'));
+        return wrap;
     }
 
     /** Express: the row of claimable Fad cards — unclaimed on display, claimed ones tagged with the owner. */
@@ -2326,6 +2400,12 @@ export class Game {
         this.animateTradeToPool(oldRects);
         // Drafting is done: the order is spent, so its markers go.
         this.hideDraftOrder();
+        // Express: the refreshed tracker state advances the Round Tracker marker (and any yarn draw this
+        // trick). Re-render the params column so the halo moves to the new current round.
+        if (args.express && this.gamedatas.gameplay) {
+            this.gamedatas.gameplay.express = args.express;
+            this.renderGameplay();
+        }
     }
 
     /**

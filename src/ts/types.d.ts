@@ -79,6 +79,8 @@ interface ExpressGameplay {
     fadDisplay: GameplayCard[];                 // unclaimed Fads on display
     fadClaimed: GameplayCard[];                 // claimed Fad cards (location_arg = owner)
     fadClaims: { [fadId: number]: FadClaim };   // fadId -> {playerId, buildNo}
+    trickNo?: number;                           // Round Tracker: completed tricks (current round = trickNo + 1)
+    rotateEvery?: number;                       // Trendy Yarn rotates every Nth trick (2P = 3, else 4)
 }
 
 interface GameplayState {
@@ -238,6 +240,7 @@ interface NotifDraftOrder {
 interface NotifTrickCleanup {
     pool: SweaterCard[];
     counts: { [playerId: number]: PlayerCounts };
+    express?: ExpressGameplay | null; // Express: refreshed tracker/fad state so the marker advances each trick
 }
 
 interface NotifHandUpdate {

@@ -606,11 +606,16 @@ class Game extends \Bga\GameFramework\Table
             ];
         }
         if ($this->isExpress()) {
-            // The Express Fad display (unclaimed) + the claimed fads and who/what they're locked to.
+            // The Express Fad display (unclaimed) + the claimed fads and who/what they're locked to, plus
+            // the Round Tracker state: how many tricks have completed (`trickNo`) and how often the Trendy
+            // Yarn rotates (`rotateEvery`). The client marks the current round (trickNo + 1) and the
+            // upcoming "draw a new Trendy Yarn" spaces (every `rotateEvery`th) from these two numbers.
             $out['express'] = [
-                'fadDisplay' => array_values($this->gameplayCards->getCardsInLocation(self::LOC_FAD_DISPLAY)),
-                'fadClaimed' => array_values($this->gameplayCards->getCardsInLocation(self::LOC_FAD_CLAIMED)),
-                'fadClaims'  => $this->fadClaims(),
+                'fadDisplay'  => array_values($this->gameplayCards->getCardsInLocation(self::LOC_FAD_DISPLAY)),
+                'fadClaimed'  => array_values($this->gameplayCards->getCardsInLocation(self::LOC_FAD_CLAIMED)),
+                'fadClaims'   => $this->fadClaims(),
+                'trickNo'     => (int) $this->globals->get('expressTrickNo'),
+                'rotateEvery' => $this->trendyRotateEvery(),
             ];
         }
         return $out;
