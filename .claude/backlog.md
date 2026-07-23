@@ -12,9 +12,6 @@ not of the code.
 
 ## Release-blocking (BGA pre-release checklist)
 
-- **Tooltip coverage sweep** — checklist: "non-self explanatory graphic elements should have tool
-  tips". While there, use BGA's tooltip system for the draw pile rather than a native `title=`
-  attribute (`src/ts/Game.ts:129`).
 - **Responsive / mobile** — checklist: the game must work on a mobile device. Related checklist
   line: if elements don't occupy all available horizontal space, they should be centered.
 

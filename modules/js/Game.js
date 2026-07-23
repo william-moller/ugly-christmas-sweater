@@ -482,7 +482,7 @@ class Game {
                 <div id="ucs-my-hand-wrap" class="ucs-zone">
                     <div class="ucs-zone-label" id="ucs-hand-label">${_('Your hand')}</div>
                     <div id="ucs-my-hand-row">
-                        <div id="ucs-my-pile" class="ucs-draw-pile ucs-my-pile" title="${_('Your draw pile')}"></div>
+                        <div id="ucs-my-pile" class="ucs-draw-pile ucs-my-pile"></div>
                         <div id="ucs-my-hand"></div>
                     </div>
                 </div>
@@ -551,6 +551,10 @@ class Game {
         this.setupNotifications();
         this.maybeAddDebugButton();
         this.setupHelpButton();
+        // Draw-pile tooltip via BGA's system (the container persists across renderPiles() refreshes,
+        // so one attach holds). Replaces the old native title= so it matches every other UCS tooltip.
+        this.addTip('ucs-my-pile', `<b>${_('Your draw pile')}</b><br>`
+            + _('Your personal face-down deck. After each trick you draw back up to a full hand from here. Once it runs out, your hand starts to shrink.'));
     }
     /**
      * The lower-left "?" help button — a fixed round button that opens a popin showing the printed
@@ -744,7 +748,9 @@ class Game {
             return;
         }
         zone.style.display = '';
-        zone.innerHTML = `<div class="ucs-zone-label">${_('Your Secret Santa')}</div>`;
+        zone.innerHTML = `<div class="ucs-zone-label" id="ucs-label-secretsanta">${_('Your Secret Santa')}</div>`;
+        this.addTip('ucs-label-secretsanta', `<b>${_('Your Secret Santa')}</b><br>`
+            + _('Hidden objective(s) only you can see. Build the pieces each one lists into your sweaters to score it at the end of the round.'));
         const row = document.createElement('div');
         row.className = 'ucs-santa-cards';
         cards.forEach((c) => {
@@ -892,7 +898,9 @@ class Game {
     }
     renderDraftPool() {
         const zone = document.getElementById('ucs-draft-pool');
-        zone.innerHTML = `<div class="ucs-zone-label">${_('Draft Pool')}</div>`;
+        zone.innerHTML = `<div class="ucs-zone-label" id="ucs-label-draftpool">${_('Draft Pool')}</div>`;
+        this.addTip('ucs-label-draftpool', `<b>${_('Draft Pool')}</b><br>`
+            + _('The face-up cards up for grabs this trick. On your turn in Draft Order, take one and place it into your Knitting Area.'));
         const row = document.createElement('div');
         row.className = 'ucs-card-row';
         // While leading with a patch, the numbered pool cards are clickable copy sources (a patch can't
@@ -923,7 +931,9 @@ class Game {
     }
     renderTradeArea() {
         const zone = document.getElementById('ucs-trade-area');
-        zone.innerHTML = `<div class="ucs-zone-label">${_('Trade Area (this trick)')}</div>`;
+        zone.innerHTML = `<div class="ucs-zone-label" id="ucs-label-tradearea">${_('Trade Area (this trick)')}</div>`;
+        this.addTip('ucs-label-tradearea', `<b>${_('Trade Area')}</b><br>`
+            + _('The cards everyone played into the current trick. When it resolves they are ranked into Draft Order (the numbered badges), then rotate over to become the next Draft Pool.'));
         const row = document.createElement('div');
         row.className = 'ucs-card-row';
         // Show in play order (trickOrder) when available.
@@ -945,7 +955,10 @@ class Game {
             // Draft Order marker: the k-th ranked card wears its number in its own top-right corner.
             const rank = this.draftOrderRankOf(Number(card.id));
             if (rank) {
-                el.insertAdjacentHTML('beforeend', `<div class="ucs-draftorder-badge ucs-art2 ucs-draftorder-${rank}"></div>`);
+                const badgeId = `ucs-do-badge-${card.id}`;
+                el.insertAdjacentHTML('beforeend', `<div class="ucs-draftorder-badge ucs-art2 ucs-draftorder-${rank}" id="${badgeId}"></div>`);
+                this.addTip(badgeId, `<b>${_('Draft Order')}: ${rank}</b><br>`
+                    + _('Once the trick resolves, players draft from the pool in this numbered order — lower numbers pick first.'));
             }
             wrap.appendChild(el);
             row.appendChild(wrap);
