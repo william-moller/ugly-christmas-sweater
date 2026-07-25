@@ -30,19 +30,20 @@ class EndTrickCleanup extends GameState
         // Trendy Yarn changes every trendyRotateEvery() tricks (2P → 3rd, else 4th); Perfect Fit is
         // replaced if a matching card was played this trick. Both reshuffle their deck when it empties
         // (see Game::rotateGameplayDeck).
-        $rotated = false;
+        $trendyRotated = false;
+        $pfRotated     = false;
         if ($this->game->isExpress()) {
             $trickNo = ((int) $this->game->globals->get('expressTrickNo')) + 1;
             $this->game->globals->set('expressTrickNo', $trickNo);
 
             if ($trickNo % $this->game->trendyRotateEvery() === 0) {
                 $this->game->rotateGameplayDeck('trendyyarn');
-                $rotated = true;
+                $trendyRotated = true;
             }
             if ((int) $this->game->globals->get('pfMatched') === 1) {
                 $this->game->rotateGameplayDeck('perfectfit');
                 $this->game->globals->set('pfMatched', 0);
-                $rotated = true;
+                $pfRotated = true;
             }
         }
 
@@ -70,10 +71,19 @@ class EndTrickCleanup extends GameState
             ]);
         }
 
-        // Express: when a parameter card actually changed, refresh the revealed Trendy Yarn / Perfect Fit
-        // faces too (the tracker marker already moved via the trickCleanup notify above).
-        if ($rotated) {
-            $this->notify->all('gameplayRevealed', clienttranslate('Round parameters updated'), [
+        // Express: when a parameter card actually changed, announce EXACTLY what it changed to (its own log
+        // line) and refresh the revealed Trendy Yarn / Perfect Fit faces. The trick marker already moved via
+        // the trickCleanup notify above. The Trendy Yarn colour is tinted in the log client-side (see
+        // Game::bgaFormatText / the .ucs-log-trendy-* classes); the raw colour string rides in `trendy_color`.
+        if ($trendyRotated) {
+            $this->notify->all('gameplayRevealed', clienttranslate('New Trendy Yarn: ${trendy_color}'), [
+                'trendy_color' => $this->game->activeTrendyYarn(),
+                'gameplay'     => $this->game->getGameplayState(),
+            ]);
+        }
+        if ($pfRotated) {
+            $this->notify->all('gameplayRevealed', clienttranslate('New Perfect Fit: ${pf_value}'), [
+                'pf_value' => $this->game->activePerfectFit(),
                 'gameplay' => $this->game->getGameplayState(),
             ]);
         }

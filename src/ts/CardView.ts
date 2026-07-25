@@ -21,6 +21,12 @@ export function colourName(colour: string): string {
         default: return colour;
     }
 }
+// A colour-tinted Trendy-Yarn name for a game-log line ("New Trendy Yarn: Purple"). Tinted via the
+// .ucs-log-trendy-<colour> classes (same $colors hexes as the cards — see Game.scss); the visible text
+// is the translated colour name from colourName().
+export function trendyLogChip(colour: string): string {
+    return `<span class="ucs-log-trendy-${colour}">${colourName(colour)}</span>`;
+}
 export function iconName(icon: string): string {
     switch (icon) {
         case 'snowman': return _('Snowman');

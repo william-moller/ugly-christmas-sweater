@@ -174,6 +174,12 @@ function colourName(colour) {
         default: return colour;
     }
 }
+// A colour-tinted Trendy-Yarn name for a game-log line ("New Trendy Yarn: Purple"). Tinted via the
+// .ucs-log-trendy-<colour> classes (same $colors hexes as the cards — see Game.scss); the visible text
+// is the translated colour name from colourName().
+function trendyLogChip(colour) {
+    return `<span class="ucs-log-trendy-${colour}">${colourName(colour)}</span>`;
+}
 function iconName(icon) {
     switch (icon) {
         case 'snowman': return _('Snowman');
@@ -2773,6 +2779,17 @@ class Game {
                 args.processed = true;
                 if (args.card_label && args.card) {
                     args.card_label = cardLogChip(args.card, this.material);
+                }
+                // Express: tint the new Trendy Yarn colour name in the log ("New Trendy Yarn: Purple").
+                if (args.trendy_color) {
+                    args.trendy_color = trendyLogChip(args.trendy_color);
+                }
+                // Express: re-translate a claimed Fad's title from our own material (the server sends the
+                // raw title as a fallback so the ${fad_label} placeholder always resolves).
+                if (args.fad_type !== undefined) {
+                    const fad = this.material?.fads?.[Number(args.fad_type)];
+                    if (fad?.title)
+                        args.fad_label = _(fad.title);
                 }
             }
         }

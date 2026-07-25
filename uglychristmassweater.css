@@ -630,6 +630,26 @@ html[data-theme=dark] {
   pointer-events: none;
 }
 
+.ucs-log-trendy-purple {
+  color: #6b3fa0;
+  font-weight: 700;
+}
+
+.ucs-log-trendy-red {
+  color: #c0392b;
+  font-weight: 700;
+}
+
+.ucs-log-trendy-green {
+  color: #27864a;
+  font-weight: 700;
+}
+
+.ucs-log-trendy-yellow {
+  color: #d4a017;
+  font-weight: 700;
+}
+
 .ucs-color-purple {
   background: #6b3fa0;
 }

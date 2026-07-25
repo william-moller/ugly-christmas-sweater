@@ -4,7 +4,7 @@ import { RoundReview } from "./States/RoundReview";
 import { AssignPatches } from "./States/AssignPatches";
 import { BillyChoice } from "./States/BillyChoice";
 import { TinaTink } from "./States/TinaTink";
-import { createCardElement, cardTooltip, cardLogChip, faceOf, isPatch, cardFaceInner, faceSpriteClass, colourName, iconName, fadTooltip, secretSantaTooltip } from "./CardView";
+import { createCardElement, cardTooltip, cardLogChip, faceOf, isPatch, cardFaceInner, faceSpriteClass, colourName, iconName, trendyLogChip, fadTooltip, secretSantaTooltip } from "./CardView";
 import { BgaAnimations, BgaCards, BgaHelp } from "./libs";
 
 type CardMapT = { [cardId: number]: SweaterCard };
@@ -2453,6 +2453,16 @@ export class Game {
                 args.processed = true;
                 if (args.card_label && args.card) {
                     args.card_label = cardLogChip(args.card, this.material);
+                }
+                // Express: tint the new Trendy Yarn colour name in the log ("New Trendy Yarn: Purple").
+                if (args.trendy_color) {
+                    args.trendy_color = trendyLogChip(args.trendy_color);
+                }
+                // Express: re-translate a claimed Fad's title from our own material (the server sends the
+                // raw title as a fallback so the ${fad_label} placeholder always resolves).
+                if (args.fad_type !== undefined) {
+                    const fad = this.material?.fads?.[Number(args.fad_type)];
+                    if (fad?.title) args.fad_label = _(fad.title);
                 }
             }
         } catch (e) {

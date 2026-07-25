@@ -250,6 +250,8 @@ interface NotifHandUpdate {
 
 interface NotifGameplayRevealed {
     gameplay: GameplayState; // the round-parameter decks after revealing the new round's cards
+    trendy_color?: string;   // Express: the new Trendy Yarn colour (tinted in the log via bgaFormatText)
+    pf_value?: number;       // Express: the new Perfect Fit value
 }
 
 /** Public start-of-round deal (rounds 2-3): the freshly reshuffled board. Knitting is wiped (empty). */
@@ -298,6 +300,8 @@ interface NotifFadClaimed {
     player_id: number;
     player_name: string;
     fad_id: number;
+    fad_type: number;        // the Fad's type_arg → material.fads[] (client re-translates the title for the log)
+    fad_label: string;       // server fallback title for the ${fad_label} log placeholder
     build_no: number;
     gameplay: GameplayState; // refreshed gameplay state (the fad has moved from display to claimed)
 }

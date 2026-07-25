@@ -246,6 +246,12 @@ html[data-theme="dark"] {
     pointer-events: none;
 }
 
+// Colour-tinted Trendy-Yarn name in the game log ("New Trendy Yarn: Purple") — same $colors hexes as
+// the cards, so the log word matches the trump colour.
+@each $name, $spec in $colors {
+    .ucs-log-trendy-#{$name} { color: list.nth($spec, 1); font-weight: 700; }
+}
+
 @each $name, $spec in $colors {
     $hex: list.nth($spec, 1);
     $angle: list.nth($spec, 2);
