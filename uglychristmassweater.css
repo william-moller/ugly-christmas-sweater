@@ -1325,9 +1325,13 @@ html[data-theme=dark] {
   gap: 6px;
   min-height: 0;
   align-items: flex-start;
+  --ucs-mini-build-w: 44px;
+  max-width: calc(5 * var(--ucs-mini-build-w) + 24px);
 }
 
 .ucs-mini-build {
+  box-sizing: border-box;
+  width: var(--ucs-mini-build-w, 44px);
   display: grid;
   grid-template-columns: repeat(2, 18px);
   grid-template-areas: "L R" "B B";

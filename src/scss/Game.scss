@@ -952,17 +952,27 @@ html[data-theme="dark"] {
 
 // ---- Opponents' compact knitting: small colour+number chips, wrapped to the panel width ---------
 .ucs-knitting-compact {
-    // Inherit the base `wrap` from .ucs-knitting: the opponents column is a fixed $side-col-w, so a
-    // fifth-plus mini-build has to drop to the next row rather than run off the panel edge and slide
-    // under the neighbouring player card. Tighter gap than the full area, and no min-height so a short
-    // area doesn't reserve a full card of vertical space.
+    // Inherit the base `wrap` from .ucs-knitting. Tighter gap than the full area, and no min-height so a
+    // short area doesn't reserve a full card of vertical space.
     gap: 6px;
     min-height: 0;
     align-items: flex-start;
+    // Cap the opponents' sweater row at 5 builds wide, then wrap to a new line. #ucs-opponents is
+    // content-width on Tier A, so without a cap one long row of separate sweaters widens the column and
+    // squeezes the centre Draft Pool. Each compact build is a fixed --ucs-mini-build-w (see .ucs-mini-
+    // build), so 5 fit in 5*w + 4*6px gaps. Only bites on the desktop side column — below 1000px this
+    // compact area is hidden and the pip summary shows instead. The chips don't scale with the Card-size
+    // preference and the cap is player-count agnostic; in practice only Express reaches a 6th sweater
+    // (Casual/Avid end by the 3rd–4th), so the wrap is effectively Express-only in play.
+    --ucs-mini-build-w: 44px;
+    max-width: calc(5 * var(--ucs-mini-build-w) + 4 * 6px);
 }
 .ucs-mini-build {
     // Same L-R-over-B silhouette as the full .ucs-build, at chip scale: L and R on top, B centred
     // below, so an incomplete sweater keeps its full footprint with the missing slots reading as gaps.
+    // Fixed border-box width so every build is identical → exactly 5 fit before the row wraps (above).
+    box-sizing: border-box;
+    width: var(--ucs-mini-build-w, 44px);
     display: grid;
     grid-template-columns: repeat(2, 18px);
     grid-template-areas:
