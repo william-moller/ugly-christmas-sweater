@@ -8,6 +8,34 @@ Ground rule 1 still applies: **these numbers are derived, not preferences.** Eac
 computed from the card's own CSS ratios (in `src/scss/Game.scss`), so if those ratios change,
 re-derive rather than nudging the number until a screenshot looks right.
 
+## Scoping a layout instruction — the three axes
+
+Spacing/sizing here varies along **three orthogonal axes**, each driven by a *different* mechanism.
+An instruction that doesn't pin all three is ambiguous, and a fix aimed at the wrong axis regresses
+the other two. So scope every layout instruction as a **coordinate** — one value per axis — using this
+vocabulary:
+
+| Axis | Words | Code vocabulary | Controls | Lives in |
+|------|-------|-----------------|----------|----------|
+| **Variant** | avid / casual / express | game mode, option `101`; `isExpress()` / `isAvid()` | **which components exist** (Round Tracker, Fad display, claimed-Fad chips, extra Secret Santas) — a DOM-presence axis, not a sizing one | server gamedatas + client branches |
+| **Card-size preference** | small / medium / large | pref `101` → `<html>.ucs-cards-{small,medium,large}` → `--ucs-card-scale` | a **discrete multiplier** on interactive card art only (hand, centre stack, own knitting); needs a reload | `gamepreferences.jsonc` + `Game.scss` |
+| **Display size** | phone / tablet / monitor | responsive **Tier C / B / A** at `<450` / `450–1000` / `≥1000` px `innerWidth` | **layout structure** (stacked / rail / four-column grid) | this doc + `@media` in `Game.scss` |
+
+Template: **"In [variant], at [tier / px], with card size [pref] — [component] should [change]."**
+
+Defaults when an axis is omitted (so all three needn't be spelled out every time): **Tier A** (monitor,
+≥1000px), card size **Medium**, variant **Express**. Say "all variants" / "all sizes" / "everywhere"
+to explicitly leave an axis unscoped.
+
+Keep **preference ≠ display size** sharp: "Large" is a user's chosen multiplier, "monitor" is a viewport
+width — a phone user can pick Large and a monitor user can pick Small. They're set in different places,
+so "bigger cards on desktop" is ambiguous until you say which one you mean.
+
+Two scope caveats already documented below, restated because they change how an instruction lands: the
+Tier vocabulary is currently specified **against Express only** (Casual/Avid haven't been through the
+responsive pass — see Open items), and Tier C (phones) is **unimplemented**. An instruction into either
+region gets design questions from me, not just a nudged number.
+
 ## Size floors (the non-negotiables)
 
 Card sub-elements are all sized as fractions of `--ucs-card-w`, so one card width sets every glyph:
