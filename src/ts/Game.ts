@@ -109,28 +109,38 @@ export class Game {
     setup(gamedatas: UglyChristmasSweaterGamedatas) {
         this.gamedatas = gamedatas;
 
+        const playerCount = Object.keys(gamedatas.players).length;
+        // Cards played into a trick before the draft = players × cards-each: each player plays 2 in a 2P
+        // game, 1 otherwise (mirrors Game.php::cardsPerTurn), so 2P→4, 3P→3, 4P→4. The Trade Area frame is
+        // drawn for exactly this many slots so it never grows as the trick fills (see #ucs-trade-area).
+        const trickSize = playerCount === 2 ? 4 : playerCount;
+
         this.bga.gameArea.getElement().insertAdjacentHTML('beforeend', `
-            <div id="ucs-table" style="--ucs-players:${Object.keys(gamedatas.players).length}">
+            <div id="ucs-table" style="--ucs-players:${playerCount};--ucs-trick-size:${trickSize}">
                 <div id="ucs-hand-end-banner" class="ucs-hand-end-banner" style="display:none">
                     ${_('Last trick and draft phase of this hand — the round ends after this draft.')}
                 </div>
+                <!-- Upper region (see #ucs-upper in Game.scss): a left board strip, the centre trick, and
+                     the opponents on the right. The board strip stacks a single row of round-parameter
+                     cards — Fads then Perfect Fit + Trendy Yarn, all one size (renderGameplay) — over my
+                     Secret Santa. The Round Tracker and my full-width Knitting Area sit in #ucs-lower
+                     beneath it all. On a narrow window these stack into one column. NB no backticks in
+                     here - this is a template literal. -->
                 <div id="ucs-upper">
-                    <!-- The reference column: boxless (display:contents) on wide screens so its two
-                         children stay their own grid items; a real box in the narrow layout. See
-                         #ucs-rail in Game.scss. NB no backticks in here - this is a template literal. -->
-                    <div id="ucs-rail">
+                    <div id="ucs-board-strip">
                         <div id="ucs-gameplay" class="ucs-zone"></div>
                         <div id="ucs-secret-santa" class="ucs-zone ucs-secret-santa" style="display:none"></div>
+                        <div id="ucs-my-santa" class="ucs-my-santa" style="display:none"></div>
                     </div>
                     <div id="ucs-center-stack">
                         <div id="ucs-draft-pool" class="ucs-zone"></div>
                         <div id="ucs-trade-area" class="ucs-zone"></div>
                     </div>
                     <div id="ucs-opponents"></div>
-                    <div id="ucs-knit-col">
-                        <div id="ucs-my-santa" class="ucs-my-santa" style="display:none"></div>
-                        <div id="ucs-my-area" class="ucs-zone"></div>
-                    </div>
+                </div>
+                <div id="ucs-lower">
+                    <div id="ucs-rt-col"></div>
+                    <div id="ucs-my-area" class="ucs-zone"></div>
                 </div>
                 <div id="ucs-placement" class="ucs-zone" style="display:none"></div>
                 <div id="ucs-my-hand-wrap" class="ucs-zone">
@@ -193,7 +203,6 @@ export class Game {
         // "DEBUG: dump state" affordance; harmless read-only handle.
         (window as any).ucs = this;
 
-        this.watchLayoutBreakpoint();
         this.renderAll();
 
         // Draft Order: markers are drawn into the Trade Area cards themselves, so there's nothing to
@@ -277,18 +286,30 @@ export class Game {
      * matches the custom-DOM cards in the other zones. Selection is wired to the existing play flow via
      * `onSelectionChange` (see handSelectionChanged / enablePlayable).
      */
-    /** Multiplier for the "Card size" preference (gamepreferences 101). Mirrors the html.ucs-cards-*
-     *  classes in Game.scss; BGA applies the class to <html> on reload (the pref is needReload), so it is
-     *  present by the time setup() runs. Kept in sync with those SCSS values by hand. */
-    private cardSizeScale(): number {
+    /** Multiplier for the HAND's card frame, keyed off the "Card size" preference (gamepreferences 101,
+     *  applied as html.ucs-cards-* on reload). It tracks the preference but is capped well below the
+     *  tabletop's Large (1.5): the fanned hand floats at the BOTTOM of the viewport, so cards much taller
+     *  than ~190px run off the bottom edge and look cropped. At 1.25 the hand cards are the same width as
+     *  the Large tabletop cards (80×1.5 = 96×1.25 = 120) and still clear the fold. */
+    private handSizeScale(): number {
         const c = document.documentElement.classList;
-        if (c.contains('ucs-cards-large')) return 1.18;
+        if (c.contains('ucs-cards-large')) return 1.4;
         if (c.contains('ucs-cards-small')) return 0.85;
         return 1;
     }
 
     private setupHandStock() {
-        const handScale = this.cardSizeScale();
+        const handScale = this.handSizeScale();
+        // One integer size for BOTH the library's card frame (cardWidth/cardHeight below) and the CSS face
+        // sprite (#ucs-my-hand-wrap's --ucs-card-w/h, set here). Driving them from the same rounded value
+        // guarantees they match exactly — any px mismatch places the sprite in a differently-sized frame.
+        const handW = Math.round(96 * handScale);
+        const handH = Math.round(149 * handScale);
+        const handWrap = document.getElementById('ucs-my-hand-wrap');
+        if (handWrap) {
+            handWrap.style.setProperty('--ucs-card-w', `${handW}px`);
+            handWrap.style.setProperty('--ucs-card-h', `${handH}px`);
+        }
         this.animationManager = new BgaAnimations.Manager({
             animationsActive: () => this.bga.gameui.bgaAnimationsActive(),
         });
@@ -296,19 +317,15 @@ export class Game {
             animationManager: this.animationManager,
             type: 'ucs-sweater',
             // The hand is the primary interaction on a desktop table, so its cards run larger than the
-            // 64/90 used elsewhere. Base 96/149, scaled by the "Card size" preference (gamepreferences
-            // 101) so Large/Small enlarge/shrink the hand along with the tabletop. These frame px MUST
-            // track #ucs-my-hand-wrap's --ucs-card-w/h (same multiplier, see cardSizeScale) — the inner
-            // face content sizes off the CSS var while the library sizes the fan frame from these, so a
-            // mismatch distorts the fan. Scaling BOTH proportionally keeps the arc uniform (angles depend
-            // on the overlap % + card count, not absolute px). A CSS transform on the holder is still
-            // forbidden — it breaks the floating (position:fixed) hand (see the note in #ucs-my-hand).
-            // One size at every width: updateCardPositions computes
-            //   realOverlap = cardWidth - ((maxWidth - cardWidth) / (n - 1))
-            // whenever the fan would exceed the stock's width, so the library already guarantees a fit
-            // by overlapping harder — no per-width shrink needed.
-            cardWidth: Math.round(96 * handScale),
-            cardHeight: Math.round(149 * handScale), // bridge ratio 0.643 + #ucs-my-hand-wrap's --ucs-card-h
+            // 64/90 used elsewhere. Base 96/149, grown by the "Card size" preference via handSizeScale
+            // (capped so the floating hand clears the viewport bottom — see there). handW/handH also drive
+            // #ucs-my-hand-wrap's --ucs-card-w/h so the sprite face and this frame stay the same size; a
+            // mismatch places the sprite in a differently-sized frame and clips it. A CSS transform on the
+            // holder is still forbidden — it breaks the floating (position:fixed) hand (see #ucs-my-hand).
+            // updateCardPositions overlaps the fan harder when it would exceed the stock width, so one
+            // size fits every window with no per-width shrink.
+            cardWidth: handW,
+            cardHeight: handH, // bridge ratio 0.643 + #ucs-my-hand-wrap's --ucs-card-h
             getId: (c: SweaterCard) => `ucs-hand-${c.id}`,
             isCardVisible: () => true,
             setupFrontDiv: (c: SweaterCard, div: HTMLElement) => {
@@ -368,25 +385,6 @@ export class Game {
     // ===================================================================================
     //  Rendering (gamedatas is the single source of truth; mutate then re-render a zone)
     // ===================================================================================
-
-    /**
-     * True while the narrow (rail) layout is in force — Tier B and below in `.claude/responsive.md`.
-     * MUST stay in step with the `max-width: 1000px` breakpoint in Game.scss: the two describe the same
-     * layout, and the Fad display's placement depends on which side of it we're on (see renderGameplay).
-     */
-    private narrowLayout(): boolean {
-        return window.matchMedia('(max-width: 1000px)').matches;
-    }
-
-    /** Re-render the round parameters when the window crosses the layout breakpoint, so the Fad display
-     *  moves between the `santa` slot (wide) and inline in the rail (narrow). */
-    private watchLayoutBreakpoint() {
-        const mq = window.matchMedia('(max-width: 1000px)');
-        const onChange = () => this.renderGameplay();
-        // addEventListener is the modern form; older Safari only has addListener.
-        if (typeof mq.addEventListener === 'function') mq.addEventListener('change', onChange);
-        else if (typeof (mq as any).addListener === 'function') (mq as any).addListener(onChange);
-    }
 
     private get material(): UcsMaterial {
         return this.gamedatas.material;
@@ -510,43 +508,44 @@ export class Game {
         const row = document.createElement('div');
         row.className = 'ucs-gameplay-row';
         const gp = this.gamedatas.gameplay;
-        row.appendChild(this.gameplayPileEl('perfectfit', _('Perfect Fit'), gp?.perfectfit));
-        row.appendChild(this.gameplayPileEl('trendyyarn', _('Trendy Yarn'), gp?.trendyyarn));
+        // One row of same-size round-parameter faces: the Fads first, then the revealed Perfect Fit and
+        // Trendy Yarn cards. No draw piles — the revealed card art carries its own printed title, so the
+        // face-down decks (and their "N left" counts) are dropped to keep the strip a single tidy row.
         if (this.gamedatas.express) {
-            // Express: the Round Tracker sits under Trendy Yarn (it drives when the yarn rotates).
-            // The claimable Fad display normally lives in the `santa` slot beside this column, but the
-            // narrow rail is a single stack, and there the Fads belong between Trendy Yarn and the Round
-            // Tracker — an order that can't be expressed while they sit in a different container. So on
-            // a narrow window they render inline here instead; renderAll re-runs on the breakpoint.
-            if (this.narrowLayout()) {
-                const fadEl = this.fadDisplayEl(gp?.express);
-                fadEl.id = 'ucs-fad-zone'; // same hook the round-end assignment dim keys off
-                row.appendChild(fadEl);
-                const santa = document.getElementById('ucs-secret-santa');
-                if (santa) { santa.style.display = 'none'; santa.innerHTML = ''; }
-            }
-            row.appendChild(this.roundTrackerEl(gp?.express));
-            zone.appendChild(row);
-            if (!this.narrowLayout()) this.renderFadDisplay(gp?.express);
-        } else {
-            // Casual/Avid: the single revealed Fad stays in this column beside Perfect Fit / Trendy Yarn.
-            const fadEl = this.gameplayPileEl('fad', _('Fads'), gp?.fad);
-            fadEl.id = 'ucs-fad-zone'; // hook for the round-end assignment dim (kept readable above the overlay)
+            const fadEl = this.fadDisplayEl(gp?.express); // the claimable Fad display (3+ cards under one label)
+            fadEl.id = 'ucs-fad-zone'; // hook the round-end assignment dim keys off
             row.appendChild(fadEl);
-            zone.appendChild(row);
+        } else {
+            // Casual/Avid: a single revealed Fad card in the same row.
+            const fadEl = this.gameplayFaceEl('fad', gp?.fad?.active ?? null);
+            fadEl.id = 'ucs-fad-zone';
+            row.appendChild(fadEl);
         }
+        row.appendChild(this.gameplayFaceEl('perfectfit', gp?.perfectfit?.active ?? null));
+        row.appendChild(this.gameplayFaceEl('trendyyarn', gp?.trendyyarn?.active ?? null));
+        zone.appendChild(row);
+        this.renderRoundTracker(this.gamedatas.express ? gp?.express : undefined);
     }
 
-    /** Express: render the claimable Fad display into the top `santa` grid slot (vacated by Secret Santa,
-     *  which Express moves over the Knitting Area). Keeps the #ucs-fad-zone id for the round-end dim. */
-    private renderFadDisplay(express: ExpressGameplay | undefined) {
-        const slot = document.getElementById('ucs-secret-santa');
-        if (!slot) return;
-        slot.style.display = '';
-        slot.innerHTML = '';
-        const fadEl = this.fadDisplayEl(express);
-        fadEl.id = 'ucs-fad-zone';
-        slot.appendChild(fadEl);
+    /** Express: (re)draw the Round Tracker into its own column in #ucs-lower (bottom-left, beside the
+     *  Knitting Area). Cleared for Casual/Avid, which have no tracker. */
+    private renderRoundTracker(express: ExpressGameplay | undefined) {
+        const col = document.getElementById('ucs-rt-col');
+        if (!col) return;
+        col.innerHTML = '';
+        if (express) col.appendChild(this.roundTrackerEl(express));
+    }
+
+    /** A revealed round-parameter card on its own (no draw pile), for the single-row board strip. Wrapped
+     *  so it lines up with the multi-card Fad display beside it. */
+    private gameplayFaceEl(type: string, card: GameplayCard | null): HTMLElement {
+        const wrap = document.createElement('div');
+        wrap.className = 'ucs-gp-pile';
+        const cards = document.createElement('div');
+        cards.className = 'ucs-gp-cards';
+        cards.appendChild(this.gameplayCardEl(type, card));
+        wrap.appendChild(cards);
+        return wrap;
     }
 
     /**
@@ -646,39 +645,6 @@ export class Game {
             el.insertAdjacentHTML('beforeend', `<div class="ucs-fad-owner">${owner?.name ?? ''}</div>`);
         }
         return el;
-    }
-
-    /** One gameplay deck: label, the current face-up card, and the face-down draw pile + count. */
-    private gameplayPileEl(type: string, label: string, pile: GameplayPile | undefined): HTMLElement {
-        const wrap = document.createElement('div');
-        wrap.className = 'ucs-gp-pile';
-
-        const cards = document.createElement('div');
-        cards.className = 'ucs-gp-cards';
-
-        // The face-down draw pile + how many cards remain — shown on the LEFT. The deck's name is written
-        // OVER the pile back (not a separate label row above) to save vertical space.
-        const deck = document.createElement('div');
-        deck.className = 'ucs-gp-deck';
-        const remaining = pile?.deckCount ?? 0;
-        deck.innerHTML =
-            `<div class="ucs-gp-backwrap">`
-            + `<div class="ucs-card ucs-art2 ucs-gp-${type}-back ucs-gp-back ${remaining ? '' : 'ucs-gp-empty'}"></div>`
-            + `<div class="ucs-gp-label">${label}</div>`
-            + `</div>`
-            + `<div class="ucs-gp-count">${remaining} left</div>`;
-        cards.appendChild(deck);
-
-        // The current revealed card to the RIGHT of its draw pile (with a "stacked" look when earlier
-        // reveals sit beneath it).
-        const active = document.createElement('div');
-        active.className = 'ucs-gp-active';
-        if (pile && (pile.seenCount ?? 0) > 1) active.classList.add('ucs-gp-stacked');
-        active.appendChild(this.gameplayCardEl(type, pile?.active ?? null));
-        cards.appendChild(active);
-
-        wrap.appendChild(cards);
-        return wrap;
     }
 
     /** A revealed gameplay card, drawn with its real publisher art (sprite via .ucs-art2). */
