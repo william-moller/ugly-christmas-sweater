@@ -1069,9 +1069,13 @@ html[data-theme=dark] {
 #ucs-upper {
   display: grid;
   grid-template-columns: calc(210px * var(--ucs-card-scale, 1)) auto minmax(0, 1fr) 210px;
-  grid-template-areas: "params santa center oppo" "params knit  knit   oppo";
+  grid-template-areas: "params santa   center oppo" "params mysanta knit   oppo";
   gap: 12px;
   align-items: start;
+}
+
+#ucs-rail {
+  display: contents;
 }
 
 #ucs-gameplay {
@@ -1088,11 +1092,17 @@ html[data-theme=dark] {
 }
 
 #ucs-knit-col {
-  grid-area: knit;
+  display: contents;
   min-width: 0;
 }
 
+#ucs-my-santa {
+  grid-area: mysanta;
+}
+
 #ucs-my-area {
+  grid-area: knit;
+  min-width: 0;
   --ucs-card-w: calc(80px * var(--ucs-card-scale, 1));
   --ucs-card-h: calc(125px * var(--ucs-card-scale, 1));
   background: #3f7424;
@@ -1595,11 +1605,12 @@ html[data-theme=dark] {
 
 #ucs-trade-area {
   --ucs-trade-slot: calc(var(--ucs-card-w) + 12px);
+  --ucs-trade-seats: var(--ucs-players, 4);
   position: relative;
   box-sizing: border-box;
   border: 3px solid var(--ucs-frame);
   padding-top: 20px;
-  width: calc(var(--ucs-players, 4) * var(--ucs-trade-slot) + (var(--ucs-players, 4) - 1) * 12px + 16px + 6px);
+  width: calc(var(--ucs-trade-seats) * var(--ucs-trade-slot) + (var(--ucs-trade-seats) - 1) * 12px + 16px + 6px);
 }
 
 #ucs-draft-pool .ucs-zone-label,
@@ -1639,8 +1650,8 @@ html[data-theme=dark] {
 }
 
 #ucs-my-hand-wrap {
-  --ucs-card-w: 96px;
-  --ucs-card-h: 149px;
+  --ucs-card-w: calc(96px * var(--ucs-card-scale, 1));
+  --ucs-card-h: calc(149px * var(--ucs-card-scale, 1));
   position: relative;
   z-index: 100;
 }
@@ -1648,7 +1659,7 @@ html[data-theme=dark] {
 #ucs-my-hand {
   flex: 1 1 100%;
   width: 100%;
-  min-height: 186px;
+  min-height: calc(186px * var(--ucs-card-scale, 1));
 }
 
 #ucs-my-hand.ucs-hand-choosing .bga-cards_selectable-card {
@@ -1917,20 +1928,124 @@ table.ucs-scorepad th, table.ucs-scorepad td {
   background: #c9342b;
 }
 
-@media (max-width: 800px) {
+@media (max-width: 1000px) {
   #ucs-upper {
-    grid-template-columns: minmax(0, 1fr);
-    grid-template-areas: "params" "santa" "center" "oppo" "knit";
+    grid-template-columns: auto minmax(0, 1fr);
+    grid-template-areas: none;
+    gap: 10px;
+  }
+  #ucs-rail {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    grid-column: 1;
+    grid-row: 1/span 3;
+  }
+  #ucs-center-stack {
+    grid-column: 2;
+    grid-row: 1;
+  }
+  #ucs-knit-col {
+    display: block;
+    grid-column: 2;
+    grid-row: 2;
+  }
+  #ucs-opponents {
+    grid-column: 2;
+    grid-row: 3;
+  }
+  #ucs-gameplay,
+  #ucs-secret-santa {
+    --ucs-rail-card-w: 120px;
+    --ucs-card-w: var(--ucs-rail-card-w);
+    --ucs-card-h: calc(var(--ucs-rail-card-w) * 1.556);
+  }
+  .ucs-rt-card {
+    --ucs-card-w: var(--ucs-rail-card-w);
+    --ucs-card-h: calc(var(--ucs-rail-card-w) * 1.556);
   }
   .ucs-gameplay-row {
-    flex-direction: row;
-    flex-wrap: wrap;
-    gap: 18px;
+    gap: 8px;
   }
-  #ucs-my-hand {
-    transform: scale(0.68);
-    transform-origin: top center;
-    min-height: 128px;
+  #ucs-gameplay .ucs-gp-deck {
+    display: none;
+  }
+  .ucs-fad-display .ucs-fad-cards {
+    flex-direction: column;
+    gap: 5px;
+  }
+  .ucs-fad-display > .ucs-gp-label,
+  .ucs-rt-pile > .ucs-gp-label {
+    display: none;
+  }
+  .ucs-fad-card {
+    width: var(--ucs-card-w);
+    height: auto;
+    min-height: 0;
+    background-image: none;
+    background-color: var(--ucs-btn-bg);
+    border: 1px solid var(--ucs-hairline);
+    border-radius: 6px;
+    padding: 5px 2px;
+    color: var(--ucs-btn-ink);
+    box-shadow: none;
+  }
+  .ucs-fad-card .ucs-fad-chip {
+    display: flex;
+  }
+  .ucs-fad-card .ucs-fad-owner {
+    position: static;
+    border-radius: 0 0 4px 4px;
+  }
+  .ucs-fad-chip {
+    gap: 4px;
+  }
+  .ucs-fad-chip .ucs-tally-swatch,
+  .ucs-fad-chip .ucs-tally-icon {
+    width: 32px;
+    height: 44px;
+    border-radius: 5px;
+  }
+  .ucs-fad-chip .ucs-tally-icon .ucs-icon {
+    --ucs-icon-size: 28px;
+  }
+  .ucs-fad-chip-sep {
+    font-size: 16px;
+  }
+  .ucs-fad-chip-clash {
+    font-size: 15px;
+  }
+  #ucs-center-stack {
+    container-type: inline-size;
+  }
+  #ucs-trade-area {
+    --ucs-trade-seats: 4;
+  }
+  #ucs-draft-pool,
+  #ucs-trade-area {
+    --ucs-card-w: min(
+        128px,
+        (100cqi - 76px) / 4,
+        (100cqi - 22px - 3 * 12px) / 4 - 12px
+    );
+    --ucs-card-h: calc(var(--ucs-card-w) * 1.556);
+  }
+  .ucs-my-santa {
+    --ucs-card-w: 100px;
+    --ucs-card-h: 156px;
+  }
+  #ucs-draft-pool > .ucs-zone-label,
+  #ucs-trade-area > .ucs-zone-label,
+  .ucs-my-santa > .ucs-zone-label {
+    font-size: 15px;
+    opacity: 0.85;
+  }
+  #ucs-my-hand-wrap {
+    z-index: auto;
+  }
+  #ucs-my-hand .hand-stock.floating {
+    --bga-cards_hand-stock-floating-left-margin: 12px !important;
+    --bga-cards_hand-stock-floating-right-margin: 12px !important;
   }
   #ucs-opponents {
     flex-direction: row;
@@ -1946,6 +2061,52 @@ table.ucs-scorepad th, table.ucs-scorepad td {
     display: flex;
   }
 }
+@media (max-width: 449px) {
+  #ucs-upper {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  #ucs-rail {
+    grid-column: 1;
+    grid-row: 1;
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  #ucs-center-stack {
+    grid-column: 1;
+    grid-row: 2;
+  }
+  #ucs-knit-col {
+    grid-column: 1;
+    grid-row: 3;
+  }
+  #ucs-opponents {
+    grid-column: 1;
+    grid-row: 4;
+  }
+  #ucs-gameplay,
+  #ucs-secret-santa {
+    --ucs-rail-card-w: 95px;
+  }
+  .ucs-gameplay-row {
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 10px;
+  }
+  .ucs-fad-display .ucs-fad-cards {
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  .ucs-fad-card {
+    width: auto;
+    min-width: 76px;
+  }
+  #ucs-opponents .ucs-oppo {
+    flex: 1 1 100%;
+  }
+}
 .ucs-fad-display .ucs-fad-cards {
   display: flex;
   flex-wrap: wrap;
@@ -1954,6 +2115,26 @@ table.ucs-scorepad th, table.ucs-scorepad td {
 
 .ucs-fad-card {
   position: relative;
+}
+
+.ucs-fad-chip {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+}
+
+.ucs-fad-chip-sep {
+  font-size: 13px;
+  font-weight: 700;
+  opacity: 0.55;
+}
+
+.ucs-fad-chip-clash {
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
 }
 
 .ucs-fad-claimed {
@@ -2038,8 +2219,8 @@ table.ucs-scorepad th, table.ucs-scorepad td {
 }
 
 .ucs-my-santa {
-  --ucs-card-w: calc(96px * var(--ucs-card-scale, 1));
-  --ucs-card-h: calc(150px * var(--ucs-card-scale, 1));
+  --ucs-card-w: calc(120px * var(--ucs-card-scale, 1));
+  --ucs-card-h: calc(188px * var(--ucs-card-scale, 1));
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -2060,8 +2241,8 @@ table.ucs-scorepad th, table.ucs-scorepad td {
 }
 
 #ucs-secret-santa .ucs-fad-display {
-  --ucs-card-w: calc(66px * var(--ucs-card-scale, 1));
-  --ucs-card-h: calc(66px * 1.556 * var(--ucs-card-scale, 1));
+  --ucs-card-w: calc(90px * var(--ucs-card-scale, 1));
+  --ucs-card-h: calc(90px * 1.556 * var(--ucs-card-scale, 1));
 }
 
 #ucs-secret-santa .ucs-fad-display .ucs-fad-cards {

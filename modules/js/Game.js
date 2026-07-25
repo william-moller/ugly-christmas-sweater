@@ -385,6 +385,8 @@ class Game {
     constructor(bga) {
         // Selection state for the active player (set by the PlayCard / DraftCard state handlers).
         this.playableIds = [];
+        this.refreshingSelectable = false; // re-entrancy guard for refreshSelectable
+        this.handSync = Promise.resolve(); // serialises HandStock resyncs — see renderHand
         this.onPlay = null;
         this.selectedPlayId = null;
         // The played card's on-screen rect captured at Confirm time (keyed by card id), so the trade-area
@@ -469,8 +471,13 @@ class Game {
                     ${_('Last trick and draft phase of this hand — the round ends after this draft.')}
                 </div>
                 <div id="ucs-upper">
-                    <div id="ucs-gameplay" class="ucs-zone"></div>
-                    <div id="ucs-secret-santa" class="ucs-zone ucs-secret-santa" style="display:none"></div>
+                    <!-- The reference column: boxless (display:contents) on wide screens so its two
+                         children stay their own grid items; a real box in the narrow layout. See
+                         #ucs-rail in Game.scss. NB no backticks in here - this is a template literal. -->
+                    <div id="ucs-rail">
+                        <div id="ucs-gameplay" class="ucs-zone"></div>
+                        <div id="ucs-secret-santa" class="ucs-zone ucs-secret-santa" style="display:none"></div>
+                    </div>
                     <div id="ucs-center-stack">
                         <div id="ucs-draft-pool" class="ucs-zone"></div>
                         <div id="ucs-trade-area" class="ucs-zone"></div>
@@ -533,6 +540,12 @@ class Game {
         else {
             this.setupHandStock();
         }
+        // Expose the client for console diagnosis (`ucs.debugHand()`). The alternative is pasting long
+        // probes into a console that may be pointed at the lobby page, where every lookup silently
+        // returns null — this is always reachable from the board itself. Matches the existing
+        // "DEBUG: dump state" affordance; harmless read-only handle.
+        window.ucs = this;
+        this.watchLayoutBreakpoint();
         this.renderAll();
         // Draft Order: markers are drawn into the Trade Area cards themselves, so there's nothing to
         // place here. The active state's handler (PlayCard / DraftCard onEnteringState, which fires
@@ -609,7 +622,19 @@ class Game {
      * matches the custom-DOM cards in the other zones. Selection is wired to the existing play flow via
      * `onSelectionChange` (see handSelectionChanged / enablePlayable).
      */
+    /** Multiplier for the "Card size" preference (gamepreferences 101). Mirrors the html.ucs-cards-*
+     *  classes in Game.scss; BGA applies the class to <html> on reload (the pref is needReload), so it is
+     *  present by the time setup() runs. Kept in sync with those SCSS values by hand. */
+    cardSizeScale() {
+        const c = document.documentElement.classList;
+        if (c.contains('ucs-cards-large'))
+            return 1.18;
+        if (c.contains('ucs-cards-small'))
+            return 0.85;
+        return 1;
+    }
     setupHandStock() {
+        const handScale = this.cardSizeScale();
         this.animationManager = new BgaAnimations.Manager({
             animationsActive: () => this.bga.gameui.bgaAnimationsActive(),
         });
@@ -617,13 +642,19 @@ class Game {
             animationManager: this.animationManager,
             type: 'ucs-sweater',
             // The hand is the primary interaction on a desktop table, so its cards run larger than the
-            // 64/90 used elsewhere. The inner face content (sized off --ucs-card-w) is matched to this in
-            // SCSS (#ucs-my-hand-wrap). The "Card size" preference deliberately does NOT resize the hand:
-            // scaling the frame px here distorts the fan's arc, and a CSS transform on the holder breaks
-            // the floating (position:fixed) hand (see the note in #ucs-my-hand). The hand stays fixed at
-            // 96/149; the preference scales the tabletop / parameter / knitting faces instead.
-            cardWidth: 96,
-            cardHeight: 149, // bridge ratio 0.643 (bleed-trimmed art) + #ucs-my-hand-wrap's --ucs-card-h
+            // 64/90 used elsewhere. Base 96/149, scaled by the "Card size" preference (gamepreferences
+            // 101) so Large/Small enlarge/shrink the hand along with the tabletop. These frame px MUST
+            // track #ucs-my-hand-wrap's --ucs-card-w/h (same multiplier, see cardSizeScale) — the inner
+            // face content sizes off the CSS var while the library sizes the fan frame from these, so a
+            // mismatch distorts the fan. Scaling BOTH proportionally keeps the arc uniform (angles depend
+            // on the overlap % + card count, not absolute px). A CSS transform on the holder is still
+            // forbidden — it breaks the floating (position:fixed) hand (see the note in #ucs-my-hand).
+            // One size at every width: updateCardPositions computes
+            //   realOverlap = cardWidth - ((maxWidth - cardWidth) / (n - 1))
+            // whenever the fan would exceed the stock's width, so the library already guarantees a fit
+            // by overlapping harder — no per-width shrink needed.
+            cardWidth: Math.round(96 * handScale),
+            cardHeight: Math.round(149 * handScale), // bridge ratio 0.643 + #ucs-my-hand-wrap's --ucs-card-h
             getId: (c) => `ucs-hand-${c.id}`,
             isCardVisible: () => true,
             setupFrontDiv: (c, div) => {
@@ -643,11 +674,23 @@ class Game {
             fanShaped: true,
             // cardOverlap is a PERCENTAGE of card width (not px). Low enough that ~70% of every card
             // shows, so the whole hand (incl. the top-left value/orientation/icon) stays readable.
+            // This is a MINIMUM overlap (the widest the fan may spread), not a fixed one — the library
+            // tightens it on its own when the cards would not fit. So it does not need lowering for
+            // narrow windows; forcing a bigger value there only wasted space when there was room.
             cardOverlap: 30,
             emptyHandMessage: _('Hand is empty'),
             // Lift the floating (position:fixed) hand above the Draft Order overlay (z-index 50) so the
             // dealt rank cards never paint over the player's fanned hand. Stays below the popin (1000).
-            floatZIndex: 100,
+            // 900 rather than 100: BGA's own bottom-corner controls (the "?" help button, chat, replay)
+            // sit in that strip on a narrow window, and anything of theirs stacking above the fan
+            // swallows the clicks on it — the cards look fine and simply don't respond.
+            floatZIndex: 900,
+            // Zero on purpose. These do not pad a centred fan — the library left-pins the stock at
+            // floatLeftMargin, so a non-zero value simply shoves the whole hand right (measured: a 40px
+            // margin put the stock's left edge at x=39). Clearing the bottom-corner buttons is handled
+            // by centreFan keeping the fan on the viewport centre instead.
+            floatLeftMargin: 0,
+            floatRightMargin: 0,
             // Keep the fan sorted (colour then value) so a card drawn on refill slides into its correct
             // position rather than tacking onto the end — see notif_handUpdate's incremental addCards.
             sort: this.handSort.bind(this),
@@ -662,13 +705,33 @@ class Game {
         const stock = this.handStock;
         if (typeof stock.updateCardPositions === 'function' && !stock.__ucsFanPatched) {
             const original = stock.updateCardPositions.bind(stock);
-            stock.updateCardPositions = () => { original(); this.applySymmetricFan(); };
+            // Also the hook that renews the selectable marking after a refill — see refreshSelectable.
+            stock.updateCardPositions = () => { original(); this.applySymmetricFan(); this.refreshSelectable(); };
             stock.__ucsFanPatched = true;
         }
     }
     // ===================================================================================
     //  Rendering (gamedatas is the single source of truth; mutate then re-render a zone)
     // ===================================================================================
+    /**
+     * True while the narrow (rail) layout is in force — Tier B and below in `.claude/responsive.md`.
+     * MUST stay in step with the `max-width: 1000px` breakpoint in Game.scss: the two describe the same
+     * layout, and the Fad display's placement depends on which side of it we're on (see renderGameplay).
+     */
+    narrowLayout() {
+        return window.matchMedia('(max-width: 1000px)').matches;
+    }
+    /** Re-render the round parameters when the window crosses the layout breakpoint, so the Fad display
+     *  moves between the `santa` slot (wide) and inline in the rail (narrow). */
+    watchLayoutBreakpoint() {
+        const mq = window.matchMedia('(max-width: 1000px)');
+        const onChange = () => this.renderGameplay();
+        // addEventListener is the modern form; older Safari only has addListener.
+        if (typeof mq.addEventListener === 'function')
+            mq.addEventListener('change', onChange);
+        else if (typeof mq.addListener === 'function')
+            mq.addListener(onChange);
+    }
     get material() {
         return this.gamedatas.material;
     }
@@ -799,11 +862,25 @@ class Game {
         row.appendChild(this.gameplayPileEl('perfectfit', _('Perfect Fit'), gp?.perfectfit));
         row.appendChild(this.gameplayPileEl('trendyyarn', _('Trendy Yarn'), gp?.trendyyarn));
         if (this.gamedatas.express) {
-            // Express: the Round Tracker sits under Trendy Yarn (it drives when the yarn rotates), and the
-            // claimable Fad display moves out of this column into the top `santa` slot (renderFadDisplay).
+            // Express: the Round Tracker sits under Trendy Yarn (it drives when the yarn rotates).
+            // The claimable Fad display normally lives in the `santa` slot beside this column, but the
+            // narrow rail is a single stack, and there the Fads belong between Trendy Yarn and the Round
+            // Tracker — an order that can't be expressed while they sit in a different container. So on
+            // a narrow window they render inline here instead; renderAll re-runs on the breakpoint.
+            if (this.narrowLayout()) {
+                const fadEl = this.fadDisplayEl(gp?.express);
+                fadEl.id = 'ucs-fad-zone'; // same hook the round-end assignment dim keys off
+                row.appendChild(fadEl);
+                const santa = document.getElementById('ucs-secret-santa');
+                if (santa) {
+                    santa.style.display = 'none';
+                    santa.innerHTML = '';
+                }
+            }
             row.appendChild(this.roundTrackerEl(gp?.express));
             zone.appendChild(row);
-            this.renderFadDisplay(gp?.express);
+            if (!this.narrowLayout())
+                this.renderFadDisplay(gp?.express);
         }
         else {
             // Casual/Avid: the single revealed Fad stays in this column beside Perfect Fit / Trendy Yarn.
@@ -880,10 +957,36 @@ class Game {
         wrap.appendChild(cards);
         return wrap;
     }
+    /**
+     * The narrow-layout stand-in for a Fad's card art: the objectives reduced to the same primitives the
+     * player panel uses — a colour swatch and an icon glyph ("[red] / [tree]"). A Fad is exactly one
+     * colour objective plus one icon objective (Material::fads), except the two "Clash Is In" cards,
+     * which have no colour/icon at all and so read as a word. Always rendered; CSS shows it only in the
+     * narrow rail, where the full art would cost ~125px of height each.
+     */
+    fadChipEl(card) {
+        const chip = document.createElement('div');
+        chip.className = 'ucs-fad-chip';
+        const fad = this.material.fads[Number(card.type_arg)];
+        if (fad?.clash) {
+            chip.classList.add('ucs-fad-chip-clash');
+            chip.textContent = _('Clash');
+            return chip;
+        }
+        const objectives = fad?.objectives ?? [];
+        const color = objectives.find((o) => o.match === 'color')?.value;
+        const icon = objectives.find((o) => o.match === 'icon')?.value;
+        chip.innerHTML =
+            (color ? `<span class="ucs-tally-swatch ucs-color-${color}"></span>` : '')
+                + `<span class="ucs-fad-chip-sep">/</span>`
+                + (icon ? `<span class="ucs-tally-icon"><span class="ucs-icon ucs-icon-${icon}"></span></span>` : '');
+        return chip;
+    }
     /** One Fad card in the Express display; ownerId set → claimed (dimmed + tagged with the owner). */
     fadCardEl(card, ownerId) {
         const el = this.gameplayCardEl('fad', card);
         el.classList.add('ucs-fad-card');
+        el.appendChild(this.fadChipEl(card));
         if (ownerId != null) {
             el.classList.add('ucs-fad-claimed');
             const owner = this.gamedatas.players[ownerId];
@@ -1702,17 +1805,31 @@ class Game {
         return slots.has('L') && slots.has('R') && slots.has('B');
     }
     /**
-     * Resync the fanned HandStock from gamedatas.hand. The hand is small, so a full clear+add is fine;
-     * removeAll/addCards are async but their DOM ops apply in order and we don't need to await here.
-     * (Selectable/disabled styling is driven by the stock's selection API — see enablePlayable.)
+     * Resync the fanned HandStock from gamedatas.hand (full clear + add; the hand is small).
+     *
+     * removeAll() and addCards() both return promises and MUST be sequenced. Firing them back to back
+     * without awaiting used to leave the stock in a state where the DOM held every card but the stock's
+     * own card list was EMPTY: addCards populated the list synchronously, then removeAll's deferred
+     * completion cleared it again, while the elements addCards had just created survived because
+     * removeAll never knew about them. Everything downstream that asks the stock about its cards then
+     * silently no-ops — setSelectableCards matches nothing, so the hand renders perfectly and cannot be
+     * clicked (no bga-cards_selectable-card AND no bga-cards_unselectable-card on any card).
+     *
+     * Resyncs are chained rather than merely awaited, so two overlapping calls can't interleave into
+     * the same corruption. The selectable marking is re-applied once the stock has settled.
      */
     renderHand() {
         if (this.bga.gameui.isSpectator || !this.handStock)
             return;
         const hand = this.cardArray(this.gamedatas.hand).sort(this.handSort.bind(this));
-        this.handStock.removeAll();
-        if (hand.length)
-            this.handStock.addCards(hand);
+        this.handSync = this.handSync
+            .then(async () => {
+            await this.handStock.removeAll();
+            if (hand.length)
+                await this.handStock.addCards(hand);
+            this.refreshSelectable();
+        })
+            .catch(() => { });
     }
     /**
      * Re-lay the fanned hand symmetrically. bga-cards' own updateCardPositions() leaves each card at
@@ -1740,6 +1857,43 @@ class Game {
             el.style.setProperty('--bga-cards_hand-stock-card-y', `${y}px`);
             el.style.setProperty('--bga-cards_hand-stock-card-a', `${a}deg`);
         });
+        this.centreFan(fan, cards);
+    }
+    /**
+     * Keep the fan centred on the viewport.
+     *
+     * The library centres the cards within its stock element, but that element is shrink-to-fit and gets
+     * left-pinned (measured: a 276px stock at x=39 inside a full-width 462px holder, so the fan sat at
+     * 177 against a viewport centre of 250). Rather than model where it decides to put that box — which
+     * differs between the attached and floating states — measure where the cards actually landed and
+     * correct the difference. Self-correcting: the next pass measures the shifted result and converges
+     * on ~0, and it re-runs on every library re-layout, so resize and float toggles fix themselves.
+     *
+     * The correction is a transform, which is layout-neutral. A margin would not be: the shipped CSS
+     * gives the floating stock BOTH `left` and `right` (from floatLeft/RightMargin), so a margin shifts
+     * and *shrinks* it at once, the cards re-centre in the narrower box, and each pass only halves the
+     * error. Transforming THIS element is safe — the "no transform" rule is about *ancestors* of a
+     * position:fixed element, and the stock is the fixed element itself, not an ancestor of one.
+     */
+    centreFan(fan, cards) {
+        let left = Infinity;
+        let right = -Infinity;
+        cards.forEach((el) => {
+            const b = el.getBoundingClientRect();
+            if (!b.width)
+                return; // hidden / mid-teardown: contributes no geometry
+            left = Math.min(left, b.left);
+            right = Math.max(right, b.right);
+        });
+        if (!isFinite(left) || !isFinite(right))
+            return;
+        const delta = window.innerWidth / 2 - (left + right) / 2;
+        if (Math.abs(delta) < 2)
+            return; // already centred; don't churn on animation jitter
+        const previous = parseFloat(fan.dataset.ucsShift ?? '') || 0;
+        const shift = previous + delta;
+        fan.dataset.ucsShift = String(shift);
+        fan.style.transform = `translateX(${shift}px)`;
     }
     /** Hand fan order, from the "Hand sort order" game preference (gamepreferences 102). */
     handSortMode() {
@@ -1791,6 +1945,12 @@ class Game {
     //  Selection API — called by the PlayCard / DraftCard state handlers
     // ===================================================================================
     enablePlayable(ids, onPlay) {
+        // An active player with no playable card is not a legal position (getPlayableCardIds falls back
+        // to the whole hand), so an empty list here means the args never arrived in the shape we expect
+        // — and the symptom is a hand that renders perfectly and cannot be clicked. Say so loudly.
+        if (!ids.length) {
+            console.warn('[UCS] enablePlayable got NO playable ids — the hand will be unclickable.', ids);
+        }
         this.playableIds = ids;
         this.onPlay = onPlay;
         this.selectedPlayId = null;
@@ -1798,11 +1958,34 @@ class Game {
         if (!this.handStock)
             return;
         this.handStock.setSelectionMode('single');
-        const selectable = this.cardArray(this.gamedatas.hand).filter((c) => ids.includes(Number(c.id)));
         document.getElementById('ucs-my-hand')?.classList.add('ucs-hand-choosing');
-        // setSelectableCards is sync but addCards (from a hand refill on state entry) is async — defer a
-        // tick so the cards exist in the stock before we mark them selectable (bga-cards gotcha).
-        setTimeout(() => this.handStock?.setSelectableCards(selectable), 0);
+        this.refreshSelectable();
+    }
+    /**
+     * Push the current playable set onto the stock. bga-cards only marks cards that are IN the stock at
+     * the moment of the call, and on state entry the hand may still be filling: notif_handUpdate slides
+     * refilled cards in via addCards with an ~80ms animation each, so a card that arrives afterwards is
+     * never marked and the whole hand ends up unclickable (stock shows bga-cards_selectable-stock, no
+     * card shows bga-cards_selectable-card). A one-tick setTimeout used to "handle" this and lost the
+     * race whenever a refill preceded the play phase.
+     *
+     * So it is re-applied from the patched updateCardPositions instead, which the library calls after
+     * every add/remove/float re-layout — whenever the card set changes, the marking is renewed. Reading
+     * the stock's OWN cards (not gamedatas.hand) also keeps it right if the two ever drift.
+     */
+    refreshSelectable() {
+        if (!this.handStock || !this.playableIds.length || this.refreshingSelectable)
+            return;
+        this.refreshingSelectable = true; // setSelectableCards can re-enter via updateCardPositions
+        try {
+            const ids = this.playableIds.map(Number);
+            const selectable = this.handStock.getCards()
+                .filter((c) => ids.includes(Number(c.id)));
+            this.handStock.setSelectableCards(selectable);
+        }
+        finally {
+            this.refreshingSelectable = false;
+        }
     }
     disablePlayable() {
         this.cancelConfirm();
@@ -1815,6 +1998,37 @@ class Game {
             this.handStock.unselectAll(true);
         }
         document.getElementById('ucs-my-hand')?.classList.remove('ucs-hand-choosing');
+    }
+    /**
+     * Console diagnostic for the hand: `ucs.debugHand()`. Reports the two things that separate the ways
+     * a hand can be unclickable — whether the playable ids ever reached the client, and whether the
+     * stock actually marked any card selectable — plus the geometry behind the fan's centring.
+     */
+    debugHand() {
+        const holder = document.getElementById('ucs-my-hand');
+        const stock = holder?.querySelector('.hand-stock');
+        const cards = Array.from(holder?.querySelectorAll('.bga-cards_card') ?? []);
+        const rect = (el) => {
+            if (!el)
+                return 'none';
+            const r = el.getBoundingClientRect();
+            return `${Math.round(r.left)}..${Math.round(r.right)} (w${Math.round(r.width)})`;
+        };
+        console.log('[UCS] state          :', this.gamedatas.gamestate?.name, '| active?', this.bga.gameui.isCurrentPlayerActive?.());
+        console.log('[UCS] state args     :', JSON.stringify(this.gamedatas.gamestate?.args));
+        console.log('[UCS] playableIds    :', JSON.stringify(this.playableIds));
+        console.log('[UCS] hand in stock  :', this.handStock?.getCards?.().map((c) => Number(c.id)));
+        console.log('[UCS] selectable     :', cards.filter((c) => c.className.includes('bga-cards_selectable-card')).length, '| unselectable:', cards.filter((c) => c.className.includes('bga-cards_unselectable-card')).length, '| total:', cards.length);
+        console.log('[UCS] holder classes :', holder?.className);
+        console.log('[UCS] stock classes  :', stock?.className);
+        console.log('[UCS] viewport w     :', window.innerWidth);
+        console.log('[UCS] holder rect    :', rect(holder), '| stock rect:', rect(stock));
+        console.log('[UCS] pile rect      :', rect(document.getElementById('ucs-my-pile')));
+        if (cards.length) {
+            const l = Math.min(...cards.map((c) => c.getBoundingClientRect().left));
+            const r = Math.max(...cards.map((c) => c.getBoundingClientRect().right));
+            console.log('[UCS] fan span       :', Math.round(l), '..', Math.round(r), '| fan centre:', Math.round((l + r) / 2), '| viewport centre:', Math.round(window.innerWidth / 2));
+        }
     }
     /** A hand card was selected in the stock — route to the existing play logic (ignore deselections). */
     handSelectionChanged(selection, last) {
@@ -2768,8 +2982,16 @@ class Game {
             return; // pile empty / nothing drawn → hand stays as-is
         // addCards skips any card already in the stock, so a mid-refill F5 (where `hand` already
         // rebuilt the fan) won't double-add. The pile card-back is the slide origin.
+        // Queued on the same chain as renderHand: a refill landing while a resync is still in flight is
+        // exactly the interleaving that empties the stock's card list (see renderHand).
         const from = document.querySelector('#ucs-my-pile .ucs-pile-card');
-        this.handStock.addCards(drawn, from ? { fromElement: from } : undefined, 80);
+        this.handSync = this.handSync
+            .then(async () => {
+            await this.handStock.addCards(drawn, from ? { fromElement: from } : undefined, 80);
+            this.refreshSelectable();
+        })
+            .catch(() => { });
+        await this.handSync;
     }
     /** A new round revealed fresh gameplay cards — refresh the round-parameter decks. */
     async notif_gameplayRevealed(args) {

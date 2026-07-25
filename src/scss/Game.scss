@@ -675,11 +675,22 @@ html[data-theme="dark"] {
     // santa track is `auto` so it grows on its own; centre is flexible; the oppo track stays fixed
     // (opponents are abstracted mini-sweaters that don't scale).
     grid-template-columns: calc(#{$side-col-w} * var(--ucs-card-scale, 1)) auto minmax(0, 1fr) $side-col-w;
+    // Row 1: Fads sit in the `santa` track beside the centre stack. Row 2: my Secret Santa sits directly
+    // under the Fads (`mysanta`, same auto track) and my Knitting Area fills the centre track beside it
+    // (`knit`) — so the Knitting Area rises to the top of row 2 instead of being pushed down under the
+    // Secret Santa. Both live in #ucs-knit-col, which goes boxless (display:contents) to become two items.
     grid-template-areas:
-        "params santa center oppo"
-        "params knit  knit   oppo";
+        "params santa   center oppo"
+        "params mysanta knit   oppo";
     gap: 12px;
     align-items: start;
+}
+
+// The rail wrapper is boxless on wide screens: #ucs-gameplay and #ucs-secret-santa stay direct grid
+// items of #ucs-upper and keep their own `params` / `santa` areas exactly as before. Only the narrow
+// breakpoint gives it a box (see there).
+#ucs-rail {
+    display: contents;
 }
 
 // Left column: the three round parameters, stacked one above the other, spanning both grid rows.
@@ -700,14 +711,18 @@ html[data-theme="dark"] {
     --ucs-card-w: calc(128px * var(--ucs-card-scale, 1));
     --ucs-card-h: calc(200px * var(--ucs-card-scale, 1));
 }
-// The bottom-row knit column: my Secret Santa row (Express only) sits ABOVE the green Knitting Area box,
-// on the table felt rather than inside the box. The wrapper carries the grid placement; the box below
-// keeps its own frame/fill.
+// The knit column is boxless on wide screens (display:contents), so its two children become their own
+// grid items: my Secret Santa (Express only) takes the `mysanta` slot under the Fads, and the green
+// Knitting Area box takes the `knit` slot beside it. The narrow breakpoint restores it to a real box so
+// the two stack in the single rail column instead.
 #ucs-knit-col {
-    grid-area: knit;
+    display: contents;
     min-width: 0;
 }
+#ucs-my-santa { grid-area: mysanta; }
 #ucs-my-area {
+    grid-area: knit;
+    min-width: 0; // flexible `knit` track (1fr): let long builds wrap rather than overflow the column
     // takes the base card size; .ucs-knitting wraps builds across it
     // Real card faces (my own sweater builds) — scale with the "Card size" preference (see html
     // .ucs-cards-*). Kept off the shared #ucs-table base var so the fixed-width #ucs-upper params
@@ -1244,13 +1259,17 @@ html[data-theme="dark"] {
 // --ucs-card-w + 12px), and --ucs-players is set on #ucs-table by Game.ts::setup.
 #ucs-trade-area {
     --ucs-trade-slot: calc(var(--ucs-card-w) + 12px);
+    // How many slots the frame is drawn for. One per player by default; the narrow layout pins it to 4
+    // so the frame matches the Draft Pool above it and is already the trick's full size before anyone
+    // has played, instead of reading as an arbitrary box that the cards grow into.
+    --ucs-trade-seats: var(--ucs-players, 4);
     position: relative; // anchor for the vertical label sitting just outside the left border
     box-sizing: border-box; // width below is the full frame, padding + border included
     border: 3px solid var(--ucs-frame);
     padding-top: 20px; // room for the owner captions above each card (the label no longer sits here)
     width: calc(
-        var(--ucs-players, 4) * var(--ucs-trade-slot)  // the slots themselves
-        + (var(--ucs-players, 4) - 1) * 12px           // .ucs-card-row gap between them
+        var(--ucs-trade-seats) * var(--ucs-trade-slot)  // the slots themselves
+        + (var(--ucs-trade-seats) - 1) * 12px           // .ucs-card-row gap between them
         + 16px                                          // .ucs-zone left + right padding
         + 6px                                           // this border
     );
@@ -1304,11 +1323,13 @@ html[data-theme="dark"] {
 // Game.ts); match --ucs-card-w/h here so the inner face content (sized via calc off --ucs-card-w)
 // scales with the frame. The mobile breakpoint below scales the whole fan back down.
 #ucs-my-hand-wrap {
-    // Fixed 96/149 to match the bga-cards frame px (set in Game.ts). The "Card size" preference does
-    // NOT touch the hand — neither this var nor a transform on #ucs-my-hand (both distort the fan / break
-    // its floating); it scales the tabletop / parameter / knitting faces instead. See #ucs-my-hand below.
-    --ucs-card-w: 96px;
-    --ucs-card-h: 149px;
+    // Base 96/149, scaled by the "Card size" preference. These MUST stay in lockstep with the bga-cards
+    // frame px (setupHandStock reads the same multiplier), because the inner face content sizes off these
+    // vars while the fan frame is sized by the library — a mismatch distorts the fan. Scaling BOTH by the
+    // same factor keeps the fan geometrically uniform (just larger/smaller). A `transform` on #ucs-my-hand
+    // is still forbidden — it breaks the floating hand; see the note there.
+    --ucs-card-w: calc(96px * var(--ucs-card-scale, 1));
+    --ucs-card-h: calc(149px * var(--ucs-card-scale, 1));
     // Keep the (attached) hand painting above the tabletop zones where they overlap. The floating hand
     // is lifted separately via the HandStock `floatZIndex` option in Game.ts. Below the popin (z-1000).
     position: relative;
@@ -1324,7 +1345,7 @@ html[data-theme="dark"] {
     // state. The library centres the fan within the holder, so this still matches the floating centre.
     flex: 1 1 100%;
     width: 100%;
-    min-height: 186px;
+    min-height: calc(186px * var(--ucs-card-scale, 1)); // scales with the fan (see #ucs-my-hand-wrap)
     // NB: do NOT put a `transform` on this element for a size preference. bga-cards floats the hand
     // with `position: fixed` when it scrolls below the fold, and a transform on an ancestor makes
     // fixed descendants anchor to it instead of the viewport — floating breaks and the un-floated fan
@@ -1550,32 +1571,184 @@ table.ucs-scorepad {
     &:hover { background: #c9342b; }
 }
 
-// ---- Responsive: on small screens the opponents column collapses to tappable chips --------------
-@media (max-width: 800px) {
-    // Collapse the grid to a single full-width column, in reading order. Re-declaring the areas (rather
-    // than just the columns) is what un-spans the params column and the knitting row.
+// ---- Responsive: narrow window — reference rail on the left, play area takes the rest -----------
+// The round parameters are things you *read*; the Draft Pool / Trade Area are things you *click*. On a
+// narrow window the old single-column stack spent its whole width on the reference material and pushed
+// the play area below the fold. Here the reference collapses into a compact left rail (draw piles gone,
+// title bands cropped off the art, Fads abstracted to colour/icon chips) and everything you interact
+// with claims the remaining width.
+// Tier B in `.claude/responsive.md`. 1000px, not 800: the wide grid needs 210 (params) + ~128 (santa)
+// + ~380 (centre, four cards + gaps) + 210 (opponents) + gaps + padding ≈ 980px, so anything under
+// 1000 was rendering a squeezed desktop layout. Game.ts::narrowLayout() must match this number.
+@media (max-width: 1000px) {
+    // Two columns: a shrink-to-fit reference rail, then the play area. Explicit placement rather than
+    // named areas — the rail (params, then santa/Fads under it) and the play column (centre, knitting,
+    // opponents) have different row counts, which `grid-template-areas` can't express without forcing
+    // the two columns' row heights to line up.
     #ucs-upper {
-        grid-template-columns: minmax(0, 1fr);
-        grid-template-areas:
-            "params"
-            "santa"
-            "center"
-            "oppo"
-            "knit";
+        grid-template-columns: auto minmax(0, 1fr);
+        // Must be cleared, not just left behind: the desktop areas declare a 4-column x 2-row explicit
+        // grid, and that template would keep forcing four columns however few we size here.
+        grid-template-areas: none;
+        gap: 10px;
     }
-    // Full width, the three parameters go back to sitting side by side rather than stacked.
+    // The rail becomes one real grid item spanning every row, so the play column beside it is free to
+    // flow at its own pace. `span 3` and not `1 / -1`: with no explicit `grid-template-rows`, `-1` is
+    // the last line of the EXPLICIT grid — line 1 — so `2 / -1` silently became "rows 1-2" and stacked
+    // the Fads on top of Perfect Fit. Span counts avoid that trap entirely.
+    #ucs-rail {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        grid-column: 1;
+        grid-row: 1 / span 3;
+    }
+    #ucs-center-stack { grid-column: 2; grid-row: 1; }
+    // Back to a real box here (wide screens make it display:contents): the Secret Santa and Knitting Area
+    // stack inside it rather than splitting into their own grid slots. Its children's wide-layout
+    // grid-area (mysanta / knit) is inert once the parent is no longer a grid.
+    #ucs-knit-col     { display: block; grid-column: 2; grid-row: 2; }
+    #ucs-opponents    { grid-column: 2; grid-row: 3; }
+
+    // ---- The reference rail -------------------------------------------------------------------
+    // One width for every card in the rail, so the column edge is straight and its cost to the play
+    // area is a single known number. It deliberately ignores the "Card size" preference: the rail's
+    // width is exactly what the play area gives up, and it must not grow when the preference does.
+    // Sized so the Round Tracker's printed 1–12 wreaths and the Fad chips stay readable; the play area
+    // keeps enough width for four Draft Pool cards at this figure (see the min() below).
+    #ucs-gameplay,
+    #ucs-secret-santa {
+        --ucs-rail-card-w: 120px;
+        --ucs-card-w: var(--ucs-rail-card-w);
+        --ucs-card-h: calc(var(--ucs-rail-card-w) * 1.556);
+    }
+    // The tracker is 2x elsewhere so its printed 1–12 wreaths stay readable; in the rail it has to come
+    // back to the rail width or it alone would set the column's size. The wreath overlay is positioned
+    // in percentages, so it scales with the card rather than drifting off the art.
+    .ucs-rt-card {
+        --ucs-card-w: var(--ucs-rail-card-w);
+        --ucs-card-h: calc(var(--ucs-rail-card-w) * 1.556);
+    }
     .ucs-gameplay-row {
-        flex-direction: row;
-        flex-wrap: wrap;
-        gap: 18px;
+        gap: 8px; // already column-stacked at every width; just tighten it
     }
-    // The enlarged desktop hand would overflow a phone/tablet width, so scale the whole fan back
-    // down to roughly the original footprint (bga-cards fixes the frame px in JS, so a transform is
-    // the reliable lever regardless of how it sizes internally).
-    #ucs-my-hand {
-        transform: scale(0.68);
-        transform-origin: top center;
-        min-height: 128px;
+    // The face-down draw piles and their "N left" counts are dropped — on a narrow window the revealed
+    // card is the only part that affects play. The faces themselves keep their printed titles, which
+    // double as the labels the hidden pile backs used to carry.
+    #ucs-gameplay .ucs-gp-deck { display: none; }
+    // Fads: art out, abstract chip in. Stacked card faces would run the rail ~800px tall; as chips the
+    // whole display costs about one card's height.
+    // NB not scoped to #ucs-secret-santa: at this width renderGameplay builds the Fad display inline in
+    // the rail's own row, so it is a child of #ucs-gameplay here and that ancestor no longer matches.
+    .ucs-fad-display {
+        .ucs-fad-cards { flex-direction: column; gap: 5px; }
+    }
+    // The rail's own captions go: the chips and the tracker art are self-evident in place, and at this
+    // width the headings cost more height than they return. The play-area zone labels stay (and grow).
+    .ucs-fad-display > .ucs-gp-label,
+    .ucs-rt-pile > .ucs-gp-label {
+        display: none;
+    }
+    .ucs-fad-card {
+        width: var(--ucs-card-w);
+        height: auto;
+        min-height: 0;
+        background-image: none;   // drop the .ucs-art2 sprite face
+        background-color: var(--ucs-btn-bg);
+        border: 1px solid var(--ucs-hairline);
+        border-radius: 6px;
+        padding: 5px 2px;
+        color: var(--ucs-btn-ink);
+        box-shadow: none;
+        .ucs-fad-chip { display: flex; }
+        // The owner tag is positioned against the card face; as a chip it just follows in flow.
+        .ucs-fad-owner { position: static; border-radius: 0 0 4px 4px; }
+    }
+    // The whole point of the chip is to be read at a glance, so the swatch and icon run well above the
+    // 20x28 the player panel uses — the rail is 100px wide and a chip only needs to fit swatch + "/" +
+    // icon, so there is room for it. Sized to consume most of that width rather than the least.
+    .ucs-fad-chip {
+        gap: 4px;
+        .ucs-tally-swatch,
+        .ucs-tally-icon {
+            width: 32px;
+            height: 44px;
+            border-radius: 5px;
+        }
+        .ucs-tally-icon .ucs-icon { --ucs-icon-size: 28px; }
+    }
+    .ucs-fad-chip-sep { font-size: 16px; }
+    .ucs-fad-chip-clash { font-size: 15px; }
+    // ---- The play area ------------------------------------------------------------------------
+    // Grow the interactive cards to fill whatever the rail left behind. Two independent limits bind:
+    // the Draft Pool holds at most 4 cards in a row, and the Trade Area's frame is one slot per player
+    // (see its width formula above) — whichever is tighter wins, capped so cards never exceed the
+    // desktop size. `cqi` is the centre column's own inline size, so this tracks the real space left.
+    // The 76px/22px allowances cover each zone's padding, the 12px .ucs-card-row gaps, and the ~24px
+    // the rotated zone labels hang outside their zone's left edge (they must not reach into the rail).
+    // NB the zones stay `align-items: center` as on desktop: a drafted card animates straight up from
+    // its Trade Area slot to the pool spot above it, which only lines up while both rows are centred.
+    #ucs-center-stack {
+        container-type: inline-size;
+    }
+    // Declared on the ZONES, not on #ucs-center-stack itself: an element never resolves container units
+    // against its own box (that would be circular), so `100cqi` written on the container would silently
+    // fall back to the viewport and hand the cards the rail's width too. On the children it correctly
+    // measures the centre column.
+    // Both zones are four slots wide here, so both constraints use 4 and the two frames line up exactly.
+    #ucs-trade-area { --ucs-trade-seats: 4; }
+    #ucs-draft-pool,
+    #ucs-trade-area {
+        --ucs-card-w: min(
+            #{$card-w * 1.6},
+            (100cqi - 76px) / 4,
+            (100cqi - 22px - 3 * 12px) / 4 - 12px
+        );
+        --ucs-card-h: calc(var(--ucs-card-w) * 1.556);
+    }
+
+    // The hand must stay locked to the bottom of the viewport. bga-cards floats it with
+    // `position: fixed`, and a `transform` on ANY ancestor makes fixed descendants anchor to that
+    // ancestor instead of the viewport — so the scale(0.68) that used to live here silently broke the
+    // floating hand and forced you to scroll for your cards. The library's own watchHandSize already
+    // squeezes the fan to the holder width, so the transform was not carrying its weight anyway.
+    // Nothing may reintroduce a transform (or filter/perspective) on this element or any ancestor. The
+    // hand's size comes from the frame px + matched --ucs-card-w (see #ucs-my-hand-wrap), never a scale().
+    // Secret Santa read as an afterthought at the old size. Pinned to the play-area card size, and
+    // deliberately OFF var(--ucs-card-scale): with the "Card size" preference on Small the scaled
+    // version shrank below everything around it, which is how it got so small in the first place.
+    .ucs-my-santa {
+        --ucs-card-w: 100px;
+        --ucs-card-h: 156px;
+    }
+    // These three head the zones you actually act on, so they carry the eye at this width.
+    #ucs-draft-pool > .ucs-zone-label,
+    #ucs-trade-area > .ucs-zone-label,
+    .ucs-my-santa > .ucs-zone-label {
+        font-size: 15px;
+        opacity: 0.85;
+    }
+
+    #ucs-my-hand-wrap {
+        // `z-index: 100` (the wide-screen value) opens a stacking context, and everything inside is then
+        // capped at level 100 no matter what it asks for — including the floating hand's floatZIndex,
+        // which is why raising that alone changed nothing. `auto` opens no context, so the floating
+        // cards compete at the root against BGA's own bottom-corner controls. The attached hand keeps
+        // painting above the tabletop zones because it comes later in the document than #ucs-upper.
+        z-index: auto;
+    }
+    // Undo the library's asymmetric floating box. updateCardPositions() hardcodes leftMargin = 20 and
+    // rightMargin = 240 (desktop_version; 130 on mobile_version) and ADDS our floatLeft/RightMargin on
+    // top — so the floating hand is pinned 20px from the left with 240px reserved on the right. That
+    // 220px asymmetry is what threw the fan off-centre, and it also squeezed the stock to ~370px of a
+    // 630px window, forcing the library to overlap the cards far harder than it needed to.
+    //
+    // The library writes these as INLINE custom properties, so `!important` is what beats them. Safe
+    // only here: the 240px reserve exists for BGA's desktop right-hand panel, which this width has
+    // already collapsed. centreFan() stays as the belt-and-braces correction.
+    #ucs-my-hand .hand-stock.floating {
+        --bga-cards_hand-stock-floating-left-margin: 12px !important;
+        --bga-cards_hand-stock-floating-right-margin: 12px !important;
     }
     #ucs-opponents {
         flex-direction: row;
@@ -1590,6 +1763,51 @@ table.ucs-scorepad {
     }
 }
 
+// ---- Responsive: phone widths — the rail becomes a top strip -----------------------------------
+// Tier C in `.claude/responsive.md`. Below ~450px the rail and a four-card row can no longer coexist
+// at the size floors: 16 (table padding) + 120 (rail) + 10 (gap) + 300 (four 56px cards + gaps +
+// zone padding + the rotated label's overhang) ≈ 446px. Rather than shrink the cards past the floor,
+// the reference column gives up its column and lies across the top, handing its whole width to the
+// play area. At 360px that leaves 344px, so four Draft Pool cards get ~67px each — still above the
+// 56px floor. Layered on top of Tier B, so this only states the differences.
+@media (max-width: 449px) {
+    #ucs-upper {
+        grid-template-columns: minmax(0, 1fr);
+    }
+    #ucs-rail        { grid-column: 1; grid-row: 1; flex-direction: row; flex-wrap: wrap; gap: 8px; }
+    #ucs-center-stack { grid-column: 1; grid-row: 2; }
+    #ucs-knit-col     { grid-column: 1; grid-row: 3; }
+    #ucs-opponents    { grid-column: 1; grid-row: 4; }
+
+    // The parameters run across instead of down. They keep 95px — the Round Tracker's printed 1–12
+    // wreaths stop being readable below it (each wreath is 26.5% of the card), and that floor is
+    // exactly why the rail is abandoned here rather than narrowed.
+    #ucs-gameplay,
+    #ucs-secret-santa {
+        --ucs-rail-card-w: 95px;
+    }
+    .ucs-gameplay-row {
+        flex-direction: row;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 10px;
+    }
+    // Fad chips follow suit — a horizontal run under the parameter cards.
+    .ucs-fad-display .ucs-fad-cards {
+        flex-direction: row;
+        flex-wrap: wrap;
+        justify-content: center;
+    }
+    .ucs-fad-card {
+        width: auto;
+        min-width: 76px;
+    }
+    // Opponents get one full-width chip each; two across is unreadable at this width.
+    #ucs-opponents .ucs-oppo {
+        flex: 1 1 100%;
+    }
+}
+
 // =====================================================================================
 //  Express variant — claimable Fad display, claimed/locked sweaters, Secret Santa strip
 // =====================================================================================
@@ -1601,6 +1819,26 @@ table.ucs-scorepad {
 }
 .ucs-fad-card {
     position: relative;
+}
+// The abstracted Fad read-out ("[colour] / [icon]"), rendered into every Fad card by fadChipEl but
+// only shown by the narrow breakpoint, which drops the card art. Hidden here so the wide layout keeps
+// the publisher art untouched.
+.ucs-fad-chip {
+    display: none;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+}
+.ucs-fad-chip-sep {
+    font-size: 13px;
+    font-weight: 700;
+    opacity: 0.55;
+}
+.ucs-fad-chip-clash {
+    font-size: 12px;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
 }
 // A claimed Fad is dimmed and tagged with its owner's colour + name.
 .ucs-fad-claimed {
@@ -1691,12 +1929,12 @@ table.ucs-scorepad {
     gap: 8px;
     align-items: center;
 }
-// Express: the Secret Santa card(s) move out of the top `santa` slot (taken by the Fad display) into a
-// centred row directly above my Knitting Area. Slightly smaller cards than the top slot, so the row sits
-// neatly over the workspace without eating too much build height.
+// Express: the Secret Santa card(s) sit in the `mysanta` slot — directly under the Fad display, in the
+// same auto track — with my Knitting Area filling the centre track beside them (see #ucs-upper). Sized to
+// match the tabletop feel; the auto track grows to hold the turned (landscape) cards.
 .ucs-my-santa {
-    --ucs-card-w: calc(96px * var(--ucs-card-scale, 1));
-    --ucs-card-h: calc(150px * var(--ucs-card-scale, 1));
+    --ucs-card-w: calc(120px * var(--ucs-card-scale, 1));
+    --ucs-card-h: calc(188px * var(--ucs-card-scale, 1));
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -1713,17 +1951,15 @@ table.ucs-scorepad {
     align-items: center;
     justify-content: center;
 }
-// Express: the Fad display now sits in the top `santa` slot. Keep its cards at the normal parameter-card
-// size (the slot's larger Secret-Santa sizing would blow the row out) and cap the width so they wrap two
-// across, preserving the compact footprint the display had in the parameters column.
-// Shrunk below the base parameter-card size, and capped 3-wide, so the display stays SHORTER than the
-// centre stack (Draft Pool + Trade Area) — whichever of the two is taller sizes grid row 1, and if the
-// fads win, the knitting row is pushed down and a band of felt opens under the Trade Area. Fads are
-// capped at players+1 = 5 (Game.php::fadsOnDisplay), so 3-wide is never more than 2 rows: ~2/3 the
-// centre stack's height, with the margin the 2-wide/3-row version didn't have.
+// Express: the Fad display sits in the `santa` slot (grid row 1, col 2). Capped 3-wide so it wraps into
+// at most two rows — fads are capped at players+1 = 5 (Game.php::fadsOnDisplay). Watch the height: row 1
+// is sized by the taller of the Fads (col 2) and the centre stack (Draft Pool + Trade Area, col 3), so if
+// the fads grow past the centre stack the whole of row 2 (Secret Santa + Knitting) is pushed down and a
+// band of felt opens under them. At 90px, three across clear the centre stack; a full two-row display of
+// five is roughly its height — bump this size further only after re-checking that band.
 #ucs-secret-santa .ucs-fad-display {
-    --ucs-card-w: calc(66px * var(--ucs-card-scale, 1));
-    --ucs-card-h: calc(66px * 1.556 * var(--ucs-card-scale, 1));
+    --ucs-card-w: calc(90px * var(--ucs-card-scale, 1));
+    --ucs-card-h: calc(90px * 1.556 * var(--ucs-card-scale, 1));
 }
 #ucs-secret-santa .ucs-fad-display .ucs-fad-cards {
     max-width: calc(var(--ucs-card-w) * 3 + 12px); // 3 cards + 2 .ucs-fad-cards gaps
