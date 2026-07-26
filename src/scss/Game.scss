@@ -50,12 +50,6 @@
 $card-w: 80px;
 $card-h: 125px; // bridge-card ratio 0.643 (675x1050 after bleed trim); every --ucs-card-h below is w * 1.556
 
-// The params (left) and opponents (right) columns of #ucs-upper. Must clear the widest thing in
-// either: the params' deck + revealed card ($card-w * 2 + an 8px gap + 16px zone padding = 184px).
-// NB the Secret Santa column sits between the params and the centre, so the centre stack does NOT
-// land on the true page centre — it reads left of it by roughly the Secret Santa's width.
-$side-col-w: 210px;
-
 // Draft Order marker: much smaller than a card, at the card's aspect ratio ($card-w * 1.556) so the
 // sprite art scales rather than distorts.
 $order-badge-w: 30px;

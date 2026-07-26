@@ -74,13 +74,20 @@ to the next tier's structure. Shrinking past a floor is not an option.
 Widths are `window.innerWidth` in CSS px. Reference devices: 320 (iPhone SE), 360–414 (mainstream
 phones), 768 (iPad portrait), 1024+ (tablet landscape / desktop).
 
+> **Stale-structure caveat (verify against `Game.scss`).** The per-tier *structures* below — the
+> four-column grid, the 120px reference rail — predate the current layout: the grid was reworked to
+> flex (`#ucs-upper` / `#ucs-lower`), the tablet rail was retired (see the note in `Game.scss`'s
+> desktop `@media` block), and the narrow view now uses the Express Round-Tracker sidebar
+> (`.ucs-narrow-sidebar`, toggled in `Game.ts::layoutNarrowSidebar`). Treat the tier structures as
+> historical rationale; the **size floors above are the durable part**.
+
 ### Tier A — wide, ≥1000px
 The full four-column grid: `params | santa | center | oppo`, knitting under the centre.
 
-**Why 1000 and not the current 800:** the desktop grid needs `210 (params) + ~128 (santa) + ~380
-(centre, four cards + gaps) + 210 (opponents) + 36 (gaps) + 16 (padding)` ≈ **980px**. Below that it
-is already cramped, so a breakpoint at 800 leaves 800–1000px rendering a squeezed desktop layout.
-**This is a live discrepancy: the code currently switches at 800px and should switch at 1000px.**
+**Why 1000px:** the desktop layout needs roughly `params + centre (four cards + gaps) + opponents +
+gaps + padding` ≈ **980px** before it gets cramped, so the stacked layout collapses at
+`@media (max-width: 1000px)` in `Game.scss`. (An earlier build switched at 800px, leaving 800–1000px
+rendering a squeezed desktop — that discrepancy is resolved.)
 
 ### Tier B — rail, 450–1000px
 Two columns: a fixed 120px reference rail (Perfect Fit → Trendy Yarn → Fad chips → Round Tracker) and
@@ -91,7 +98,7 @@ both four slots wide and share a card size derived from the column's container w
 needs `4 × 56 (cards) + 36 (gaps) + 16 (zone padding) + 24 (rotated label overhang)` = 300px.
 Total ≈ **446px**. Below that the rail and a four-card row cannot coexist at the floors.
 
-### Tier C — stacked, <450px  *(not yet implemented)*
+### Tier C — stacked, <450px  *(superseded — see the stale-structure caveat)*
 Single column. The rail's contents become a **horizontal strip across the top** (Perfect Fit, Trendy
 Yarn, Round Tracker, Fad chips side by side), with everything else full width beneath it.
 
@@ -114,7 +121,9 @@ exactly the width the cards need. At 320px the same arithmetic yields 61px, stil
 
 ## Open items
 
-- Tier A breakpoint is 800px in code, should be 1000px per the derivation above.
-- Tier C is unimplemented; below 450px the Tier B layout will overflow horizontally.
-- Casual/Avid have not been through any of this: their Fads keep full card art in the rail, and the
-  Secret Santa card widens the rail past 120px. Tier B is specified against Express only.
+- The narrow view is built for **Express** at Small/Medium. Every other combination (Express 3–4P,
+  Express Large, Express wide, and **Casual/Avid** — whose Fad keeps full card art and whose revealed
+  Secret Santa widens the strip) still needs a visual pass. Tracked in [`backlog.md`](backlog.md)
+  under "Visual polish sweep."
+- True-phone widths (<450px) now render via the Express narrow-sidebar layout down to ~360px; the
+  other variants/counts there are part of the same sweep.
