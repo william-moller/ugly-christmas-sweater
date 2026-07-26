@@ -846,6 +846,13 @@ html[data-theme=dark] {
   gap: 12px;
 }
 
+.ucs-gp-pftr {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-end;
+  gap: 12px;
+}
+
 .ucs-gp-pile {
   display: flex;
   flex-direction: column;
@@ -2029,6 +2036,32 @@ table.ucs-scorepad th, table.ucs-scorepad td {
   #ucs-table.ucs-narrow-sidebar #ucs-sidebar .ucs-oppo {
     flex: 0 0 auto;
     width: 100%;
+  }
+  #ucs-table.ucs-narrow-sidebar #ucs-board-strip {
+    container-type: inline-size;
+  }
+  #ucs-table.ucs-narrow-sidebar #ucs-gameplay {
+    width: 100%;
+    --ucs-card-w: calc((100cqi - 12px) / 3);
+    --ucs-card-h: calc(var(--ucs-card-w) * 1.556);
+  }
+  #ucs-table.ucs-narrow-sidebar .ucs-gameplay-row {
+    flex-direction: column;
+    align-items: stretch;
+    width: 100%;
+    gap: 8px;
+  }
+  #ucs-table.ucs-narrow-sidebar .ucs-fad-cards {
+    width: 100%;
+  }
+  #ucs-table.ucs-narrow-sidebar.ucs-players-3 .ucs-gp-pftr,
+  #ucs-table.ucs-narrow-sidebar.ucs-players-4 .ucs-gp-pftr {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  #ucs-table.ucs-narrow-sidebar #ucs-my-santa {
+    --ucs-card-w: calc((100cqi - 12px) / 3.14);
+    --ucs-card-h: calc(var(--ucs-card-w) * 1.567);
   }
 }
 @media (max-width: 449px) {

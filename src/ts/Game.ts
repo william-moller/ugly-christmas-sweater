@@ -116,7 +116,7 @@ export class Game {
         const trickSize = playerCount === 2 ? 4 : playerCount;
 
         this.bga.gameArea.getElement().insertAdjacentHTML('beforeend', `
-            <div id="ucs-table" style="--ucs-players:${playerCount};--ucs-trick-size:${trickSize}">
+            <div id="ucs-table" class="ucs-players-${playerCount}" style="--ucs-players:${playerCount};--ucs-trick-size:${trickSize}">
                 <div id="ucs-hand-end-banner" class="ucs-hand-end-banner" style="display:none">
                     ${_('Last trick and draft phase of this hand — the round ends after this draft.')}
                 </div>
@@ -526,8 +526,14 @@ export class Game {
             fadEl.id = 'ucs-fad-zone';
             row.appendChild(fadEl);
         }
-        row.appendChild(this.gameplayFaceEl('perfectfit', gp?.perfectfit?.active ?? null));
-        row.appendChild(this.gameplayFaceEl('trendyyarn', gp?.trendyyarn?.active ?? null));
+        // Perfect Fit + Trendy Yarn share a wrapper so the narrow-sidebar layout can stack them (Trendy
+        // below Perfect Fit) in 3–4 player games; everywhere else the wrapper is a transparent flex row and
+        // they read exactly as before (side by side after the Fads).
+        const pftr = document.createElement('div');
+        pftr.className = 'ucs-gp-pftr';
+        pftr.appendChild(this.gameplayFaceEl('perfectfit', gp?.perfectfit?.active ?? null));
+        pftr.appendChild(this.gameplayFaceEl('trendyyarn', gp?.trendyyarn?.active ?? null));
+        row.appendChild(pftr);
         zone.appendChild(row);
         this.renderRoundTracker(this.gamedatas.express ? gp?.express : undefined);
     }

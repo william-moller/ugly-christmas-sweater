@@ -445,6 +445,15 @@ html[data-theme="dark"] {
     align-items: flex-end;
     gap: 12px;
 }
+// Perfect Fit + Trendy Yarn pair. A plain row by default (they sit side by side after the Fads, exactly
+// as before); the narrow-sidebar layout flips it to a column for 3–4 player games (Trendy below Perfect
+// Fit) — see the .ucs-narrow-sidebar rules.
+.ucs-gp-pftr {
+    display: flex;
+    flex-direction: row;
+    align-items: flex-end;
+    gap: 12px;
+}
 .ucs-gp-pile {
     display: flex;
     flex-direction: column;
@@ -1662,6 +1671,40 @@ table.ucs-scorepad {
     #ucs-table.ucs-narrow-sidebar #ucs-sidebar .ucs-oppo {
         flex: 0 0 auto;
         width: 100%;
+    }
+
+    // Fill the parameter column left of the sidebar: the round-parameter + Secret Santa cards size off the
+    // COLUMN width (container query) instead of a fixed px, so they grow to use the space. The board strip
+    // is the query container; its children read cqi (container-query units resolve against an ancestor
+    // container, never the element itself, so the sizing lives on #ucs-gameplay / #ucs-my-santa).
+    #ucs-table.ucs-narrow-sidebar #ucs-board-strip { container-type: inline-size; }
+
+    // Fads run 3-across and wrap; Perfect Fit + Trendy Yarn match that size. Sizing through --ucs-card-w
+    // (not a flex/grid track) keeps the sprite art scaling with the card.
+    #ucs-table.ucs-narrow-sidebar #ucs-gameplay {
+        width: 100%;
+        --ucs-card-w: calc((100cqi - 12px) / 3);          // 3 cards + two 6px .ucs-fad-cards gaps
+        --ucs-card-h: calc(var(--ucs-card-w) * 1.556);
+    }
+    #ucs-table.ucs-narrow-sidebar .ucs-gameplay-row {
+        flex-direction: column;                            // Fad block, then the Perfect Fit / Trendy pair
+        align-items: stretch;
+        width: 100%;
+        gap: 8px;
+    }
+    #ucs-table.ucs-narrow-sidebar .ucs-fad-cards { width: 100%; }   // = column width, so the 4th Fad wraps
+
+    // 3–4 players (more Fads on display): Trendy Yarn drops below Perfect Fit to keep the pair tidy.
+    #ucs-table.ucs-narrow-sidebar.ucs-players-3 .ucs-gp-pftr,
+    #ucs-table.ucs-narrow-sidebar.ucs-players-4 .ucs-gp-pftr {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    // Secret Santa: the two landscape (rotated) cards fill the column side by side.
+    #ucs-table.ucs-narrow-sidebar #ucs-my-santa {
+        --ucs-card-w: calc((100cqi - 12px) / 3.14);        // 2 rotated slots (h ≈ 1.567w) + a 12px gap
+        --ucs-card-h: calc(var(--ucs-card-w) * 1.567);
     }
 }
 
