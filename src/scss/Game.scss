@@ -1673,35 +1673,45 @@ table.ucs-scorepad {
         width: 100%;
     }
 
-    // Fill the parameter column left of the sidebar: the round-parameter + Secret Santa cards size off the
-    // COLUMN width (container query) instead of a fixed px, so they grow to use the space. The board strip
-    // is the query container; its children read cqi (container-query units resolve against an ancestor
-    // container, never the element itself, so the sizing lives on #ucs-gameplay / #ucs-my-santa).
+    // Fill the parameter column left of the sidebar: cards size off the COLUMN width (container query)
+    // instead of a fixed px. The board strip is the query container; cqi is read on its children
+    // (#ucs-gameplay / #ucs-my-santa) because container-query units resolve against an ancestor container,
+    // never the element itself. --ucs-card-h tracks whatever --ucs-card-w each player count sets below.
     #ucs-table.ucs-narrow-sidebar #ucs-board-strip { container-type: inline-size; }
-
-    // Fads run 3-across and wrap; Perfect Fit + Trendy Yarn match that size. Sizing through --ucs-card-w
-    // (not a flex/grid track) keeps the sprite art scaling with the card.
     #ucs-table.ucs-narrow-sidebar #ucs-gameplay {
         width: 100%;
-        --ucs-card-w: calc((100cqi - 12px) / 3);          // 3 cards + two 6px .ucs-fad-cards gaps
         --ucs-card-h: calc(var(--ucs-card-w) * 1.556);
     }
-    #ucs-table.ucs-narrow-sidebar .ucs-gameplay-row {
+
+    // 2 players (3 Fads): Fads + Perfect Fit + Trendy Yarn all on ONE row — five cards across, filling it.
+    #ucs-table.ucs-narrow-sidebar.ucs-players-2 #ucs-gameplay {
+        --ucs-card-w: calc((100cqi - 24px) / 5);           // 5 cards + four 6px gaps
+    }
+    #ucs-table.ucs-narrow-sidebar.ucs-players-2 .ucs-gameplay-row { flex-wrap: nowrap; gap: 6px; }
+    #ucs-table.ucs-narrow-sidebar.ucs-players-2 .ucs-fad-cards,
+    #ucs-table.ucs-narrow-sidebar.ucs-players-2 .ucs-gp-pftr { gap: 6px; }
+
+    // 3–4 players (4–5 Fads): Fads run 3-across and wrap; Perfect Fit over Trendy Yarn in a side column.
+    #ucs-table.ucs-narrow-sidebar.ucs-players-3 #ucs-gameplay,
+    #ucs-table.ucs-narrow-sidebar.ucs-players-4 #ucs-gameplay {
+        --ucs-card-w: calc((100cqi - 12px) / 3);           // 3 cards + two 6px gaps
+    }
+    #ucs-table.ucs-narrow-sidebar.ucs-players-3 .ucs-gameplay-row,
+    #ucs-table.ucs-narrow-sidebar.ucs-players-4 .ucs-gameplay-row {
         flex-direction: column;                            // Fad block, then the Perfect Fit / Trendy pair
         align-items: stretch;
         width: 100%;
         gap: 8px;
     }
-    #ucs-table.ucs-narrow-sidebar .ucs-fad-cards { width: 100%; }   // = column width, so the 4th Fad wraps
-
-    // 3–4 players (more Fads on display): Trendy Yarn drops below Perfect Fit to keep the pair tidy.
+    #ucs-table.ucs-narrow-sidebar.ucs-players-3 .ucs-fad-cards,
+    #ucs-table.ucs-narrow-sidebar.ucs-players-4 .ucs-fad-cards { width: 100%; }  // = column width → 4th Fad wraps
     #ucs-table.ucs-narrow-sidebar.ucs-players-3 .ucs-gp-pftr,
     #ucs-table.ucs-narrow-sidebar.ucs-players-4 .ucs-gp-pftr {
         flex-direction: column;
         align-items: flex-start;
     }
 
-    // Secret Santa: the two landscape (rotated) cards fill the column side by side.
+    // Secret Santa: the two landscape (rotated) cards fill the column side by side (all player counts).
     #ucs-table.ucs-narrow-sidebar #ucs-my-santa {
         --ucs-card-w: calc((100cqi - 12px) / 3.14);        // 2 rotated slots (h ≈ 1.567w) + a 12px gap
         --ucs-card-h: calc(var(--ucs-card-w) * 1.567);
