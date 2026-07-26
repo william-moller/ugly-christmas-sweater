@@ -17,6 +17,23 @@ not of the code.
 
 ## Polish / UX
 
+- **Visual polish sweep — the layouts not yet hand-tuned.** The narrow/mobile pass so far covers
+  **Express at Small/Medium** (2P: Fads + Perfect Fit + Trendy Yarn on one row; 3–4P: Fads 3-across
+  with Trendy Yarn under Perfect Fit; parameter + Secret Santa cards filled to the column beside the
+  Round-Tracker sidebar). Every other combination still wants an eyes-on pass — down to true-phone
+  widths (<450px) — so all read as clean as the 2P Express view now does:
+  - **Express, 3–4 players, narrow** — the layout exists but has only been verified at 2P. Confirm the
+    Fad wrap (max 3 across), the stacked Perfect Fit / Trendy Yarn, and the Secret Santa fill at Small
+    and Medium, from ~360px up to 1000px.
+  - **Express, Large card size, narrow** — Large deliberately keeps the plain vertical stack (no
+    sidebar). Confirm that still reads well, or decide whether Large should also get the sidebar.
+  - **Express, wide (≥1000px desktop)** — confirm the desktop layout is still clean after the
+    Round-Tracker sidebar relocate/restore (tracker bottom-left, opponents in the right column).
+  - **Casual & Avid, narrow/mobile** — never taken through the responsive pass: their Fad keeps full
+    card art and the revealed Secret Santa widens the strip, so the narrow layout needs the same
+    fill treatment Express got, at all card sizes. Relates to the release-blocking responsive item.
+  - **Casual & Avid, wide (desktop)** — a confirmation sweep; likely fine (original design) but
+    unverified since the layout reworks.
 - **Animations** — more of them. *Open question:* which moments? Trick resolution and scoring look
   like the gaps.
 - **How-to-play rules summary** — in-client summary so players don't need the rulebook PDF.
