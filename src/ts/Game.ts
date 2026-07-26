@@ -205,6 +205,11 @@ export class Game {
 
         this.renderAll();
 
+        // Express narrow-view: relocate the Round Tracker + opponents into a right-hand sidebar beside the
+        // parameter row on small screens (see layoutNarrowSidebar). Runs after renderAll so the containers
+        // are populated; it moves the containers, not their contents.
+        this.setupNarrowSidebar();
+
         // Draft Order: markers are drawn into the Trade Area cards themselves, so there's nothing to
         // place here. The active state's handler (PlayCard / DraftCard onEnteringState, which fires
         // right after setup — including on an F5) syncs them to the correct idle/dealt picture.
@@ -294,7 +299,7 @@ export class Game {
     private handSizeScale(): number {
         const c = document.documentElement.classList;
         if (c.contains('ucs-cards-large')) return 1.4;
-        if (c.contains('ucs-cards-small')) return 0.85;
+        if (c.contains('ucs-cards-small')) return 0.95;
         return 1;
     }
 
@@ -534,6 +539,59 @@ export class Game {
         if (!col) return;
         col.innerHTML = '';
         if (express) col.appendChild(this.roundTrackerEl(express));
+    }
+
+    /** Wire the narrow-view Round-Tracker sidebar (Express only): lay it out now and again whenever the
+     *  viewport crosses the 1000px boundary. Card size (gamepreferences 101) is needReload, so it can't
+     *  change mid-session — width is the only live input, and a matchMedia listener covers it (no general
+     *  resize handler needed). */
+    private setupNarrowSidebar() {
+        if (!this.gamedatas.express) return;
+        window.matchMedia('(max-width: 1000px)').addEventListener('change', () => this.layoutNarrowSidebar());
+        this.layoutNarrowSidebar();
+    }
+
+    /**
+     * Express · viewport ≤ 1000px · card size ≠ Large: tuck #ucs-rt-col (Round Tracker) and #ucs-opponents
+     * into a right-hand #ucs-sidebar beside the parameter row (styled by the .ucs-narrow-sidebar grid in
+     * Game.scss), so the row stops spanning full width and the vertical stack shortens. Outside that mode,
+     * return both containers to their original homes. Moves the CONTAINERS by id, so renderRoundTracker()
+     * (targets #ucs-rt-col) and the opponent tables (appended into #ucs-opponents) keep working wherever
+     * the containers currently live. Idempotent — safe to call on every breakpoint change.
+     */
+    private layoutNarrowSidebar() {
+        const table = document.getElementById('ucs-table');
+        const upper = document.getElementById('ucs-upper');
+        const rt = document.getElementById('ucs-rt-col');
+        const oppo = document.getElementById('ucs-opponents');
+        if (!table || !upper || !rt || !oppo) return;
+
+        const large = document.documentElement.classList.contains('ucs-cards-large');
+        const active = !!this.gamedatas.express
+            && window.matchMedia('(max-width: 1000px)').matches
+            && !large;
+
+        if (active) {
+            let sidebar = document.getElementById('ucs-sidebar');
+            if (!sidebar) {
+                sidebar = document.createElement('div');
+                sidebar.id = 'ucs-sidebar';
+                upper.appendChild(sidebar);
+            }
+            sidebar.appendChild(rt);   // Round Tracker on top
+            sidebar.appendChild(oppo); // opponents directly beneath it
+            table.classList.add('ucs-narrow-sidebar');
+        } else {
+            // Restore: Round Tracker back into #ucs-lower (before my Knitting Area), opponents back to the
+            // end of #ucs-upper (their original slot after the centre stack).
+            const lower = document.getElementById('ucs-lower');
+            const myArea = document.getElementById('ucs-my-area');
+            if (lower && myArea && rt.parentElement !== lower) lower.insertBefore(rt, myArea);
+            if (oppo.parentElement !== upper) upper.appendChild(oppo);
+            table.classList.remove('ucs-narrow-sidebar');
+            const sidebar = document.getElementById('ucs-sidebar');
+            if (sidebar && sidebar.childElementCount === 0) sidebar.remove();
+        }
     }
 
     /** A revealed round-parameter card on its own (no draw pile), for the single-row board strip. Wrapped

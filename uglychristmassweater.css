@@ -499,7 +499,7 @@ html {
 }
 
 html.ucs-cards-small {
-  --ucs-card-scale: 0.85;
+  --ucs-card-scale: 0.95;
 }
 
 html.ucs-cards-medium {
@@ -2000,6 +2000,35 @@ table.ucs-scorepad th, table.ucs-scorepad td {
   }
   #ucs-opponents .ucs-oppo .ucs-oppo-summary {
     display: flex;
+  }
+  #ucs-table.ucs-narrow-sidebar #ucs-upper {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas: "strip  side" "center center";
+    gap: 12px;
+    align-items: start;
+  }
+  #ucs-table.ucs-narrow-sidebar #ucs-board-strip {
+    grid-area: strip;
+  }
+  #ucs-table.ucs-narrow-sidebar #ucs-center-stack {
+    grid-area: center;
+  }
+  #ucs-table.ucs-narrow-sidebar #ucs-sidebar {
+    grid-area: side;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    align-items: start;
+  }
+  #ucs-table.ucs-narrow-sidebar #ucs-sidebar #ucs-opponents {
+    flex-direction: column;
+    flex-wrap: nowrap;
+    width: 100%;
+  }
+  #ucs-table.ucs-narrow-sidebar #ucs-sidebar .ucs-oppo {
+    flex: 0 0 auto;
+    width: 100%;
   }
 }
 @media (max-width: 449px) {

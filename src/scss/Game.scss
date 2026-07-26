@@ -98,7 +98,7 @@ html {
 // you actually read and act on; the abstracted opponent sweaters, the panel tally chips and the
 // round-parameter reference cards keep their fixed sizes. Medium is the default (multiplier 1);
 // the `var(..., 1)` fallbacks below mean an unclassed <html> also renders at Medium.
-html.ucs-cards-small  { --ucs-card-scale: 0.85; }
+html.ucs-cards-small  { --ucs-card-scale: 0.95; }
 html.ucs-cards-medium { --ucs-card-scale: 1; }
 // Large is a big step up (was 1.18) — on a wide monitor the Medium/1.18 tabletop left a lot of empty
 // felt. cardSizeScale() in Game.ts mirrors these exactly; change both together or the hand fan desyncs.
@@ -1626,6 +1626,42 @@ table.ucs-scorepad {
             .ucs-knitting { display: none; }
             .ucs-oppo-summary { display: flex; }
         }
+    }
+
+    // Express, narrow, non-Large: layoutNarrowSidebar (Game.ts) relocates the Round Tracker + opponents
+    // into #ucs-sidebar and flags #ucs-table.ucs-narrow-sidebar. Re-lay #ucs-upper as a grid so the
+    // parameter row + Secret Santa sit top-left, the sidebar (Round Tracker over opponents) sits to the
+    // RIGHT of the parameter row, and the Draft Pool / Trade Area run full width beneath both. (A float
+    // can't do this here — #ucs-upper is a flex/column container in this width band, which ignores floats.)
+    // Large never gets the class, so it keeps the plain vertical stack.
+    #ucs-table.ucs-narrow-sidebar #ucs-upper {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;   // parameter column | sidebar (sized to the tracker)
+        grid-template-areas:
+            "strip  side"
+            "center center";
+        gap: 12px;
+        align-items: start;
+    }
+    #ucs-table.ucs-narrow-sidebar #ucs-board-strip  { grid-area: strip; }
+    #ucs-table.ucs-narrow-sidebar #ucs-center-stack { grid-area: center; }
+    #ucs-table.ucs-narrow-sidebar #ucs-sidebar {
+        grid-area: side;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        align-items: start;
+    }
+    // In the sidebar the opponents stack vertically (each full sidebar width, the same compact pip summary
+    // used across the narrow layout), not the across-the-page row-wrap above.
+    #ucs-table.ucs-narrow-sidebar #ucs-sidebar #ucs-opponents {
+        flex-direction: column;
+        flex-wrap: nowrap;
+        width: 100%;
+    }
+    #ucs-table.ucs-narrow-sidebar #ucs-sidebar .ucs-oppo {
+        flex: 0 0 auto;
+        width: 100%;
     }
 }
 
