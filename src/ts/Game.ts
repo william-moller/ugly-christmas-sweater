@@ -116,15 +116,17 @@ export class Game {
         const trickSize = playerCount === 2 ? 4 : playerCount;
 
         this.bga.gameArea.getElement().insertAdjacentHTML('beforeend', `
-            <div id="ucs-table" class="ucs-players-${playerCount}" style="--ucs-players:${playerCount};--ucs-trick-size:${trickSize}">
+            <div id="ucs-table" class="ucs-players-${playerCount}${gamedatas.express ? ' ucs-express' : ''}" style="--ucs-players:${playerCount};--ucs-trick-size:${trickSize}">
                 <div id="ucs-hand-end-banner" class="ucs-hand-end-banner" style="display:none">
                     ${_('Last trick and draft phase of this hand — the round ends after this draft.')}
                 </div>
                 <!-- Upper region (see #ucs-upper in Game.scss): a left board strip, the centre trick, and
-                     the opponents on the right. The board strip stacks a single row of round-parameter
-                     cards — Fads then Perfect Fit + Trendy Yarn, all one size (renderGameplay) — over my
-                     Secret Santa. The Round Tracker and my full-width Knitting Area sit in #ucs-lower
-                     beneath it all. On a narrow window these stack into one column. NB no backticks in
+                     the right column (#ucs-right-col: the opponents, with the Round Tracker stacked over
+                     them in 3P Express — see layoutNarrowSidebar). The board strip stacks a single row of
+                     round-parameter cards — Fads then Perfect Fit + Trendy Yarn, all one size
+                     (renderGameplay) — over my Secret Santa. My full-width Knitting Area sits in
+                     #ucs-lower beneath it all, alongside the Round Tracker in every other game.
+                     On a narrow window these stack into one column. NB no backticks in
                      here - this is a template literal. -->
                 <div id="ucs-upper">
                     <div id="ucs-board-strip">
@@ -136,7 +138,7 @@ export class Game {
                         <div id="ucs-draft-pool" class="ucs-zone"></div>
                         <div id="ucs-trade-area" class="ucs-zone"></div>
                     </div>
-                    <div id="ucs-opponents"></div>
+                    <div id="ucs-right-col"><div id="ucs-opponents"></div></div>
                 </div>
                 <div id="ucs-lower">
                     <div id="ucs-rt-col"></div>
@@ -538,8 +540,8 @@ export class Game {
         this.renderRoundTracker(this.gamedatas.express ? gp?.express : undefined);
     }
 
-    /** Express: (re)draw the Round Tracker into its own column in #ucs-lower (bottom-left, beside the
-     *  Knitting Area). Cleared for Casual/Avid, which have no tracker. */
+    /** Express: (re)draw the Round Tracker into #ucs-rt-col, wherever layoutNarrowSidebar has parked that
+     *  column. Cleared for Casual/Avid, which have no tracker. */
     private renderRoundTracker(express: ExpressGameplay | undefined) {
         const col = document.getElementById('ucs-rt-col');
         if (!col) return;
@@ -561,9 +563,11 @@ export class Game {
      * Express · viewport ≤ 1000px · card size ≠ Large: tuck #ucs-rt-col (Round Tracker) and #ucs-opponents
      * into a right-hand #ucs-sidebar beside the parameter row (styled by the .ucs-narrow-sidebar grid in
      * Game.scss), so the row stops spanning full width and the vertical stack shortens. Outside that mode,
-     * return both containers to their original homes. Moves the CONTAINERS by id, so renderRoundTracker()
-     * (targets #ucs-rt-col) and the opponent tables (appended into #ucs-opponents) keep working wherever
-     * the containers currently live. Idempotent — safe to call on every breakpoint change.
+     * return both containers to their wide-layout homes: the opponents to #ucs-right-col, and the Round
+     * Tracker either above them there (3P Express, see rtTopRight) or bottom-left in #ucs-lower. Moves the
+     * CONTAINERS by id, so renderRoundTracker() (targets #ucs-rt-col) and the opponent tables (appended
+     * into #ucs-opponents) keep working wherever the containers currently live. Idempotent — safe to call
+     * on every breakpoint change.
      */
     private layoutNarrowSidebar() {
         const table = document.getElementById('ucs-table');
@@ -588,16 +592,31 @@ export class Game {
             sidebar.appendChild(oppo); // opponents directly beneath it
             table.classList.add('ucs-narrow-sidebar');
         } else {
-            // Restore: Round Tracker back into #ucs-lower (before my Knitting Area), opponents back to the
-            // end of #ucs-upper (their original slot after the centre stack).
+            // Restore the wide layout: opponents back into the right column, and the Round Tracker either
+            // above them (3P Express) or bottom-left in #ucs-lower, before my Knitting Area.
+            const right = document.getElementById('ucs-right-col');
             const lower = document.getElementById('ucs-lower');
             const myArea = document.getElementById('ucs-my-area');
-            if (lower && myArea && rt.parentElement !== lower) lower.insertBefore(rt, myArea);
-            if (oppo.parentElement !== upper) upper.appendChild(oppo);
+            if (right && oppo.parentElement !== right) right.appendChild(oppo);
+            if (this.rtTopRight()) {
+                if (right && rt.parentElement !== right) right.insertBefore(rt, oppo);
+            } else if (lower && myArea && rt.parentElement !== lower) {
+                lower.insertBefore(rt, myArea);
+            }
             table.classList.remove('ucs-narrow-sidebar');
             const sidebar = document.getElementById('ucs-sidebar');
             if (sidebar && sidebar.childElementCount === 0) sidebar.remove();
         }
+    }
+
+    /**
+     * Does the Round Tracker belong in the top-right column (over the opponents) rather than bottom-left?
+     * 3-player Express only: there the board strip is folded into a compact block (Fads 2×2, Perfect Fit
+     * under Trendy Yarn — see the .ucs-players-3 rules in Game.scss), and the tracker fills the space that
+     * opens up beside the Draft Pool. Every other count/variant keeps the tracker in #ucs-lower.
+     */
+    private rtTopRight(): boolean {
+        return !!this.gamedatas.express && Object.keys(this.gamedatas.players).length === 3;
     }
 
     /** A revealed round-parameter card on its own (no draw pile), for the single-row board strip. Wrapped

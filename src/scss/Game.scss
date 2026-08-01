@@ -760,7 +760,18 @@ html[data-theme="dark"] {
     gap: 10px;
 }
 
-// Right column: the opponents' knitting areas.
+// Right column of the upper region: the opponents' knitting areas, with the Express Round Tracker
+// stacked above them in 3-player games (Game.ts::layoutNarrowSidebar parks #ucs-rt-col here). Content-
+// width, so the centre stack keeps every pixel it had. The narrow-sidebar layout hoists both children
+// into #ucs-sidebar and hides this wrapper (see the responsive block).
+#ucs-right-col {
+    flex: 0 0 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+// The opponents' knitting areas.
 #ucs-opponents {
     flex: 0 0 auto;
     display: flex;
@@ -1646,6 +1657,9 @@ table.ucs-scorepad {
         gap: 12px;
         align-items: start;
     }
+    // Both of #ucs-right-col's children now live in #ucs-sidebar, so the empty wrapper is dropped
+    // outright — left in, it would be auto-placed into a row of its own by the grid above.
+    #ucs-table.ucs-narrow-sidebar #ucs-right-col { display: none; }
     #ucs-table.ucs-narrow-sidebar #ucs-board-strip  { grid-area: strip; }
     #ucs-table.ucs-narrow-sidebar #ucs-center-stack { grid-area: center; }
     #ucs-table.ucs-narrow-sidebar #ucs-sidebar {
@@ -1732,6 +1746,37 @@ table.ucs-scorepad {
     display: flex;
     flex-wrap: wrap;
     gap: 6px;
+}
+
+// ---- Express · 3 players: fold the board strip, move the Round Tracker top-right --------------------
+// 3P deals 4 Fads (players + 1), so the default single parameter row ran six cards wide and pushed the
+// centre column right, while the Round Tracker sat on its own in the bottom-left corner. Instead: the
+// Fads go 2×2, Perfect Fit tucks under Trendy Yarn, and the tracker moves into #ucs-right-col above the
+// opponents (the DOM move is Game.ts::rtTopRight / layoutNarrowSidebar). Nothing here touches the Draft
+// Pool — its cards are a fixed size off the Card-size preference, and the tracker is narrower than a
+// full opponents panel, so the centre column loses no width. Applies at every card-size preference;
+// excluded only in the ≤1000px sidebar layout, which has its own arrangement of the same cards.
+#ucs-table.ucs-express.ucs-players-3:not(.ucs-narrow-sidebar) {
+    // Exactly two Fads per row → two rows of two (grid, not wrap, so it can't reflow to 3+1).
+    .ucs-fad-display .ucs-fad-cards {
+        display: grid;
+        grid-template-columns: repeat(2, auto);
+    }
+    // DOM order is Perfect Fit then Trendy Yarn; column-REVERSE puts Trendy Yarn on top with Perfect Fit
+    // under it, without reordering the markup. 6px gap to match the Fad grid, so the two card rows of
+    // this column line up with the two rows of Fads beside it.
+    .ucs-gp-pftr {
+        flex-direction: column-reverse;
+        align-items: flex-start;
+        gap: 6px;
+    }
+    // The tracker shrinks from its 2× default now that it shares a column with the opponents: 1.4× is
+    // 112px wide at Medium and 106px at Small, both clear of the 95px reference-card floor (the binding
+    // constraint is the printed numeral at ≈0.119 × W — see .claude/responsive.md).
+    #ucs-right-col .ucs-rt-card {
+        --ucs-card-w: calc(#{$card-w} * 1.4 * var(--ucs-card-scale, 1));
+        --ucs-card-h: calc(#{$card-h} * 1.4 * var(--ucs-card-scale, 1));
+    }
 }
 .ucs-fad-card {
     position: relative;

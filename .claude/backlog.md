@@ -28,7 +28,9 @@ not of the code.
   - **Express, Large card size, narrow** — Large deliberately keeps the plain vertical stack (no
     sidebar). Confirm that still reads well, or decide whether Large should also get the sidebar.
   - **Express, wide (≥1000px desktop)** — confirm the desktop layout is still clean after the
-    Round-Tracker sidebar relocate/restore (tracker bottom-left, opponents in the right column).
+    Round-Tracker sidebar relocate/restore (2P/4P: tracker bottom-left, opponents in the right column;
+    3P: tracker stacked over the opponents in the right column, Fads 2×2 — see `responsive.md`). 4P
+    deals 5 Fads and still runs them all in one row; decide whether it wants the 3P treatment too.
   - **Casual & Avid, narrow/mobile** — never taken through the responsive pass: their Fad keeps full
     card art and the revealed Secret Santa widens the strip, so the narrow layout needs the same
     fill treatment Express got, at all card sizes. Relates to the release-blocking responsive item.

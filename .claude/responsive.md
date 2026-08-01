@@ -84,6 +84,22 @@ phones), 768 (iPad portrait), 1024+ (tablet landscape / desktop).
 ### Tier A — wide, ≥1000px
 The full four-column grid: `params | santa | center | oppo`, knitting under the centre.
 
+**Express · 3 players** folds the board strip instead of running it flat, because 3P deals 4 Fads
+(`players + 1`) and a six-card parameter row pushes the centre column right for no gain:
+
+- Fads in a **2×2 grid** (`display: grid`, not a wrap — a wrap can reflow to 3+1).
+- **Perfect Fit under Trendy Yarn**, as a column beside the Fads. The markup order is Perfect Fit
+  first, so this is `column-reverse` rather than a DOM change.
+- **Round Tracker top-right**: stacked over the opponents in `#ucs-right-col`, right of the Draft
+  Pool, instead of bottom-left in `#ucs-lower`. Sized `1.4 × $card-w` there (down from `2 ×`) —
+  106px at Small, still clear of the 95px reference-card floor above.
+
+None of this shrinks the Draft Pool: at Tier A its cards are a fixed multiple of the Card-size
+preference, not a fraction of the container, and the tracker is narrower than a full opponents panel.
+Holds at **every card-size preference**. The DOM moves live in `Game.ts::layoutNarrowSidebar`
+(`rtTopRight()`); the ≤1000px sidebar layout is excluded via `:not(.ucs-narrow-sidebar)` and keeps its
+own arrangement of the same cards.
+
 **Why 1000px:** the desktop layout needs roughly `params + centre (four cards + gaps) + opponents +
 gaps + padding` ≈ **980px** before it gets cramped, so the stacked layout collapses at
 `@media (max-width: 1000px)` in `Game.scss`. (An earlier build switched at 800px, leaving 800–1000px
