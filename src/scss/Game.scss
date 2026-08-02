@@ -1789,10 +1789,10 @@ table.ucs-scorepad {
 // in .claude/responsive.md — do not derive them per size, and do not nudge them until a screenshot looks
 // right:
 //
-//   viewport = CARD × scale + FIXED + 263      CARD = 778, FIXED = 402 for this arrangement
+//   viewport = CARD × scale + FIXED + 263      CARD = 778, FIXED = 406 for this arrangement
 //                                              (263 = BGA's own player-panel column and margins)
 //
-// → 1404 / 1443 / 1832 at Small / Medium / Large, rounded to the floors below. Below its floor a size
+// → 1408 / 1447 / 1836 at Small / Medium / Large, rounded to the floors below. Below its floor a size
 // keeps the stacked Santa row — the strip would otherwise push the centre column into the opponents,
 // since #ucs-board-strip is flex: 0 0 auto and the centre stack is what gives. Small has no floor: it
 // still uses the Santa row at every width.

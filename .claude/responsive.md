@@ -132,21 +132,50 @@ viewport  = CARD × scale + FIXED + 263      # 263 = BGA's own player-panel colu
 | | **CARD total** | **778** |
 | FIXED | Fad grid gap 6 · strip gaps 24 · `#ucs-upper` gaps 24 | 54 |
 | FIXED | Draft Pool `3 × 12` gaps + 16 zone padding + 24 rotated-label overhang | 76 |
-| FIXED | Right column, opponents at their 5-sweater cap | 256 |
+| FIXED | Right column: opponent panel at the 5-sweater cap (`244 + 12 padding + 4 border`) | 260 |
 | FIXED | `#ucs-table` padding | 16 |
-| | **FIXED total** | **402** |
+| | **FIXED total** | **406** |
 
-→ `viewport = 778 × scale + 665`, which gives **1404 / 1443 / 1832** for Small / Medium / Large.
+→ `viewport = 778 × scale + 669`, which gives **1408 / 1447 / 1836** for Small / Medium / Large.
 `$santa-column-floors` in `Game.scss` rounds the latter two to **1450** and **1840**; Small has no
 floor set, so it keeps the stacked Santa row at every width.
 
 **To floor a new arrangement:** re-total CARD and FIXED for it, then read the answer off the formula
-for each size. That is the whole derivation — no per-size arithmetic. Only Express 3P Tier A has been
-totalled so far; the other four content shapes (Casual, Avid, Express 2P, Express 4P — see below)
-would each need their own CARD/FIXED pair if they ever grow a width-gated fold.
+for each size. That is the whole derivation — no per-size arithmetic.
 
-Two things the formula deliberately assumes worst-case, so it errs toward *not* folding: the opponents'
-column at its five-sweater cap (early in a game it is ~115px), and a full Draft Pool.
+### Every shape, totalled (Tier A)
+
+The strip is a flex column, so its width is `max(parameter row, Secret Santa row)` — which term wins is
+noted below. The centre is `max(Draft Pool, Trade Area)`: the Trade Area is drawn for `--ucs-trick-size`
+seats (2P→4, 3P→3, 4P→4) at `--ucs-card-w + 12` each, so it beats the always-4-card Draft Pool by 54px
+wherever the trick is 4 — i.e. everywhere except 3P.
+
+| Shape | Strip (winner) | CARD | FIXED | Small | Medium | Large |
+|-------|---------------|-----:|------:|------:|-------:|------:|
+| Casual (any count) | params `3 × 90` | 590 | 454 | 1278 | 1307 | 1602 |
+| Express 2P | params `5 × 90` | 770 | 466 | 1461 | 1499 | 1884 |
+| Express 3P — Santa row | Santa `2 × 188` | 696 | 388 | 1312 | 1347 | 1695 |
+| Express 3P — Santa column | params + Santa | 778 | 406 | 1408 | 1447 | 1836 |
+| Express 4P | params `7 × 90` | 950 | 478 | 1644 | 1691 | **2166** |
+| Avid (any count) | Santa `3 × 200` | 920 | 494 | 1631 | 1677 | **2137** |
+
+Three things fall out of that table, none of them visible before it existed:
+
+1. **Nothing fits at 1000px.** The cheapest shape (Casual at Small) needs **1278**. The Tier A/B
+   boundary is inherited from an older, narrower layout — see the stale-structure caveat above — and is
+   ~300px too low for *every* shape at *every* card size. The band from 1001 to the shape's floor
+   renders the wide layout squeezed: `#ucs-board-strip` is `flex: 0 0 auto`, so `#ucs-center-stack` is
+   what gives.
+2. **Express 4P and Avid at Large cannot fit any common monitor** (2166 and 2137 against a 1920 screen).
+   Both are driven by a single unfolded row — 5 Fads across for 4P, 3 landscape Santas for Avid — and
+   both want the treatment Express 3P got.
+3. **Express 2P at Large (1884) clears a 1920 screen by 36px.** That is the layout currently signed off,
+   and it is signed off on a 1920 monitor. It does not fit a 1600px laptop.
+
+Worst-case assumptions, so the floors err toward *not* folding: the opponents' column at its five-sweater
+cap (early in a game it is ~115px, and `.ucs-knitting-compact` notes only Express reaches a 6th sweater
+— Casual/Avid end by the 3rd–4th, so ~210 is their realistic cap), a full Draft Pool, and a player-name
+header narrower than the knitting area.
 
 > **Large at Tier A is tight before any of this.** Drop the Santa term (188) and Large still needs
 > ≈1550 viewport; under that the centre column and the opponents crowd each other. Nothing clamps it —

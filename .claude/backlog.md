@@ -29,8 +29,19 @@ not of the code.
     sidebar). Confirm that still reads well, or decide whether Large should also get the sidebar.
   - **Express, wide (≥1000px desktop)** — confirm the desktop layout is still clean after the
     Round-Tracker sidebar relocate/restore (2P/4P: tracker bottom-left, opponents in the right column;
-    3P: tracker stacked over the opponents in the right column, Fads 2×2 — see `responsive.md`). 4P
-    deals 5 Fads and still runs them all in one row; decide whether it wants the 3P treatment too.
+    3P: tracker stacked over the opponents in the right column, Fads 2×2 — see `responsive.md`).
+  - **Express 4P and Avid at Large don't fit any common monitor** — the totalled floors put them at
+    **2166** and **2137** viewport px against a 1920 screen ([`responsive.md`](responsive.md)). Each is
+    one unfolded row: 4P runs 5 Fads across (`7 × 90` with Perfect Fit / Trendy Yarn), Avid runs 3
+    landscape Secret Santas (`3 × 200`). Both want the fold Express 3P got — Fads to a grid, Santas to a
+    column — which is the same CSS shape, not new machinery. Express 2P at Large clears 1920 by only
+    36px, so it is signed off on the one monitor that fits it.
+  - **The Tier A/B boundary is ~300px too low.** The wide layout is selected from 1001px, but the
+    cheapest shape (Casual at Small) needs **1278** and most need far more. Between 1001 and a shape's
+    floor the three-column layout is chosen and then squeezed — `#ucs-board-strip` is `flex: 0 0 auto`,
+    so `#ucs-center-stack` is what gives. Re-derive the breakpoint from the totals table now that all
+    five shapes are costed, rather than inheriting 1000 from the retired four-column grid. Interacts
+    with Large being excluded from the narrow sidebar.
 - **Narrow the card-size spread so size and layout stop being one axis.** The layout work keeps needing
   *per-card-size* width floors (`$santa-column-floors` in `Game.scss` is two numbers for one layout
   idea, and Large at Tier A already wants ≈1690px before 3P Express crowds — the centre stack is what
@@ -58,8 +69,9 @@ not of the code.
   - **Casual & Avid, narrow/mobile** — never taken through the responsive pass: their Fad keeps full
     card art and the revealed Secret Santa widens the strip, so the narrow layout needs the same
     fill treatment Express got, at all card sizes. Relates to the release-blocking responsive item.
-  - **Casual & Avid, wide (desktop)** — a confirmation sweep; likely fine (original design) but
-    unverified since the layout reworks.
+  - **Casual & Avid, wide (desktop)** — no longer "likely fine": Casual is the cheapest shape there is
+    (1278 at Small) but Avid is the second most expensive (2137 at Large), because its 3 revealed Secret
+    Santas run as one landscape row. See the Avid item above.
 - **Animations** — more of them. *Open question:* which moments? Trick resolution and scoring look
   like the gaps.
 - **How-to-play rules summary** — in-client summary so players don't need the rulebook PDF.
