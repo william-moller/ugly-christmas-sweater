@@ -100,6 +100,33 @@ Holds at **every card-size preference**. The DOM moves live in `Game.ts::layoutN
 (`rtTopRight()`); the ≤1000px sidebar layout is excluded via `:not(.ucs-narrow-sidebar)` and keeps its
 own arrangement of the same cards.
 
+**Express · 3 players · Large · ≥1840px** adds one more fold: my two Secret Santas become a **third
+column** of the board strip (right of Trendy Yarn / Perfect Fit, left of the Draft Pool), **stacked**
+rather than side by side. At Large the pair was a 576px row nothing else shared.
+
+The 1840px is a viewport floor, derived — don't nudge it:
+
+| Piece | px |
+|-------|----|
+| Fads 2×2 (`2 × 135 + 6`) | 276 |
+| Perfect Fit / Trendy Yarn column + gap | 147 |
+| Secret Santa column + gap (rotated: `--ucs-card-h` 188 × 1.5) | 294 |
+| Centre (`4 × 120` Draft Pool + `3 × 12` + 16 padding + 24 label overhang) + gap | 568 |
+| Right column at the opponents' 5-sweater cap + gap | 268 |
+| `#ucs-table` padding | 16 |
+| **Game area needed** | **1569** |
+| BGA's own player-panel column + margins | ≈263 |
+| **Viewport needed** | **≈1832** |
+
+Below that the strip would push the centre column into the opponents, so Large keeps the stacked Santa
+row. Small/Medium are unaffected at every width — their Santa row is already narrow enough to sit under
+the parameter cards.
+
+> **Large at Tier A is tight before any of this.** Even without the Santa column, 3P Express at Large
+> needs ≈1428 game-area px (≈1690 viewport); under that the centre column and the opponents already
+> crowd. Nothing clamps it — `#ucs-board-strip` is `flex: 0 0 auto`, so the centre stack is what gives.
+> Tracked in [`backlog.md`](backlog.md).
+
 **Why 1000px:** the desktop layout needs roughly `params + centre (four cards + gaps) + opponents +
 gaps + padding` ≈ **980px** before it gets cramped, so the stacked layout collapses at
 `@media (max-width: 1000px)` in `Game.scss`. (An earlier build switched at 800px, leaving 800–1000px

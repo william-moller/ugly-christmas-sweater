@@ -2122,6 +2122,15 @@ table.ucs-scorepad th, table.ucs-scorepad td {
   --ucs-card-h: calc(125px * 1.4 * var(--ucs-card-scale, 1));
 }
 
+@media (min-width: 1840px) {
+  html.ucs-cards-large #ucs-table.ucs-express.ucs-players-3:not(.ucs-narrow-sidebar) #ucs-board-strip {
+    flex-direction: row;
+    align-items: flex-start;
+  }
+  html.ucs-cards-large #ucs-table.ucs-express.ucs-players-3:not(.ucs-narrow-sidebar) .ucs-my-santa .ucs-santa-cards {
+    flex-direction: column;
+  }
+}
 .ucs-fad-card {
   position: relative;
 }

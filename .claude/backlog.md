@@ -31,6 +31,11 @@ not of the code.
     Round-Tracker sidebar relocate/restore (2P/4P: tracker bottom-left, opponents in the right column;
     3P: tracker stacked over the opponents in the right column, Fads 2×2 — see `responsive.md`). 4P
     deals 5 Fads and still runs them all in one row; decide whether it wants the 3P treatment too.
+  - **Large cards on a mid-size desktop (≈1000–1700px)** — Large at Tier A wants ≈1690px of viewport
+    before 3P Express stops crowding, and nothing clamps it: `#ucs-board-strip` is `flex: 0 0 auto`, so
+    the centre stack is what gives when the row runs out of room. Decide what should happen in that band
+    — drop Large to the narrow sidebar (it's currently excluded), let the strip wrap, or cap the card
+    scale off the available width. Numbers in [`responsive.md`](responsive.md).
   - **Casual & Avid, narrow/mobile** — never taken through the responsive pass: their Fad keeps full
     card art and the revealed Secret Santa widens the strip, so the narrow layout needs the same
     fill treatment Express got, at all card sizes. Relates to the release-blocking responsive item.

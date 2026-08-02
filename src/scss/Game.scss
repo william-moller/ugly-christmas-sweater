@@ -1778,6 +1778,30 @@ table.ucs-scorepad {
         --ucs-card-h: calc(#{$card-h} * 1.4 * var(--ucs-card-scale, 1));
     }
 }
+
+// Express · 3 players · Large cards · ≥1840px viewport: my two Secret Santas move from their own row
+// under the parameter cards into a THIRD column of the board strip — right of the Trendy Yarn / Perfect
+// Fit stack, left of the Draft Pool — and stack one over the other instead of sitting side by side.
+// At Large the pair was a 576px-wide row that nothing shared, taller than it was useful.
+//
+// Why 1840px of VIEWPORT (derived; see .claude/responsive.md — do not nudge):
+//   board strip  276 (Fads 2×135 + 6) + 12 + 135 (Perfect Fit / Trendy Yarn) + 12 + 282 (rotated Santa,
+//                = --ucs-card-h 188 × 1.5)                                                        = 717
+//   + 12 gap + 556 centre (4 × 120 Draft Pool cards + 3 × 12 + 16 zone padding + 24 label overhang)
+//   + 12 gap + 256 right column (an opponents panel at its 5-sweater cap, wider than the tracker)
+//   + 16 table padding                                                                           ≈ 1569
+//   + ≈263 for BGA's own player-panel column and margins                                         ≈ 1832
+// Below that the strip would push the centre column into the opponents, so Large keeps the stacked
+// Santa row. Small/Medium are unaffected at every width — their Santa row is narrow enough already.
+@media (min-width: 1840px) {
+    html.ucs-cards-large #ucs-table.ucs-express.ucs-players-3:not(.ucs-narrow-sidebar) {
+        #ucs-board-strip {
+            flex-direction: row;
+            align-items: flex-start; // Santa column tops out level with the Fad label
+        }
+        .ucs-my-santa .ucs-santa-cards { flex-direction: column; }
+    }
+}
 .ucs-fad-card {
     position: relative;
 }
