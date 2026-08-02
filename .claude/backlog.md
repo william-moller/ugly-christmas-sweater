@@ -44,9 +44,12 @@ not of the code.
   Options, cheapest first:
   - **Re-pitch the scale.** Our base 80px is *below* soothsayers' small (100px) while our Large (120px)
     matches their large — so Large is doing the work of "normal". Raising base to ~95–100 and Large to
-    ~1.2 × would collapse the floors to one number and make Medium the honest default. Costs a
-    re-derivation of every number in [`responsive.md`](responsive.md) and a re-check of the tuned
-    layouts (2P Express is signed off — don't regress it).
+    ~`1.2 ×` puts Large's floor at ≈1600 against Medium's 1443 (per the formula in
+    [`responsive.md`](responsive.md)) — not identical, but close enough that **one** floor at 1600 could
+    serve all three sizes, costing Medium only a 157px band where it could have folded and doesn't.
+    Today's `1.5 ×` spreads those floors 392px apart, which is why they can't share a number. Costs a
+    re-check of the tuned layouts (2P Express is signed off — don't regress it); the numbers themselves
+    now fall out of the formula rather than needing re-derivation.
   - **Leave the scale, cap the strip.** Keep 1.5 × but stop it overflowing: `max-width` on the board
     strip, or let it wrap. Smallest change; leaves the floors in place.
   - **Fluid sizing off the container.** Only if the first two prove insufficient — it would be novel

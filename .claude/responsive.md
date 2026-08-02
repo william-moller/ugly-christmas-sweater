@@ -105,30 +105,73 @@ Santas become a **third column** of the board strip (right of Trendy Yarn / Perf
 Draft Pool), **stacked** rather than side by side. The pair was a row nothing else shared — 576px wide
 at Large, 388px at Medium — wider than the parameter row above it.
 
-Each size carries its **own viewport floor**, because every width in the sum scales with
-`--ucs-card-scale`. Derived, not nudged (`$santa-column-floors` in `Game.scss`):
+Each size carries its **own viewport floor**, because part of the width scales with `--ucs-card-scale`
+and part doesn't. Don't derive these one at a time — use the formula below.
 
-| Piece | Medium | Large |
-|-------|-------:|------:|
-| Fads 2×2 (`2 × card-w + 6`) | 186 | 276 |
-| Perfect Fit / Trendy Yarn column + gap | 102 | 147 |
-| Secret Santa column + gap (rotated: `--ucs-card-h` 188 × scale) | 200 | 294 |
-| Centre (4 Draft Pool cards + `3 × 12` + 16 padding + 24 label overhang) + gap | 408 | 568 |
-| Right column at the opponents' 5-sweater cap + gap | 268 | 268 |
-| `#ucs-table` padding | 16 | 16 |
-| **Game area needed** | **1180** | **1569** |
-| BGA's own player-panel column + margins | ≈263 | ≈263 |
-| **Viewport floor** | **1450** | **1840** |
+## The width floor formula
 
-Below its floor a size keeps the stacked Santa row: the strip would otherwise push the centre column
-into the opponents. **Small** has no floor — it uses the Santa row at every width. Note the right column
-is the opponents' worst case (five sweaters wide); early in a game it is ~115px, so the fold has more
-slack in practice than the floor assumes.
+Every "does this arrangement fit?" question splits into two terms: card widths, which scale with the
+Card-size preference, and everything else — gaps, padding, and the opponents' column — which doesn't
+(`--ucs-mini-build-w` is a hard 44px on purpose, see `.ucs-knitting-compact`). So for any arrangement:
 
-> **Large at Tier A is tight before any of this.** Even without the Santa column, 3P Express at Large
-> needs ≈1428 game-area px (≈1690 viewport); under that the centre column and the opponents already
-> crowd. Nothing clamps it — `#ucs-board-strip` is `flex: 0 0 auto`, so the centre stack is what gives.
-> Tracked in [`backlog.md`](backlog.md).
+```
+game area = CARD × scale + FIXED
+viewport  = CARD × scale + FIXED + 263      # 263 = BGA's own player-panel column + margins
+```
+
+`--ucs-card-scale` is `0.95 / 1 / 1.5` for Small / Medium / Large (`Game.scss`, near the top).
+
+**Worked instance — Express · 3P · Tier A · with the Secret Santa column:**
+
+| Term | Piece | px |
+|------|-------|---:|
+| CARD | Fads 2×2 (`2 × 90`) | 180 |
+| CARD | Perfect Fit / Trendy Yarn column (`90`) | 90 |
+| CARD | Secret Santa, rotated (`--ucs-card-h` = 188) | 188 |
+| CARD | Draft Pool (`4 × 80`) | 320 |
+| | **CARD total** | **778** |
+| FIXED | Fad grid gap 6 · strip gaps 24 · `#ucs-upper` gaps 24 | 54 |
+| FIXED | Draft Pool `3 × 12` gaps + 16 zone padding + 24 rotated-label overhang | 76 |
+| FIXED | Right column, opponents at their 5-sweater cap | 256 |
+| FIXED | `#ucs-table` padding | 16 |
+| | **FIXED total** | **402** |
+
+→ `viewport = 778 × scale + 665`, which gives **1404 / 1443 / 1832** for Small / Medium / Large.
+`$santa-column-floors` in `Game.scss` rounds the latter two to **1450** and **1840**; Small has no
+floor set, so it keeps the stacked Santa row at every width.
+
+**To floor a new arrangement:** re-total CARD and FIXED for it, then read the answer off the formula
+for each size. That is the whole derivation — no per-size arithmetic. Only Express 3P Tier A has been
+totalled so far; the other four content shapes (Casual, Avid, Express 2P, Express 4P — see below)
+would each need their own CARD/FIXED pair if they ever grow a width-gated fold.
+
+Two things the formula deliberately assumes worst-case, so it errs toward *not* folding: the opponents'
+column at its five-sweater cap (early in a game it is ~115px), and a full Draft Pool.
+
+> **Large at Tier A is tight before any of this.** Drop the Santa term (188) and Large still needs
+> ≈1550 viewport; under that the centre column and the opponents crowd each other. Nothing clamps it —
+> `#ucs-board-strip` is `flex: 0 0 auto`, so the centre stack is what gives. The `1.5 ×` Large scale is
+> what makes the size preference a *layout* knob instead of a cosmetic one; narrowing it is tracked in
+> [`backlog.md`](backlog.md).
+
+## How many arrangements are there, really?
+
+The cross-product of variant × player count × card size × tier is 81, which is not the real number.
+Only two things change what has to be *arranged* — how many Fads are on display, and how many Secret
+Santas — and `fadsOnDisplay()` is `players + 1` **in Express only** (Casual and Avid render a single
+Fad face), while `secretSantasPerPlayer()` is fixed per variant:
+
+| Shape | Fads | Santas |
+|-------|-----:|-------:|
+| Casual (any count) | 1 | 1 |
+| Avid (any count) | 1 | 3 |
+| Express 2P | 3 | 2 |
+| Express 3P | 4 | 2 |
+| Express 4P | 5 | 2 |
+
+**Five content shapes**, times the structural bands (wide / narrow). Player count subdivides Express
+and nothing else; opponent count changes the right column's height, not the arrangement. Card size
+should multiply this by **one** — it is a scale factor, and the formula above is how it stays one.
 
 **Why 1000px:** the desktop layout needs roughly `params + centre (four cards + gaps) + opponents +
 gaps + padding` ≈ **980px** before it gets cramped, so the stacked layout collapses at
