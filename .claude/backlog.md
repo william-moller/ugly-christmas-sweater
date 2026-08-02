@@ -31,11 +31,27 @@ not of the code.
     Round-Tracker sidebar relocate/restore (2P/4P: tracker bottom-left, opponents in the right column;
     3P: tracker stacked over the opponents in the right column, Fads 2×2 — see `responsive.md`). 4P
     deals 5 Fads and still runs them all in one row; decide whether it wants the 3P treatment too.
-  - **Large cards on a mid-size desktop (≈1000–1700px)** — Large at Tier A wants ≈1690px of viewport
-    before 3P Express stops crowding, and nothing clamps it: `#ucs-board-strip` is `flex: 0 0 auto`, so
-    the centre stack is what gives when the row runs out of room. Decide what should happen in that band
-    — drop Large to the narrow sidebar (it's currently excluded), let the strip wrap, or cap the card
-    scale off the available width. Numbers in [`responsive.md`](responsive.md).
+- **Narrow the card-size spread so size and layout stop being one axis.** The layout work keeps needing
+  *per-card-size* width floors (`$santa-column-floors` in `Game.scss` is two numbers for one layout
+  idea, and Large at Tier A already wants ≈1690px before 3P Express crowds — the centre stack is what
+  gives, since `#ucs-board-strip` is `flex: 0 0 auto`). Root cause is **the spread, not the number of
+  sizes**: our Large is `1.5 ×` base, which moves the 3P board strip from 488px to 717px — enough to
+  change what fits in a row, which is what forces a size × width rule every time. Evidence from
+  `../_reference/`: **soothsayers** ships two sizes at ~`1.15–1.25 ×` (100→120px cards, all hardcoded
+  px, 11 size-scoped rules) and crosses size × width exactly **once**, as a `max-width` cap — never a
+  reflow. None of the six reference games (soothsayers, castlecombo, collect, crybaby, insidejob,
+  trickykids) uses `clamp()` or a container query at all; fluid card sizing is not the idiom here.
+  Options, cheapest first:
+  - **Re-pitch the scale.** Our base 80px is *below* soothsayers' small (100px) while our Large (120px)
+    matches their large — so Large is doing the work of "normal". Raising base to ~95–100 and Large to
+    ~1.2 × would collapse the floors to one number and make Medium the honest default. Costs a
+    re-derivation of every number in [`responsive.md`](responsive.md) and a re-check of the tuned
+    layouts (2P Express is signed off — don't regress it).
+  - **Leave the scale, cap the strip.** Keep 1.5 × but stop it overflowing: `max-width` on the board
+    strip, or let it wrap. Smallest change; leaves the floors in place.
+  - **Fluid sizing off the container.** Only if the first two prove insufficient — it would be novel
+    for this codebase *and* for every reference game, so it carries the most risk for the least
+    precedent.
   - **Casual & Avid, narrow/mobile** — never taken through the responsive pass: their Fad keeps full
     card art and the revealed Secret Santa widens the strip, so the narrow layout needs the same
     fill treatment Express got, at all card sizes. Relates to the release-blocking responsive item.
