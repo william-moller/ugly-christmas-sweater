@@ -84,15 +84,30 @@ phones), 768 (iPad portrait), 1024+ (tablet landscape / desktop).
 ### Tier A — wide, ≥1000px
 The full four-column grid: `params | santa | center | oppo`, knitting under the centre.
 
-**Express · 3 players** folds the board strip instead of running it flat, because 3P deals 4 Fads
-(`players + 1`) and a six-card parameter row pushes the centre column right for no gain:
+**Express · 3 and 4 players** fold the board strip instead of running it flat, because Express deals
+`players + 1` Fads and a six- or seven-card parameter row pushes the centre column right for no gain:
 
-- Fads in a **2×2 grid** (`display: grid`, not a wrap — a wrap can reflow to 3+1).
+- Fads in a **grid** with a fixed column count (`display: grid`, not a wrap — a wrap can reflow to a
+  ragged 3+1): **2 across at 3P** (4 Fads → 2×2), **3 across at 4P** (5 Fads → 3 then 2). A 2-wide grid
+  would make 4P narrower still, but three rows of Fads run taller than the whole centre column, and
+  3-across already brings 4P inside a 1920 screen (1749 at Large).
 - **Perfect Fit under Trendy Yarn**, as a column beside the Fads. The markup order is Perfect Fit
   first, so this is `column-reverse` rather than a DOM change.
 - **Round Tracker top-right**: stacked over the opponents in `#ucs-right-col`, right of the Draft
   Pool, instead of bottom-left in `#ucs-lower`. Sized `1.4 × $card-w` there (down from `2 ×`) —
-  106px at Small, still clear of the 95px reference-card floor above.
+  106px at Small, still clear of the 95px reference-card floor above. It costs the right column no
+  width: even at Large it is narrower than an opponents panel.
+
+2P Express is left flat: 3 Fads make a five-card row that is already narrow, and there is no bottom-left
+corner to reclaim.
+
+**Avid · any player count** stacks its **three revealed Secret Santas into a column**. They are landscape
+cards (a 200px slot each at Medium), so a row of three made the strip 664px wide and Avid the second most
+expensive shape in the game — 2137px of viewport at Large, past any common monitor. Stacked, the strip
+falls back to its parameter row and Avid costs exactly what Casual costs.
+
+Both of those folds only ever make the strip **narrower**, so neither carries a width floor — unlike the
+Secret Santa column below, which adds a third strip column and therefore does.
 
 None of this shrinks the Draft Pool: at Tier A its cards are a fixed multiple of the Card-size
 preference, not a fraction of the container, and the tracker is narrower than a full opponents panel.
@@ -150,27 +165,35 @@ noted below. The centre is `max(Draft Pool, Trade Area)`: the Trade Area is draw
 seats (2P→4, 3P→3, 4P→4) at `--ucs-card-w + 12` each, so it beats the always-4-card Draft Pool by 54px
 wherever the trick is 4 — i.e. everywhere except 3P.
 
+Rows marked *unfolded* are what the shape cost before its fold, kept because they are the argument for
+the fold existing:
+
 | Shape | Strip (winner) | CARD | FIXED | Small | Medium | Large |
 |-------|---------------|-----:|------:|------:|-------:|------:|
 | Casual (any count) | params `3 × 90` | 590 | 454 | 1278 | 1307 | 1602 |
 | Express 2P | params `5 × 90` | 770 | 466 | 1461 | 1499 | 1884 |
 | Express 3P — Santa row | Santa `2 × 188` | 696 | 388 | 1312 | 1347 | 1695 |
 | Express 3P — Santa column | params + Santa | 778 | 406 | 1408 | 1447 | 1836 |
-| Express 4P | params `7 × 90` | 950 | 478 | 1644 | 1691 | **2166** |
-| Avid (any count) | Santa `3 × 200` | 920 | 494 | 1631 | 1677 | **2137** |
+| Express 4P — Fads 3-across | Santa `2 × 188` | 696 | 442 | 1366 | 1401 | 1749 |
+| Express 4P — *unfolded* | params `7 × 90` | 950 | 478 | 1644 | 1691 | *2166* |
+| Avid — Santas stacked | params `3 × 90` | 590 | 454 | 1278 | 1307 | 1602 |
+| Avid — *unfolded* | Santa `3 × 200` | 920 | 494 | 1631 | 1677 | *2137* |
 
-Three things fall out of that table, none of them visible before it existed:
+What falls out of the table:
 
 1. **Nothing fits at 1000px.** The cheapest shape (Casual at Small) needs **1278**. The Tier A/B
    boundary is inherited from an older, narrower layout — see the stale-structure caveat above — and is
    ~300px too low for *every* shape at *every* card size. The band from 1001 to the shape's floor
    renders the wide layout squeezed: `#ucs-board-strip` is `flex: 0 0 auto`, so `#ucs-center-stack` is
    what gives.
-2. **Express 4P and Avid at Large cannot fit any common monitor** (2166 and 2137 against a 1920 screen).
-   Both are driven by a single unfolded row — 5 Fads across for 4P, 3 landscape Santas for Avid — and
-   both want the treatment Express 3P got.
-3. **Express 2P at Large (1884) clears a 1920 screen by 36px.** That is the layout currently signed off,
-   and it is signed off on a 1920 monitor. It does not fit a 1600px laptop.
+2. **Folding Express 4P and Avid was not cosmetic** — unfolded they needed 2166 and 2137 against a 1920
+   screen, i.e. they fit no common monitor at Large. Both were a single unfolded row.
+3. **Express 2P at Large (1884) clears a 1920 screen by 36px**, and is now the most expensive shape in
+   the game. It is signed off on a 1920 monitor and does not fit a 1600px laptop. Its parameter row is
+   5 cards across (3 Fads + Perfect Fit + Trendy Yarn); the same Fad-grid fold would bring it down, but
+   at 2P the row is not obviously *wrong*, so this is a judgement call rather than a defect.
+4. **Avid folded costs exactly what Casual costs.** Once the Santas stack, the strip is the parameter
+   row and the two shapes are identical — which is the sanity check that the fold did what it should.
 
 Worst-case assumptions, so the floors err toward *not* folding: the opponents' column at its five-sweater
 cap (early in a game it is ~115px, and `.ucs-knitting-compact` notes only Express reaches a 6th sweater

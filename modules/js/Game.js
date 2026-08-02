@@ -477,7 +477,7 @@ class Game {
         // drawn for exactly this many slots so it never grows as the trick fills (see #ucs-trade-area).
         const trickSize = playerCount === 2 ? 4 : playerCount;
         this.bga.gameArea.getElement().insertAdjacentHTML('beforeend', `
-            <div id="ucs-table" class="ucs-players-${playerCount}${gamedatas.express ? ' ucs-express' : ''}" style="--ucs-players:${playerCount};--ucs-trick-size:${trickSize}">
+            <div id="ucs-table" class="ucs-players-${playerCount}${gamedatas.express ? ' ucs-express' : ''}${gamedatas.avid ? ' ucs-avid' : ''}" style="--ucs-players:${playerCount};--ucs-trick-size:${trickSize}">
                 <div id="ucs-hand-end-banner" class="ucs-hand-end-banner" style="display:none">
                     ${_('Last trick and draft phase of this hand — the round ends after this draft.')}
                 </div>
@@ -968,12 +968,15 @@ class Game {
     }
     /**
      * Does the Round Tracker belong in the top-right column (over the opponents) rather than bottom-left?
-     * 3-player Express only: there the board strip is folded into a compact block (Fads 2×2, Perfect Fit
-     * under Trendy Yarn — see the .ucs-players-3 rules in Game.scss), and the tracker fills the space that
-     * opens up beside the Draft Pool. Every other count/variant keeps the tracker in #ucs-lower.
+     * 3- and 4-player Express: there the board strip is folded into a compact block (Fads to a grid,
+     * Perfect Fit under Trendy Yarn — see the .ucs-players-3 / -4 rules in Game.scss), and the tracker
+     * fills the space that opens up beside the Draft Pool. It costs the right column no width — even at
+     * Large it is narrower than an opponents panel. 2P Express keeps the tracker in #ucs-lower: its
+     * parameter row is unfolded and already narrow, so there is no corner to reclaim.
      */
     rtTopRight() {
-        return !!this.gamedatas.express && Object.keys(this.gamedatas.players).length === 3;
+        const count = Object.keys(this.gamedatas.players).length;
+        return !!this.gamedatas.express && (count === 3 || count === 4);
     }
     /** A revealed round-parameter card on its own (no draw pile), for the single-row board strip. Wrapped
      *  so it lines up with the multi-card Fad display beside it. */

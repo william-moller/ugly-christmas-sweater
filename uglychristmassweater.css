@@ -2108,20 +2108,34 @@ table.ucs-scorepad th, table.ucs-scorepad td {
   gap: 6px;
 }
 
-#ucs-table.ucs-express.ucs-players-3:not(.ucs-narrow-sidebar) .ucs-fad-display .ucs-fad-cards {
-  display: grid;
-  grid-template-columns: repeat(2, auto);
-}
-#ucs-table.ucs-express.ucs-players-3:not(.ucs-narrow-sidebar) .ucs-gp-pftr {
+#ucs-table.ucs-express.ucs-players-3:not(.ucs-narrow-sidebar) .ucs-gp-pftr,
+#ucs-table.ucs-express.ucs-players-4:not(.ucs-narrow-sidebar) .ucs-gp-pftr {
   flex-direction: column-reverse;
   align-items: flex-start;
   gap: 6px;
 }
-#ucs-table.ucs-express.ucs-players-3:not(.ucs-narrow-sidebar) #ucs-right-col .ucs-rt-card {
+#ucs-table.ucs-express.ucs-players-3:not(.ucs-narrow-sidebar) #ucs-right-col .ucs-rt-card,
+#ucs-table.ucs-express.ucs-players-4:not(.ucs-narrow-sidebar) #ucs-right-col .ucs-rt-card {
   --ucs-card-w: calc(80px * 1.4 * var(--ucs-card-scale, 1));
   --ucs-card-h: calc(125px * 1.4 * var(--ucs-card-scale, 1));
 }
 
+#ucs-table.ucs-express.ucs-players-3:not(.ucs-narrow-sidebar) .ucs-fad-display .ucs-fad-cards {
+  display: grid;
+  grid-template-columns: repeat(2, auto);
+}
+
+#ucs-table.ucs-express.ucs-players-4:not(.ucs-narrow-sidebar) .ucs-fad-display .ucs-fad-cards {
+  display: grid;
+  grid-template-columns: repeat(3, auto);
+}
+
+@media (min-width: 1001px) {
+  #ucs-table.ucs-avid #ucs-secret-santa .ucs-santa-cards {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
 @media (min-width: 1450px) {
   html.ucs-cards-medium #ucs-table.ucs-express.ucs-players-3:not(.ucs-narrow-sidebar) #ucs-board-strip {
     flex-direction: row;

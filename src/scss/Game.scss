@@ -1748,23 +1748,22 @@ table.ucs-scorepad {
     gap: 6px;
 }
 
-// ---- Express · 3 players: fold the board strip, move the Round Tracker top-right --------------------
-// 3P deals 4 Fads (players + 1), so the default single parameter row ran six cards wide and pushed the
-// centre column right, while the Round Tracker sat on its own in the bottom-left corner. Instead: the
-// Fads go 2×2, Perfect Fit tucks under Trendy Yarn, and the tracker moves into #ucs-right-col above the
-// opponents (the DOM move is Game.ts::rtTopRight / layoutNarrowSidebar). Nothing here touches the Draft
-// Pool — its cards are a fixed size off the Card-size preference, and the tracker is narrower than a
-// full opponents panel, so the centre column loses no width. Applies at every card-size preference;
-// excluded only in the ≤1000px sidebar layout, which has its own arrangement of the same cards.
-#ucs-table.ucs-express.ucs-players-3:not(.ucs-narrow-sidebar) {
-    // Exactly two Fads per row → two rows of two (grid, not wrap, so it can't reflow to 3+1).
-    .ucs-fad-display .ucs-fad-cards {
-        display: grid;
-        grid-template-columns: repeat(2, auto);
-    }
+// ---- Express · 3–4 players: fold the board strip, move the Round Tracker top-right ------------------
+// Express deals players + 1 Fads, so the default single parameter row ran six cards wide at 3P and seven
+// at 4P, pushing the centre column right while the Round Tracker sat alone in the bottom-left corner.
+// Instead the Fads wrap to a grid, Perfect Fit tucks under Trendy Yarn, and the tracker moves into
+// #ucs-right-col above the opponents (the DOM move is Game.ts::rtTopRight / layoutNarrowSidebar).
+//
+// These folds only ever make the strip NARROWER, so unlike the Secret Santa column below they need no
+// width floor — they apply at every card-size preference and every Tier A width. Nothing here touches
+// the Draft Pool: its cards are a fixed multiple of the Card-size preference, and the tracker is
+// narrower than a full opponents panel, so the centre column loses no width. Excluded only from the
+// ≤1000px sidebar layout, which has its own arrangement of the same cards.
+#ucs-table.ucs-express.ucs-players-3:not(.ucs-narrow-sidebar),
+#ucs-table.ucs-express.ucs-players-4:not(.ucs-narrow-sidebar) {
     // DOM order is Perfect Fit then Trendy Yarn; column-REVERSE puts Trendy Yarn on top with Perfect Fit
     // under it, without reordering the markup. 6px gap to match the Fad grid, so the two card rows of
-    // this column line up with the two rows of Fads beside it.
+    // this column line up with the Fad rows beside it.
     .ucs-gp-pftr {
         flex-direction: column-reverse;
         align-items: flex-start;
@@ -1776,6 +1775,32 @@ table.ucs-scorepad {
     #ucs-right-col .ucs-rt-card {
         --ucs-card-w: calc(#{$card-w} * 1.4 * var(--ucs-card-scale, 1));
         --ucs-card-h: calc(#{$card-h} * 1.4 * var(--ucs-card-scale, 1));
+    }
+}
+// Fad grid: a fixed column count per player count, so it can never reflow to a ragged 3+1. 3P has 4 Fads
+// → 2×2. 4P has 5 → 3 then 2; a 2-wide grid would fit in less width still, but three rows of Fads makes
+// the strip taller than the whole centre column, and 3-across already brings 4P inside a 1920 screen.
+#ucs-table.ucs-express.ucs-players-3:not(.ucs-narrow-sidebar) .ucs-fad-display .ucs-fad-cards {
+    display: grid;
+    grid-template-columns: repeat(2, auto);
+}
+#ucs-table.ucs-express.ucs-players-4:not(.ucs-narrow-sidebar) .ucs-fad-display .ucs-fad-cards {
+    display: grid;
+    grid-template-columns: repeat(3, auto);
+}
+
+// ---- Avid: stack the three revealed Secret Santas ---------------------------------------------------
+// Avid deals 3 Secret Santas (Casual 1, Express 2) and they render as landscape cards — a 200px slot
+// each at Medium, so a row of three made the board strip 664px wide and Avid the second most expensive
+// shape in the game (≈2137px of viewport at Large, past any common monitor). Stacked, the strip drops
+// to the parameter row's own width and Avid costs the same as Casual (≈1602 at Large). Like the Express
+// folds this only removes width, so it needs no floor — but it IS Tier A only: below 1000px the whole
+// table is a single column where vertical space is the scarce axis, and Casual/Avid have not been
+// through the narrow pass yet (see backlog).
+@media (min-width: 1001px) {
+    #ucs-table.ucs-avid #ucs-secret-santa .ucs-santa-cards {
+        flex-direction: column;
+        align-items: flex-start;
     }
 }
 
