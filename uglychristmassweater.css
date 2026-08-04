@@ -2071,32 +2071,20 @@ table.ucs-scorepad th, table.ucs-scorepad td {
   }
   #ucs-table.ucs-narrow-sidebar.ucs-players-3 .ucs-gameplay-row,
   #ucs-table.ucs-narrow-sidebar.ucs-players-4 .ucs-gameplay-row {
-    flex-direction: column;
-    align-items: stretch;
+    flex-direction: row;
+    align-items: flex-end;
     width: 100%;
-    gap: 8px;
+    gap: 6px;
   }
   #ucs-table.ucs-narrow-sidebar.ucs-players-3 .ucs-fad-cards,
   #ucs-table.ucs-narrow-sidebar.ucs-players-4 .ucs-fad-cards {
-    width: 100%;
+    display: grid;
+    grid-template-columns: repeat(2, var(--ucs-card-w));
   }
   #ucs-table.ucs-narrow-sidebar.ucs-players-3 .ucs-gp-pftr,
   #ucs-table.ucs-narrow-sidebar.ucs-players-4 .ucs-gp-pftr {
-    flex-direction: column;
-    align-items: flex-start;
-  }
-  #ucs-table.ucs-narrow-sidebar.ucs-players-3 .ucs-gameplay-row {
-    flex-direction: row;
-    align-items: flex-end;
-    gap: 6px;
-  }
-  #ucs-table.ucs-narrow-sidebar.ucs-players-3 .ucs-fad-cards {
-    display: grid;
-    grid-template-columns: repeat(2, var(--ucs-card-w));
-    width: auto;
-  }
-  #ucs-table.ucs-narrow-sidebar.ucs-players-3 .ucs-gp-pftr {
     flex-direction: column-reverse;
+    align-items: flex-start;
     gap: 6px;
   }
   #ucs-table.ucs-narrow-sidebar #ucs-my-santa {

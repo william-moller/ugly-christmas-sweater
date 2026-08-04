@@ -1699,44 +1699,36 @@ table.ucs-scorepad {
     #ucs-table.ucs-narrow-sidebar.ucs-players-2 .ucs-fad-cards,
     #ucs-table.ucs-narrow-sidebar.ucs-players-2 .ucs-gp-pftr { gap: 6px; }
 
-    // 3–4 players (4–5 Fads): Fads run 3-across and wrap; Perfect Fit over Trendy Yarn in a side column.
+    // 3–4 players (4–5 Fads): the wide layout's block, at this column's card size — Fads in a 2-wide
+    // grid with Trendy Yarn over Perfect Fit in a third column beside them. Both counts come out exactly
+    // 3 cards across (4 Fads → 2 rows, 5 Fads → 3), which is what --ucs-card-w below is derived from, so
+    // the cards keep their size and only the height changes. It replaces a stacked arrangement that ran
+    // four card-rows tall and left two cards' width of dead space beside the Perfect Fit / Trendy pair.
+    //
+    // NB the wide layout runs 4P's Fads 3-across, making that block 4 cards wide. Mirroring it here would
+    // force --ucs-card-w to (100cqi - 18px) / 4 — ~26% smaller, which is under the size the printed Fad
+    // objectives ("All Red / + 3 VP") stay readable at. Reflow, don't shrink: the counts differ in column
+    // count on both layouts already, so this is the same idea at a different width, not a different idea.
     #ucs-table.ucs-narrow-sidebar.ucs-players-3 #ucs-gameplay,
     #ucs-table.ucs-narrow-sidebar.ucs-players-4 #ucs-gameplay {
         --ucs-card-w: calc((100cqi - 12px) / 3);           // 3 cards + two 6px gaps
     }
     #ucs-table.ucs-narrow-sidebar.ucs-players-3 .ucs-gameplay-row,
     #ucs-table.ucs-narrow-sidebar.ucs-players-4 .ucs-gameplay-row {
-        flex-direction: column;                            // Fad block, then the Perfect Fit / Trendy pair
-        align-items: stretch;
-        width: 100%;
-        gap: 8px;
-    }
-    #ucs-table.ucs-narrow-sidebar.ucs-players-3 .ucs-fad-cards,
-    #ucs-table.ucs-narrow-sidebar.ucs-players-4 .ucs-fad-cards { width: 100%; }  // = column width → 4th Fad wraps
-    #ucs-table.ucs-narrow-sidebar.ucs-players-3 .ucs-gp-pftr,
-    #ucs-table.ucs-narrow-sidebar.ucs-players-4 .ucs-gp-pftr {
-        flex-direction: column;
-        align-items: flex-start;
-    }
-
-    // 3 players, overriding the 3–4P rules above: use the SAME block the wide layout uses — Fads 2×2
-    // with Trendy Yarn over Perfect Fit in a third column beside them — so the narrow view is the wide
-    // view at a smaller card size, not a second arrangement to learn. It costs no width (the block is
-    // still exactly 3 cards across, which is what --ucs-card-w above is derived from) and saves two rows
-    // of height over the stacked version, which is the scarce axis here. 4P keeps the stacked form: its
-    // wide block is 4 cards across, which does not fit this column.
-    #ucs-table.ucs-narrow-sidebar.ucs-players-3 .ucs-gameplay-row {
         flex-direction: row;
         align-items: flex-end;
-        gap: 6px;                                          // + the Fad grid's own 6px = the 12px --ucs-card-w assumes
+        width: 100%;
+        gap: 6px;                                          // + the Fad grid's own 6px = the 12px assumed above
     }
-    #ucs-table.ucs-narrow-sidebar.ucs-players-3 .ucs-fad-cards {
+    #ucs-table.ucs-narrow-sidebar.ucs-players-3 .ucs-fad-cards,
+    #ucs-table.ucs-narrow-sidebar.ucs-players-4 .ucs-fad-cards {
         display: grid;
         grid-template-columns: repeat(2, var(--ucs-card-w));
-        width: auto;                                       // undo the 100% above (it was there to wrap the 4th Fad)
     }
-    #ucs-table.ucs-narrow-sidebar.ucs-players-3 .ucs-gp-pftr {
+    #ucs-table.ucs-narrow-sidebar.ucs-players-3 .ucs-gp-pftr,
+    #ucs-table.ucs-narrow-sidebar.ucs-players-4 .ucs-gp-pftr {
         flex-direction: column-reverse;                    // Trendy Yarn on top, Perfect Fit under it
+        align-items: flex-start;
         gap: 6px;
     }
 

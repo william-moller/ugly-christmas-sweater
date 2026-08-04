@@ -18,13 +18,24 @@ not of the code.
 ## Polish / UX
 
 - **Visual polish sweep — the layouts not yet hand-tuned.** The narrow/mobile pass so far covers
-  **Express at Small/Medium** (2P: Fads + Perfect Fit + Trendy Yarn on one row; 3–4P: Fads 3-across
-  with Trendy Yarn under Perfect Fit; parameter + Secret Santa cards filled to the column beside the
-  Round-Tracker sidebar). Every other combination still wants an eyes-on pass — down to true-phone
-  widths (<450px) — so all read as clean as the 2P Express view now does:
-  - **Express, 3–4 players, narrow** — the layout exists but has only been verified at 2P. Confirm the
-    Fad wrap (max 3 across), the stacked Perfect Fit / Trendy Yarn, and the Secret Santa fill at Small
-    and Medium, from ~360px up to 1000px.
+  **Express at Small/Medium** (2P: Fads + Perfect Fit + Trendy Yarn on one row; 3–4P: the wide layout's
+  block — Fads in a 2-wide grid with Trendy Yarn over Perfect Fit beside them, 3 cards across at both
+  counts; parameter + Secret Santa cards filled to the column beside the Round-Tracker sidebar). Every
+  other combination still wants an eyes-on pass — down to true-phone widths (<450px) — so all read as
+  clean as the 2P Express view now does:
+  - **Express, 3–4 players, narrow** — checked at 412px (Pixel 7) at Small only. Confirm the 2-wide Fad
+    grid, the Trendy-Yarn-over-Perfect-Fit column and the Secret Santa fill at Medium too, and from
+    ~360px up to 1000px. At 4P the grid runs 3 rows (5 Fads), which is the tallest parameter block in
+    the game — check it against the sidebar's height.
+  - **Avid and Casual, narrow** — never given a narrow arrangement at all. Avid's 3 landscape Secret
+    Santas are the wide layout's most expensive term and it only stacks them above 1000px; below that
+    they still run as a row. Part of the Casual/Avid responsive item below.
+  - **`.ucs-fad-chip` is dead code.** `fadChipEl()` renders an abstracted "[colour] / [icon]" read-out
+    into every Fad card for a narrow layout that would drop the card art, but no rule ever unsets its
+    `display: none` — it belongs to the retired narrow rail (see `responsive.md`'s stale-structure
+    caveat). Either wire it up as the genuine fallback for widths where Fad art stops being readable
+    (~<72px card width, which is what stopped 4P mirroring the wide block), or delete it and its
+    renderer. Right now it is a promise the CSS does not keep.
   - **Express, Large card size, narrow** — Large deliberately keeps the plain vertical stack (no
     sidebar). Confirm that still reads well, or decide whether Large should also get the sidebar.
   - **Express, wide (≥1000px desktop)** — confirm the desktop layout is still clean after the
