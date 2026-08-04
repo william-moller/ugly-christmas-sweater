@@ -1719,6 +1719,27 @@ table.ucs-scorepad {
         align-items: flex-start;
     }
 
+    // 3 players, overriding the 3–4P rules above: use the SAME block the wide layout uses — Fads 2×2
+    // with Trendy Yarn over Perfect Fit in a third column beside them — so the narrow view is the wide
+    // view at a smaller card size, not a second arrangement to learn. It costs no width (the block is
+    // still exactly 3 cards across, which is what --ucs-card-w above is derived from) and saves two rows
+    // of height over the stacked version, which is the scarce axis here. 4P keeps the stacked form: its
+    // wide block is 4 cards across, which does not fit this column.
+    #ucs-table.ucs-narrow-sidebar.ucs-players-3 .ucs-gameplay-row {
+        flex-direction: row;
+        align-items: flex-end;
+        gap: 6px;                                          // + the Fad grid's own 6px = the 12px --ucs-card-w assumes
+    }
+    #ucs-table.ucs-narrow-sidebar.ucs-players-3 .ucs-fad-cards {
+        display: grid;
+        grid-template-columns: repeat(2, var(--ucs-card-w));
+        width: auto;                                       // undo the 100% above (it was there to wrap the 4th Fad)
+    }
+    #ucs-table.ucs-narrow-sidebar.ucs-players-3 .ucs-gp-pftr {
+        flex-direction: column-reverse;                    // Trendy Yarn on top, Perfect Fit under it
+        gap: 6px;
+    }
+
     // Secret Santa: the two landscape (rotated) cards fill the column side by side (all player counts).
     #ucs-table.ucs-narrow-sidebar #ucs-my-santa {
         --ucs-card-w: calc((100cqi - 12px) / 3.14);        // 2 rotated slots (h ≈ 1.567w) + a 12px gap
