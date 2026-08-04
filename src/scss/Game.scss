@@ -1653,6 +1653,7 @@ table.ucs-scorepad {
         grid-template-columns: minmax(0, 1fr) auto;   // parameter column | sidebar (sized to the tracker)
         grid-template-areas:
             "strip  side"
+            "santa  santa"
             "center center";
         gap: 12px;
         align-items: start;
@@ -1705,13 +1706,16 @@ table.ucs-scorepad {
     // the cards keep their size and only the height changes. It replaces a stacked arrangement that ran
     // four card-rows tall and left two cards' width of dead space beside the Perfect Fit / Trendy pair.
     //
-    // NB the wide layout runs 4P's Fads 3-across, making that block 4 cards wide. Mirroring it here would
-    // force --ucs-card-w to (100cqi - 18px) / 4 — ~26% smaller, which is under the size the printed Fad
-    // objectives ("All Red / + 3 VP") stay readable at. Reflow, don't shrink: the counts differ in column
-    // count on both layouts already, so this is the same idea at a different width, not a different idea.
-    #ucs-table.ucs-narrow-sidebar.ucs-players-3 #ucs-gameplay,
-    #ucs-table.ucs-narrow-sidebar.ucs-players-4 #ucs-gameplay {
+    // Each count keeps the wide layout's own Fad column count — 2 across at 3P, 3 at 4P — so the block is
+    // 3 cards wide at 3P and 4 at 4P, and BOTH are two rows tall. 4P pays for that in card width
+    // ((100cqi - 18px) / 4, ~25% narrower than 3P's cards): with 5 Fads the only way to stay at 3P's card
+    // size is a third row, and a third row pushes the Draft Pool off a phone screen. Height is the scarce
+    // axis here, so it wins.
+    #ucs-table.ucs-narrow-sidebar.ucs-players-3 #ucs-gameplay {
         --ucs-card-w: calc((100cqi - 12px) / 3);           // 3 cards + two 6px gaps
+    }
+    #ucs-table.ucs-narrow-sidebar.ucs-players-4 #ucs-gameplay {
+        --ucs-card-w: calc((100cqi - 18px) / 4);           // 4 cards + three 6px gaps
     }
     #ucs-table.ucs-narrow-sidebar.ucs-players-3 .ucs-gameplay-row,
     #ucs-table.ucs-narrow-sidebar.ucs-players-4 .ucs-gameplay-row {
@@ -1720,10 +1724,13 @@ table.ucs-scorepad {
         width: 100%;
         gap: 6px;                                          // + the Fad grid's own 6px = the 12px assumed above
     }
-    #ucs-table.ucs-narrow-sidebar.ucs-players-3 .ucs-fad-cards,
+    #ucs-table.ucs-narrow-sidebar.ucs-players-3 .ucs-fad-cards {
+        display: grid;
+        grid-template-columns: repeat(2, var(--ucs-card-w));   // 4 Fads → 2 rows
+    }
     #ucs-table.ucs-narrow-sidebar.ucs-players-4 .ucs-fad-cards {
         display: grid;
-        grid-template-columns: repeat(2, var(--ucs-card-w));
+        grid-template-columns: repeat(3, var(--ucs-card-w));   // 5 Fads → 2 rows (3 then 2)
     }
     #ucs-table.ucs-narrow-sidebar.ucs-players-3 .ucs-gp-pftr,
     #ucs-table.ucs-narrow-sidebar.ucs-players-4 .ucs-gp-pftr {
@@ -1732,9 +1739,30 @@ table.ucs-scorepad {
         gap: 6px;
     }
 
-    // Secret Santa: the two landscape (rotated) cards fill the column side by side (all player counts).
+    // Secret Santa: the two landscape (rotated) cards fill their row side by side (all player counts).
     #ucs-table.ucs-narrow-sidebar #ucs-my-santa {
         --ucs-card-w: calc((100cqi - 12px) / 3.14);        // 2 rotated slots (h ≈ 1.567w) + a 12px gap
+        --ucs-card-h: calc(var(--ucs-card-w) * 1.567);
+    }
+
+    // 3–4P: the Santa pair gets the FULL table width rather than just the parameter column. The sidebar
+    // (tracker + opponents) ends well above this row, so confining the pair to the left column left a
+    // sidebar's worth of dead green beside it. Game.ts::layoutNarrowSidebar lifts #ucs-my-santa out of
+    // #ucs-board-strip into #ucs-upper for these counts, so it can take a grid row of its own.
+    //
+    // Once lifted it is no longer inside #ucs-board-strip, so it loses that container-query context and
+    // has to become one itself — with the sizing moved onto its child, since cqi always resolves against
+    // an ANCESTOR container and never the element carrying container-type (same reason #ucs-gameplay
+    // reads the strip's cqi rather than the strip reading its own).
+    #ucs-table.ucs-narrow-sidebar.ucs-players-3 #ucs-my-santa,
+    #ucs-table.ucs-narrow-sidebar.ucs-players-4 #ucs-my-santa {
+        grid-area: santa;
+        container-type: inline-size;
+        width: 100%;
+    }
+    #ucs-table.ucs-narrow-sidebar.ucs-players-3 #ucs-my-santa .ucs-santa-cards,
+    #ucs-table.ucs-narrow-sidebar.ucs-players-4 #ucs-my-santa .ucs-santa-cards {
+        --ucs-card-w: calc((100cqi - 12px) / 3.14);
         --ucs-card-h: calc(var(--ucs-card-w) * 1.567);
     }
 }

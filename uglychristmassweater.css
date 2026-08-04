@@ -2018,7 +2018,7 @@ table.ucs-scorepad th, table.ucs-scorepad td {
   #ucs-table.ucs-narrow-sidebar #ucs-upper {
     display: grid;
     grid-template-columns: minmax(0, 1fr) auto;
-    grid-template-areas: "strip  side" "center center";
+    grid-template-areas: "strip  side" "santa  santa" "center center";
     gap: 12px;
     align-items: start;
   }
@@ -2065,9 +2065,11 @@ table.ucs-scorepad th, table.ucs-scorepad td {
   #ucs-table.ucs-narrow-sidebar.ucs-players-2 .ucs-gp-pftr {
     gap: 6px;
   }
-  #ucs-table.ucs-narrow-sidebar.ucs-players-3 #ucs-gameplay,
-  #ucs-table.ucs-narrow-sidebar.ucs-players-4 #ucs-gameplay {
+  #ucs-table.ucs-narrow-sidebar.ucs-players-3 #ucs-gameplay {
     --ucs-card-w: calc((100cqi - 12px) / 3);
+  }
+  #ucs-table.ucs-narrow-sidebar.ucs-players-4 #ucs-gameplay {
+    --ucs-card-w: calc((100cqi - 18px) / 4);
   }
   #ucs-table.ucs-narrow-sidebar.ucs-players-3 .ucs-gameplay-row,
   #ucs-table.ucs-narrow-sidebar.ucs-players-4 .ucs-gameplay-row {
@@ -2076,10 +2078,13 @@ table.ucs-scorepad th, table.ucs-scorepad td {
     width: 100%;
     gap: 6px;
   }
-  #ucs-table.ucs-narrow-sidebar.ucs-players-3 .ucs-fad-cards,
-  #ucs-table.ucs-narrow-sidebar.ucs-players-4 .ucs-fad-cards {
+  #ucs-table.ucs-narrow-sidebar.ucs-players-3 .ucs-fad-cards {
     display: grid;
     grid-template-columns: repeat(2, var(--ucs-card-w));
+  }
+  #ucs-table.ucs-narrow-sidebar.ucs-players-4 .ucs-fad-cards {
+    display: grid;
+    grid-template-columns: repeat(3, var(--ucs-card-w));
   }
   #ucs-table.ucs-narrow-sidebar.ucs-players-3 .ucs-gp-pftr,
   #ucs-table.ucs-narrow-sidebar.ucs-players-4 .ucs-gp-pftr {
@@ -2088,6 +2093,17 @@ table.ucs-scorepad th, table.ucs-scorepad td {
     gap: 6px;
   }
   #ucs-table.ucs-narrow-sidebar #ucs-my-santa {
+    --ucs-card-w: calc((100cqi - 12px) / 3.14);
+    --ucs-card-h: calc(var(--ucs-card-w) * 1.567);
+  }
+  #ucs-table.ucs-narrow-sidebar.ucs-players-3 #ucs-my-santa,
+  #ucs-table.ucs-narrow-sidebar.ucs-players-4 #ucs-my-santa {
+    grid-area: santa;
+    container-type: inline-size;
+    width: 100%;
+  }
+  #ucs-table.ucs-narrow-sidebar.ucs-players-3 #ucs-my-santa .ucs-santa-cards,
+  #ucs-table.ucs-narrow-sidebar.ucs-players-4 #ucs-my-santa .ucs-santa-cards {
     --ucs-card-w: calc((100cqi - 12px) / 3.14);
     --ucs-card-h: calc(var(--ucs-card-w) * 1.567);
   }

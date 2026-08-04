@@ -574,6 +574,8 @@ export class Game {
         const upper = document.getElementById('ucs-upper');
         const rt = document.getElementById('ucs-rt-col');
         const oppo = document.getElementById('ucs-opponents');
+        const santa = document.getElementById('ucs-my-santa');
+        const count = Object.keys(this.gamedatas.players).length;
         if (!table || !upper || !rt || !oppo) return;
 
         const large = document.documentElement.classList.contains('ucs-cards-large');
@@ -590,6 +592,10 @@ export class Game {
             }
             sidebar.appendChild(rt);   // Round Tracker on top
             sidebar.appendChild(oppo); // opponents directly beneath it
+            // 3–4P: lift my Secret Santa pair out of the board strip so it can take a full-width grid row
+            // of its own (grid-area: santa). The sidebar ends above this row, so left in the strip the
+            // pair wasted a sidebar's width of space. 2P keeps it in the strip — that layout is settled.
+            if (santa && count >= 3 && santa.parentElement !== upper) upper.appendChild(santa);
             table.classList.add('ucs-narrow-sidebar');
         } else {
             // Restore the wide layout: opponents back into the right column, and the Round Tracker either
@@ -597,7 +603,10 @@ export class Game {
             const right = document.getElementById('ucs-right-col');
             const lower = document.getElementById('ucs-lower');
             const myArea = document.getElementById('ucs-my-area');
+            const strip = document.getElementById('ucs-board-strip');
             if (right && oppo.parentElement !== right) right.appendChild(oppo);
+            // Secret Santa back to the end of the board strip (its original slot, after #ucs-secret-santa).
+            if (santa && strip && santa.parentElement !== strip) strip.appendChild(santa);
             if (this.rtTopRight()) {
                 if (right && rt.parentElement !== right) right.insertBefore(rt, oppo);
             } else if (lower && myArea && rt.parentElement !== lower) {
