@@ -2460,12 +2460,43 @@ table.ucs-scorepad th, table.ucs-scorepad td {
 }
 
 .ucs-santa-slot {
+  position: relative;
   width: var(--ucs-card-h);
   height: var(--ucs-card-w);
   display: flex;
   align-items: center;
   justify-content: center;
   flex: 0 0 auto;
+}
+
+.ucs-santa-done {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: calc(var(--ucs-card-w) * 0.46);
+  height: calc(var(--ucs-card-w) * 0.46);
+  pointer-events: none;
+  filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.65));
+}
+.ucs-santa-done svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.ucs-santa-done-disc {
+  fill: #2ea043;
+  stroke: #fff;
+  stroke-width: 2;
+}
+
+.ucs-santa-done-mark {
+  fill: none;
+  stroke: #fff;
+  stroke-width: 3.4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
 .ucs-santa-card {

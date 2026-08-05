@@ -438,8 +438,10 @@ export class Game {
 
     /**
      * Avid: each player's publicly revealed satisfied Secret Santas, shown face-up in their area. A Secret
-     * Santa is revealed the round its colour+icon request is first met by a completed sweater. Rendered for
-     * every player (mine and opponents) from gamedatas.avidRevealed; hidden entirely outside Avid.
+     * Santa is revealed the round its colour+icon request is first met by a completed sweater. OPPONENTS
+     * ONLY — it's the only way to see what they've done, but for me it would repeat what my own Secret
+     * Santa row already shows, where a completed one is ticked instead (see renderSecretSanta). Fed by
+     * gamedatas.avidRevealed; hidden entirely outside Avid.
      */
     private renderAvidRevealed() {
         const revealed = this.gamedatas.avidRevealed ?? {};
@@ -447,7 +449,8 @@ export class Game {
             const zone = document.getElementById(`ucs-avid-ss-${player.id}`);
             if (!zone) return;
             const list = revealed[Number(player.id)] ?? [];
-            if (!this.gamedatas.avid || !list.length) { zone.style.display = 'none'; zone.innerHTML = ''; return; }
+            const mine = Number(player.id) === this.myId;
+            if (mine || !this.gamedatas.avid || !list.length) { zone.style.display = 'none'; zone.innerHTML = ''; return; }
             zone.style.display = '';
             zone.innerHTML = `<span class="ucs-avid-revealed-label">${_('Completed Secret Santas')}</span>`;
             const row = document.createElement('div');
@@ -472,7 +475,9 @@ export class Game {
 
     /** My own Secret Santa objective(s) — 1 in Casual, 2 in Express, 3 in Avid (private; hidden from others).
      *  Casual/Avid render into the top `santa` grid slot; Express hands that slot to the Fad display and
-     *  instead centres the Secret Santa card(s) in a row directly over my Knitting Area (#ucs-my-santa). */
+     *  instead centres the Secret Santa card(s) in a row directly over my Knitting Area (#ucs-my-santa).
+     *  Avid: one I've completed gets a green tick, which is the whole of my completion read-out — the
+     *  knitting-area "Completed Secret Santas" block is opponents-only (see renderAvidRevealed). */
     private renderSecretSanta() {
         const express = !!this.gamedatas.express;
         const mySanta = document.getElementById('ucs-my-santa');
@@ -488,6 +493,9 @@ export class Game {
         zone.innerHTML = `<div class="ucs-zone-label" id="ucs-label-secretsanta">${_('Your Secret Santa')}</div>`;
         this.addTip('ucs-label-secretsanta', `<b>${_('Your Secret Santa')}</b><br>`
             + _('Hidden objective(s) only you can see. Build the pieces each one lists into your sweaters to score it at the end of the round.'));
+        // Avid: which of mine are done. The revealed payload's `id` is the Material::secretSantas() index,
+        // the same number as a card's type_arg — so they key against each other directly.
+        const done = new Set((this.gamedatas.avidRevealed?.[this.myId] ?? []).map((ss) => Number(ss.id)));
         const row = document.createElement('div');
         row.className = 'ucs-santa-cards';
         cards.forEach((c) => {
@@ -504,9 +512,24 @@ export class Game {
             // pieces; deferred via addTip since el is appended below, after this call.
             this.addTip(el.id, secretSantaTooltip(ss));
             slot.appendChild(el);
+            // The tick goes on the slot, not the card: the card is rotate(90deg) for the landscape art, and
+            // anything inside it turns with it. The slot already reserves that landscape footprint upright.
+            if (done.has(arg)) slot.appendChild(this.santaDoneTick());
             row.appendChild(slot);
         });
         zone.appendChild(row);
+    }
+
+    /** The green "completed" tick laid over one of my Secret Santa cards (Avid). */
+    private santaDoneTick(): HTMLElement {
+        const tick = document.createElement('div');
+        tick.className = 'ucs-santa-done';
+        tick.innerHTML = `<svg viewBox="0 0 32 32" aria-hidden="true">`
+            + `<circle class="ucs-santa-done-disc" cx="16" cy="16" r="14"/>`
+            + `<path class="ucs-santa-done-mark" d="M9.5 16.4 L14 20.9 L22.5 11.6"/>`
+            + `</svg>`;
+        tick.setAttribute('aria-label', _('Completed'));
+        return tick;
     }
 
     /**
@@ -2951,6 +2974,7 @@ export class Game {
         if (args.avidRevealed) {
             this.gamedatas.avidRevealed = args.avidRevealed;
             this.renderAvidRevealed();
+            this.renderSecretSanta(); // my own completion read-out is the tick on my Secret Santa cards
         }
         if (args.round >= this.gamedatas.totalRounds) {
             this.renderRoundSummary(args, undefined, false); // modeless: never in the way of the end screen

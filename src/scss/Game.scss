@@ -2149,12 +2149,41 @@ $santa-column-floors: (medium: 1450px, large: 1840px);
 }
 // The slot reserves the rotated card's landscape footprint (w↔h swapped) so it doesn't overlap.
 .ucs-santa-slot {
+    position: relative; // anchors the completed tick (which must not inherit the card's rotation)
     width: var(--ucs-card-h);
     height: var(--ucs-card-w);
     display: flex;
     align-items: center;
     justify-content: center;
     flex: 0 0 auto;
+}
+
+// Avid: a Secret Santa of mine that's been completed. This tick is the entire completion read-out for my
+// own objectives — the knitting-area "Completed Secret Santas" block is opponents-only, where it's the
+// only way to see their progress; on mine it just repeated these very cards and cost a row of space.
+.ucs-santa-done {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: calc(var(--ucs-card-w) * 0.46); // scales with the card-size preference
+    height: calc(var(--ucs-card-w) * 0.46);
+    // Must not swallow the hover that raises the card's own tooltip.
+    pointer-events: none;
+    filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.65));
+    svg { display: block; width: 100%; height: 100%; }
+}
+.ucs-santa-done-disc {
+    fill: #2ea043; // the same green as the opponents' completed ring (.ucs-avid-santa)
+    stroke: #fff;
+    stroke-width: 2;
+}
+.ucs-santa-done-mark {
+    fill: none;
+    stroke: #fff;
+    stroke-width: 3.4;
+    stroke-linecap: round;
+    stroke-linejoin: round;
 }
 .ucs-santa-card {
     box-sizing: border-box;
