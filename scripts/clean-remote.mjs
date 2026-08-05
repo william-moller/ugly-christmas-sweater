@@ -18,8 +18,20 @@ const cfg = JSON.parse(readFileSync(join(REPO, '.vscode', 'sftp.json'), 'utf8'))
 const remote = cfg.remotePath.replace(/\/$/, ''); // e.g. /uglychristmassweater
 
 // Explicit allowlist of REMOTE paths to remove. Dirs are deleted recursively.
-const DIRS = ['node_modules', 'scripts', 'src'];
-const FILES = ['package.json', 'package-lock.json', 'tsconfig.json', 'rollup.config.mjs'];
+// `src-disabled` is what a Studio project ends up with after `src` has been parked server-side; it is
+// our TypeScript/SCSS source sitting on the game server, which the pre-release checklist asks us to
+// clear out. Found on the uglychristmassweaters project, carried over when it was copied.
+const DIRS = ['node_modules', 'scripts', 'src', 'src-disabled'];
+const FILES = [
+    'package.json', 'package-lock.json', 'tsconfig.json', 'rollup.config.mjs',
+    // BGA's project-template state classes. A new/copied Studio project ships with these, and
+    // deploy.mjs uses uploadDir — which adds and overwrites but never REMOVES — so they survive every
+    // deploy. They declare state ids that collide with ours, and the collision is fatal at table
+    // creation: "Invalid id for state class ... PlayerTurn (already used by another state)". Nothing
+    // in the repo references them; they are pure skeleton.
+    'modules/php/States/PlayerTurn.php',
+    'modules/php/States/NextPlayer.php',
+];
 
 const APPLY = process.argv.includes('--yes');
 
