@@ -1830,18 +1830,48 @@ table.ucs-scorepad {
     grid-template-columns: repeat(3, auto);
 }
 
-// ---- Avid: stack the three revealed Secret Santas ---------------------------------------------------
-// Avid deals 3 Secret Santas (Casual 1, Express 2) and they render as landscape cards — a 200px slot
-// each at Medium, so a row of three made the board strip 664px wide and Avid the second most expensive
-// shape in the game (≈2137px of viewport at Large, past any common monitor). Stacked, the strip drops
-// to the parameter row's own width and Avid costs the same as Casual (≈1602 at Large). Like the Express
-// folds this only removes width, so it needs no floor — but it IS Tier A only: below 1000px the whole
-// table is a single column where vertical space is the scarce axis, and Casual/Avid have not been
-// through the narrow pass yet (see backlog).
+// ---- Avid: the three revealed Secret Santas ---------------------------------------------------------
+// Avid deals 3 Secret Santas (Casual 1, Express 2) and they render as landscape cards. A row of three
+// is the layout we want — three stacked run ~600px tall at Large, which is most of the table's height
+// and pushes the centre column's content off a 1080p screen. The obstacle was only ever width: at Large
+// the zone inherits --ucs-card-scale, so each slot is 300px and the row is 956px (≈2093px of viewport,
+// past any common monitor), hence the stacked fallback below.
+//
+// The fix is to stop scaling them. A Secret Santa is a read-once private objective — you never click
+// one — so unlike the hand / Draft Pool / knitting it gains nothing from the Card-size preference,
+// which .claude/responsive.md defines as a multiplier on INTERACTIVE card art. Pinned to their
+// unscaled 128x200 the row is 656px (3 x 200 slot + 2 x 8 gap + 16 zone padding + 24 label overhang)
+// at EVERY size, so only the Draft Pool still scales and the shape costs:
+//
+//   viewport = 320 x scale + 1333  ->  1637 / 1653 / 1813 at Small / Medium / Large
+//
+// Wider than the stacked column at every size, so — unlike the Express folds, which only ever remove
+// width — this DOES need a per-size floor. Below it a size keeps the stacked column: #ucs-board-strip
+// is flex: 0 0 auto, so anything the strip overruns comes out of #ucs-center-stack. Do not nudge the
+// floors until a screenshot looks right; re-derive from the formula in .claude/responsive.md.
+//
+// Scoped to Avid: Casual's single Santa costs nothing at Large (its strip is the parameter row either
+// way), so it keeps the full-size art. Tier A only — below 1000px the whole table is a single column
+// where vertical space is the scarce axis, and Casual/Avid have not been through the narrow pass yet
+// (see backlog).
 @media (min-width: 1001px) {
     #ucs-table.ucs-avid #ucs-secret-santa .ucs-santa-cards {
         flex-direction: column;
         align-items: flex-start;
+    }
+}
+$avid-santa-row-floors: (small: 1650px, medium: 1660px, large: 1820px);
+@each $size, $floor in $avid-santa-row-floors {
+    @media (min-width: $floor) {
+        html.ucs-cards-#{$size} #ucs-table.ucs-avid #ucs-secret-santa {
+            // Deliberately NOT multiplied by --ucs-card-scale — see above.
+            --ucs-card-w: 128px;
+            --ucs-card-h: 200px;
+            .ucs-santa-cards {
+                flex-direction: row;
+                align-items: center;
+            }
+        }
     }
 }
 

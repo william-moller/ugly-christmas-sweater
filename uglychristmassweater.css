@@ -2154,6 +2154,36 @@ table.ucs-scorepad th, table.ucs-scorepad td {
     align-items: flex-start;
   }
 }
+@media (min-width: 1650px) {
+  html.ucs-cards-small #ucs-table.ucs-avid #ucs-secret-santa {
+    --ucs-card-w: 128px;
+    --ucs-card-h: 200px;
+  }
+  html.ucs-cards-small #ucs-table.ucs-avid #ucs-secret-santa .ucs-santa-cards {
+    flex-direction: row;
+    align-items: center;
+  }
+}
+@media (min-width: 1660px) {
+  html.ucs-cards-medium #ucs-table.ucs-avid #ucs-secret-santa {
+    --ucs-card-w: 128px;
+    --ucs-card-h: 200px;
+  }
+  html.ucs-cards-medium #ucs-table.ucs-avid #ucs-secret-santa .ucs-santa-cards {
+    flex-direction: row;
+    align-items: center;
+  }
+}
+@media (min-width: 1820px) {
+  html.ucs-cards-large #ucs-table.ucs-avid #ucs-secret-santa {
+    --ucs-card-w: 128px;
+    --ucs-card-h: 200px;
+  }
+  html.ucs-cards-large #ucs-table.ucs-avid #ucs-secret-santa .ucs-santa-cards {
+    flex-direction: row;
+    align-items: center;
+  }
+}
 @media (min-width: 1450px) {
   html.ucs-cards-medium #ucs-table.ucs-express.ucs-players-3:not(.ucs-narrow-sidebar) #ucs-board-strip {
     flex-direction: row;
