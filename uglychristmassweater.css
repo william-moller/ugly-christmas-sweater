@@ -2098,173 +2098,166 @@ table.ucs-scorepad th, table.ucs-scorepad td {
   z-index: 949;
 }
 
-@media (max-width: 1000px) {
-  #ucs-upper {
-    flex-direction: column;
-  }
-  #ucs-lower {
-    flex-direction: column;
-  }
-  #ucs-center-stack,
-  #ucs-my-area {
-    width: 100%;
-  }
-  #ucs-my-area {
-    --ucs-card-w: min(calc(80px * var(--ucs-card-scale, 1)), 25vw);
-    --ucs-card-h: calc(var(--ucs-card-w) * 1.556);
-  }
-  #ucs-center-stack {
-    container-type: inline-size;
-  }
-  #ucs-trade-area {
-    --ucs-trade-seats: 4;
-  }
-  #ucs-draft-pool,
-  #ucs-trade-area {
-    --ucs-card-w: min(
-        128px,
-        (100cqi - 22px - 3 * 12px) / 4 - 12px
-    );
-    --ucs-card-h: calc(var(--ucs-card-w) * 1.556);
-  }
-  #ucs-my-hand-wrap {
-    z-index: auto;
-  }
-  #ucs-my-hand .hand-stock.floating {
-    --bga-cards_hand-stock-floating-left-margin: 12px !important;
-    --bga-cards_hand-stock-floating-right-margin: 12px !important;
-  }
-  #ucs-opponents {
-    flex-direction: row;
-    flex-wrap: wrap;
-  }
-  #ucs-opponents .ucs-oppo {
-    flex: 1 1 160px;
-  }
-  #ucs-opponents .ucs-oppo .ucs-knitting {
-    display: none;
-  }
-  #ucs-opponents .ucs-oppo .ucs-oppo-summary {
-    display: flex;
-  }
-  #ucs-table.ucs-narrow-sidebar #ucs-upper {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
-    grid-template-areas: "strip  side" "santa  santa" "center center";
-    gap: 12px;
-    align-items: start;
-  }
-  #ucs-table.ucs-narrow-sidebar #ucs-right-col {
-    display: none;
-  }
-  #ucs-table.ucs-narrow-sidebar #ucs-board-strip {
-    grid-area: strip;
-  }
-  #ucs-table.ucs-narrow-sidebar #ucs-center-stack {
-    grid-area: center;
-  }
-  #ucs-table.ucs-narrow-sidebar #ucs-sidebar {
-    grid-area: side;
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    align-items: start;
-  }
-  #ucs-table.ucs-narrow-sidebar #ucs-sidebar #ucs-opponents {
-    flex-direction: column;
-    flex-wrap: nowrap;
-    width: 100%;
-  }
-  #ucs-table.ucs-narrow-sidebar #ucs-sidebar .ucs-oppo {
-    flex: 0 0 auto;
-    width: 100%;
-  }
-  #ucs-table.ucs-narrow-sidebar #ucs-board-strip {
-    container-type: inline-size;
-  }
-  #ucs-table.ucs-narrow-sidebar #ucs-gameplay {
-    width: 100%;
-    --ucs-card-h: calc(var(--ucs-card-w) * 1.556);
-  }
-  #ucs-table.ucs-narrow-sidebar.ucs-players-2 #ucs-gameplay {
-    --ucs-card-w: calc((100cqi - 24px) / 5);
-  }
-  #ucs-table.ucs-narrow-sidebar.ucs-players-2 .ucs-gameplay-row {
-    flex-wrap: nowrap;
-    gap: 6px;
-  }
-  #ucs-table.ucs-narrow-sidebar.ucs-players-2 .ucs-fad-cards,
-  #ucs-table.ucs-narrow-sidebar.ucs-players-2 .ucs-gp-pftr {
-    gap: 6px;
-  }
-  #ucs-table.ucs-narrow-sidebar.ucs-players-3 #ucs-gameplay {
-    --ucs-card-w: calc((100cqi - 12px) / 3);
-  }
-  #ucs-table.ucs-narrow-sidebar.ucs-players-4 #ucs-gameplay {
-    --ucs-card-w: calc((100cqi - 18px) / 4);
-  }
-  #ucs-table.ucs-narrow-sidebar.ucs-players-3 .ucs-gameplay-row,
-  #ucs-table.ucs-narrow-sidebar.ucs-players-4 .ucs-gameplay-row {
-    flex-direction: row;
-    align-items: flex-end;
-    width: 100%;
-    gap: 6px;
-  }
-  #ucs-table.ucs-narrow-sidebar.ucs-players-3 .ucs-fad-cards {
-    display: grid;
-    grid-template-columns: repeat(2, var(--ucs-card-w));
-  }
-  #ucs-table.ucs-narrow-sidebar.ucs-players-4 .ucs-fad-cards {
-    display: grid;
-    grid-template-columns: repeat(3, var(--ucs-card-w));
-  }
-  #ucs-table.ucs-narrow-sidebar.ucs-players-3 .ucs-gp-pftr,
-  #ucs-table.ucs-narrow-sidebar.ucs-players-4 .ucs-gp-pftr {
-    flex-direction: column-reverse;
-    align-items: flex-start;
-    gap: 6px;
-  }
-  #ucs-table.ucs-narrow-sidebar:not(.ucs-express) #ucs-gameplay {
-    --ucs-card-w: calc((100cqi - 12px) / 3);
-  }
-  #ucs-table.ucs-narrow-sidebar:not(.ucs-express) .ucs-gameplay-row {
-    flex-wrap: nowrap;
-    gap: 6px;
-  }
-  #ucs-table.ucs-narrow-sidebar:not(.ucs-express) .ucs-fad-cards,
-  #ucs-table.ucs-narrow-sidebar:not(.ucs-express) .ucs-gp-pftr {
-    gap: 6px;
-  }
-  #ucs-table.ucs-narrow-sidebar:not(.ucs-express):not(.ucs-avid) #ucs-secret-santa {
-    --ucs-card-w: calc((100cqi - 12px) / 3.14);
-    --ucs-card-h: calc(var(--ucs-card-w) * 1.567);
-  }
-  #ucs-table.ucs-narrow-sidebar.ucs-avid #ucs-secret-santa {
-    grid-area: santa;
-    container-type: inline-size;
-    width: 100%;
-  }
-  #ucs-table.ucs-narrow-sidebar.ucs-avid #ucs-secret-santa .ucs-santa-cards {
-    --ucs-card-w: calc((100cqi - 24px) / 4.7);
-    --ucs-card-h: calc(var(--ucs-card-w) * 1.567);
-    justify-content: center;
-  }
-  #ucs-table.ucs-narrow-sidebar #ucs-my-santa {
-    --ucs-card-w: calc((100cqi - 12px) / 3.14);
-    --ucs-card-h: calc(var(--ucs-card-w) * 1.567);
-  }
-  #ucs-table.ucs-narrow-sidebar.ucs-players-3 #ucs-my-santa,
-  #ucs-table.ucs-narrow-sidebar.ucs-players-4 #ucs-my-santa {
-    grid-area: santa;
-    container-type: inline-size;
-    width: 100%;
-  }
-  #ucs-table.ucs-narrow-sidebar.ucs-players-3 #ucs-my-santa .ucs-santa-cards,
-  #ucs-table.ucs-narrow-sidebar.ucs-players-4 #ucs-my-santa .ucs-santa-cards {
-    --ucs-card-w: calc((100cqi - 12px) / 3.14);
-    --ucs-card-h: calc(var(--ucs-card-w) * 1.567);
-  }
+#ucs-table.ucs-narrow #ucs-upper {
+  flex-direction: column;
 }
+#ucs-table.ucs-narrow #ucs-lower {
+  flex-direction: column;
+}
+#ucs-table.ucs-narrow #ucs-center-stack,
+#ucs-table.ucs-narrow #ucs-my-area {
+  width: 100%;
+}
+#ucs-table.ucs-narrow #ucs-my-area {
+  --ucs-card-w: min(calc(80px * var(--ucs-card-scale, 1)), 25vw);
+  --ucs-card-h: calc(var(--ucs-card-w) * 1.556);
+}
+#ucs-table.ucs-narrow #ucs-center-stack {
+  container-type: inline-size;
+}
+#ucs-table.ucs-narrow #ucs-trade-area {
+  --ucs-trade-seats: 4;
+}
+#ucs-table.ucs-narrow #ucs-draft-pool,
+#ucs-table.ucs-narrow #ucs-trade-area {
+  --ucs-card-w: min(
+      128px,
+      (100cqi - 22px - 3 * 12px) / 4 - 12px
+  );
+  --ucs-card-h: calc(var(--ucs-card-w) * 1.556);
+}
+#ucs-table.ucs-narrow #ucs-my-hand-wrap {
+  z-index: auto;
+}
+#ucs-table.ucs-narrow #ucs-my-hand .hand-stock.floating {
+  --bga-cards_hand-stock-floating-left-margin: 12px !important;
+  --bga-cards_hand-stock-floating-right-margin: 12px !important;
+}
+#ucs-table.ucs-narrow #ucs-opponents {
+  flex-direction: row;
+  flex-wrap: wrap;
+}
+#ucs-table.ucs-narrow #ucs-opponents .ucs-oppo {
+  flex: 1 1 160px;
+}
+#ucs-table.ucs-narrow #ucs-opponents .ucs-oppo .ucs-knitting {
+  display: none;
+}
+#ucs-table.ucs-narrow #ucs-opponents .ucs-oppo .ucs-oppo-summary {
+  display: flex;
+}
+#ucs-table.ucs-narrow #ucs-upper {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas: "strip  side" "santa  santa" "center center";
+  gap: 12px;
+  align-items: start;
+}
+#ucs-table.ucs-narrow #ucs-right-col {
+  display: none;
+}
+#ucs-table.ucs-narrow #ucs-board-strip {
+  grid-area: strip;
+}
+#ucs-table.ucs-narrow #ucs-center-stack {
+  grid-area: center;
+}
+#ucs-table.ucs-narrow #ucs-sidebar {
+  grid-area: side;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: start;
+}
+#ucs-table.ucs-narrow #ucs-sidebar #ucs-opponents {
+  flex-direction: column;
+  flex-wrap: nowrap;
+  width: 100%;
+}
+#ucs-table.ucs-narrow #ucs-sidebar .ucs-oppo {
+  flex: 0 0 auto;
+  width: 100%;
+}
+#ucs-table.ucs-narrow #ucs-board-strip {
+  container-type: inline-size;
+}
+#ucs-table.ucs-narrow #ucs-gameplay {
+  width: 100%;
+  --ucs-card-h: calc(var(--ucs-card-w) * 1.556);
+}
+#ucs-table.ucs-narrow.ucs-players-2 #ucs-gameplay {
+  --ucs-card-w: calc((100cqi - 24px) / 5);
+}
+#ucs-table.ucs-narrow.ucs-players-2 .ucs-gameplay-row {
+  flex-wrap: nowrap;
+  gap: 6px;
+}
+#ucs-table.ucs-narrow.ucs-players-2 .ucs-fad-cards, #ucs-table.ucs-narrow.ucs-players-2 .ucs-gp-pftr {
+  gap: 6px;
+}
+#ucs-table.ucs-narrow.ucs-players-3 #ucs-gameplay {
+  --ucs-card-w: calc((100cqi - 12px) / 3);
+}
+#ucs-table.ucs-narrow.ucs-players-4 #ucs-gameplay {
+  --ucs-card-w: calc((100cqi - 18px) / 4);
+}
+#ucs-table.ucs-narrow.ucs-players-3 .ucs-gameplay-row, #ucs-table.ucs-narrow.ucs-players-4 .ucs-gameplay-row {
+  flex-direction: row;
+  align-items: flex-end;
+  width: 100%;
+  gap: 6px;
+}
+#ucs-table.ucs-narrow.ucs-players-3 .ucs-fad-cards {
+  display: grid;
+  grid-template-columns: repeat(2, var(--ucs-card-w));
+}
+#ucs-table.ucs-narrow.ucs-players-4 .ucs-fad-cards {
+  display: grid;
+  grid-template-columns: repeat(3, var(--ucs-card-w));
+}
+#ucs-table.ucs-narrow.ucs-players-3 .ucs-gp-pftr, #ucs-table.ucs-narrow.ucs-players-4 .ucs-gp-pftr {
+  flex-direction: column-reverse;
+  align-items: flex-start;
+  gap: 6px;
+}
+#ucs-table.ucs-narrow:not(.ucs-express) #ucs-gameplay {
+  --ucs-card-w: calc((100cqi - 12px) / 3);
+}
+#ucs-table.ucs-narrow:not(.ucs-express) .ucs-gameplay-row {
+  flex-wrap: nowrap;
+  gap: 6px;
+}
+#ucs-table.ucs-narrow:not(.ucs-express) .ucs-fad-cards, #ucs-table.ucs-narrow:not(.ucs-express) .ucs-gp-pftr {
+  gap: 6px;
+}
+#ucs-table.ucs-narrow:not(.ucs-express):not(.ucs-avid) #ucs-secret-santa {
+  --ucs-card-w: calc((100cqi - 12px) / 3.14);
+  --ucs-card-h: calc(var(--ucs-card-w) * 1.567);
+}
+#ucs-table.ucs-narrow.ucs-avid #ucs-secret-santa {
+  grid-area: santa;
+  container-type: inline-size;
+  width: 100%;
+}
+#ucs-table.ucs-narrow.ucs-avid #ucs-secret-santa .ucs-santa-cards {
+  --ucs-card-w: calc((100cqi - 24px) / 4.7);
+  --ucs-card-h: calc(var(--ucs-card-w) * 1.567);
+  justify-content: center;
+}
+#ucs-table.ucs-narrow #ucs-my-santa {
+  --ucs-card-w: calc((100cqi - 12px) / 3.14);
+  --ucs-card-h: calc(var(--ucs-card-w) * 1.567);
+}
+#ucs-table.ucs-narrow.ucs-players-3 #ucs-my-santa, #ucs-table.ucs-narrow.ucs-players-4 #ucs-my-santa {
+  grid-area: santa;
+  container-type: inline-size;
+  width: 100%;
+}
+#ucs-table.ucs-narrow.ucs-players-3 #ucs-my-santa .ucs-santa-cards, #ucs-table.ucs-narrow.ucs-players-4 #ucs-my-santa .ucs-santa-cards {
+  --ucs-card-w: calc((100cqi - 12px) / 3.14);
+  --ucs-card-h: calc(var(--ucs-card-w) * 1.567);
+}
+
 @media (max-width: 449px) {
   #ucs-board-strip {
     --ucs-card-w: calc(72px * var(--ucs-card-scale, 1));
@@ -2283,79 +2276,79 @@ table.ucs-scorepad th, table.ucs-scorepad td {
   gap: 6px;
 }
 
-#ucs-table.ucs-express.ucs-players-3:not(.ucs-narrow-sidebar) .ucs-gp-pftr,
-#ucs-table.ucs-express.ucs-players-4:not(.ucs-narrow-sidebar) .ucs-gp-pftr {
+#ucs-table.ucs-express.ucs-players-3:not(.ucs-narrow) .ucs-gp-pftr,
+#ucs-table.ucs-express.ucs-players-4:not(.ucs-narrow) .ucs-gp-pftr {
   flex-direction: column-reverse;
   align-items: flex-start;
   gap: 6px;
 }
-#ucs-table.ucs-express.ucs-players-3:not(.ucs-narrow-sidebar) #ucs-right-col .ucs-rt-card,
-#ucs-table.ucs-express.ucs-players-4:not(.ucs-narrow-sidebar) #ucs-right-col .ucs-rt-card {
+#ucs-table.ucs-express.ucs-players-3:not(.ucs-narrow) #ucs-right-col .ucs-rt-card,
+#ucs-table.ucs-express.ucs-players-4:not(.ucs-narrow) #ucs-right-col .ucs-rt-card {
   --ucs-card-w: calc(80px * 1.4 * var(--ucs-card-scale, 1));
   --ucs-card-h: calc(125px * 1.4 * var(--ucs-card-scale, 1));
 }
 
-#ucs-table.ucs-express.ucs-players-3:not(.ucs-narrow-sidebar) .ucs-fad-display .ucs-fad-cards {
+#ucs-table.ucs-express.ucs-players-3:not(.ucs-narrow) .ucs-fad-display .ucs-fad-cards {
   display: grid;
   grid-template-columns: repeat(2, auto);
 }
 
-#ucs-table.ucs-express.ucs-players-4:not(.ucs-narrow-sidebar) .ucs-fad-display .ucs-fad-cards {
+#ucs-table.ucs-express.ucs-players-4:not(.ucs-narrow) .ucs-fad-display .ucs-fad-cards {
   display: grid;
   grid-template-columns: repeat(3, auto);
 }
 
 @media (min-width: 1001px) {
-  #ucs-table.ucs-avid #ucs-secret-santa .ucs-santa-cards {
+  #ucs-table.ucs-avid:not(.ucs-narrow) #ucs-secret-santa .ucs-santa-cards {
     flex-direction: column;
     align-items: flex-start;
   }
 }
 @media (min-width: 1650px) {
-  html.ucs-cards-small #ucs-table.ucs-avid #ucs-secret-santa {
+  html.ucs-cards-small #ucs-table.ucs-avid:not(.ucs-narrow) #ucs-secret-santa {
     --ucs-card-w: 128px;
     --ucs-card-h: 200px;
   }
-  html.ucs-cards-small #ucs-table.ucs-avid #ucs-secret-santa .ucs-santa-cards {
+  html.ucs-cards-small #ucs-table.ucs-avid:not(.ucs-narrow) #ucs-secret-santa .ucs-santa-cards {
     flex-direction: row;
     align-items: center;
   }
 }
 @media (min-width: 1660px) {
-  html.ucs-cards-medium #ucs-table.ucs-avid #ucs-secret-santa {
+  html.ucs-cards-medium #ucs-table.ucs-avid:not(.ucs-narrow) #ucs-secret-santa {
     --ucs-card-w: 128px;
     --ucs-card-h: 200px;
   }
-  html.ucs-cards-medium #ucs-table.ucs-avid #ucs-secret-santa .ucs-santa-cards {
+  html.ucs-cards-medium #ucs-table.ucs-avid:not(.ucs-narrow) #ucs-secret-santa .ucs-santa-cards {
     flex-direction: row;
     align-items: center;
   }
 }
 @media (min-width: 1820px) {
-  html.ucs-cards-large #ucs-table.ucs-avid #ucs-secret-santa {
+  html.ucs-cards-large #ucs-table.ucs-avid:not(.ucs-narrow) #ucs-secret-santa {
     --ucs-card-w: 128px;
     --ucs-card-h: 200px;
   }
-  html.ucs-cards-large #ucs-table.ucs-avid #ucs-secret-santa .ucs-santa-cards {
+  html.ucs-cards-large #ucs-table.ucs-avid:not(.ucs-narrow) #ucs-secret-santa .ucs-santa-cards {
     flex-direction: row;
     align-items: center;
   }
 }
 @media (min-width: 1450px) {
-  html.ucs-cards-medium #ucs-table.ucs-express.ucs-players-3:not(.ucs-narrow-sidebar) #ucs-board-strip {
+  html.ucs-cards-medium #ucs-table.ucs-express.ucs-players-3:not(.ucs-narrow) #ucs-board-strip {
     flex-direction: row;
     align-items: flex-start;
   }
-  html.ucs-cards-medium #ucs-table.ucs-express.ucs-players-3:not(.ucs-narrow-sidebar) .ucs-my-santa .ucs-santa-cards {
+  html.ucs-cards-medium #ucs-table.ucs-express.ucs-players-3:not(.ucs-narrow) .ucs-my-santa .ucs-santa-cards {
     flex-direction: column;
   }
 }
 @media (min-width: 1840px) {
-  html.ucs-cards-large #ucs-table.ucs-express.ucs-players-3:not(.ucs-narrow-sidebar) #ucs-board-strip {
+  html.ucs-cards-large #ucs-table.ucs-express.ucs-players-3:not(.ucs-narrow) #ucs-board-strip {
     flex-direction: row;
     align-items: flex-start;
   }
-  html.ucs-cards-large #ucs-table.ucs-express.ucs-players-3:not(.ucs-narrow-sidebar) .ucs-my-santa .ucs-santa-cards {
+  html.ucs-cards-large #ucs-table.ucs-express.ucs-players-3:not(.ucs-narrow) .ucs-my-santa .ucs-santa-cards {
     flex-direction: column;
   }
 }

@@ -12,8 +12,9 @@ not of the code.
 
 ## Release-blocking (BGA pre-release checklist)
 
-- **Responsive / mobile** — checklist: the game must work on a mobile device. Related checklist
-  line: if elements don't occupy all available horizontal space, they should be centered.
+- **Centering audit** — checklist: if elements don't occupy all available horizontal space, they should
+  be centered. Only two places do it today (`.ucs-gameplay-row` under 450px, Avid's Secret Santa row);
+  every other zone needs checking at narrow widths, where a shrink-to-fit row leaves the slack.
 
 ## Polish / UX
 
@@ -27,17 +28,16 @@ not of the code.
     grid, the Trendy-Yarn-over-Perfect-Fit column and the Secret Santa fill at Medium too, and from
     ~360px up to 1000px. At 4P the grid runs 3 rows (5 Fads), which is the tallest parameter block in
     the game — check it against the sidebar's height.
-  - **Avid and Casual, narrow** — never given a narrow arrangement at all. Avid's 3 landscape Secret
-    Santas are the wide layout's most expensive term and it only stacks them above 1000px; below that
-    they still run as a row. Part of the Casual/Avid responsive item below.
+  - **Casual and Avid, narrow** — now built (three-across parameter row; Avid's three Secret Santas on a
+    full-width row) but derived only, never looked at. Avid at 360px has the least slack in the game.
   - **`.ucs-fad-chip` is dead code.** `fadChipEl()` renders an abstracted "[colour] / [icon]" read-out
     into every Fad card for a narrow layout that would drop the card art, but no rule ever unsets its
     `display: none` — it belongs to the retired narrow rail (see `responsive.md`'s stale-structure
     caveat). Either wire it up as the genuine fallback for widths where Fad art stops being readable
     (~<72px card width, which is what stopped 4P mirroring the wide block), or delete it and its
     renderer. Right now it is a promise the CSS does not keep.
-  - **Express, Large card size, narrow** — Large deliberately keeps the plain vertical stack (no
-    sidebar). Confirm that still reads well, or decide whether Large should also get the sidebar.
+  - **Large, narrow** — Large now uses the sidebar like every other size, and my knitting area is capped
+    at `min(card × scale, 25vw)` so one sweater can't claim most of a phone. Unverified by eye.
   - **Express, wide (≥1000px desktop)** — confirm the desktop layout is still clean after the
     Round-Tracker sidebar relocate/restore (2P/4P: tracker bottom-left, opponents in the right column;
     3P: tracker stacked over the opponents in the right column, Fads 2×2 — see `responsive.md`).
@@ -49,12 +49,6 @@ not of the code.
   - **Express 2P at Large is now the widest shape in the game** (1884 vs a 1920 screen). The Fad-grid
     fold would bring it down, but its five-card parameter row is not obviously wrong to look at — decide
     whether to fold it for the 1600px-laptop case or leave it.
-  - **The Tier A/B boundary is ~300px too low.** The wide layout is selected from 1001px, but the
-    cheapest shape (Casual at Small) needs **1278** and most need far more. Between 1001 and a shape's
-    floor the three-column layout is chosen and then squeezed — `#ucs-board-strip` is `flex: 0 0 auto`,
-    so `#ucs-center-stack` is what gives. Re-derive the breakpoint from the totals table now that all
-    five shapes are costed, rather than inheriting 1000 from the retired four-column grid. Interacts
-    with Large being excluded from the narrow sidebar.
 - **Narrow the card-size spread so size and layout stop being one axis.** The layout work keeps needing
   *per-card-size* width floors (`$santa-column-floors` in `Game.scss` is two numbers for one layout
   idea, and Large at Tier A already wants ≈1690px before 3P Express crowds — the centre stack is what
@@ -79,9 +73,6 @@ not of the code.
   - **Fluid sizing off the container.** Only if the first two prove insufficient — it would be novel
     for this codebase *and* for every reference game, so it carries the most risk for the least
     precedent.
-  - **Casual & Avid, narrow/mobile** — never taken through the responsive pass: their Fad keeps full
-    card art and the revealed Secret Santa widens the strip, so the narrow layout needs the same
-    fill treatment Express got, at all card sizes. Relates to the release-blocking responsive item.
   - **Casual, wide (desktop)** — a confirmation sweep. It is the cheapest shape in the game (1278 at
     Small) and unchanged by the folds, so likely fine, but unverified since the layout reworks.
 - **Animations** — more of them. *Open question:* which moments? Trick resolution and scoring look

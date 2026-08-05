@@ -64,6 +64,9 @@ export class Game {
     private assignPending: number[] = [];
     private assignSel: { [cardId: number]: { value: number | null; icon: string | null } } = {};
 
+    // The narrow/wide boundary, built once from wideLayoutFloor() — see narrowMq().
+    private narrowMqCache: MediaQueryList | null = null;
+
     // Round summary minimize/restore: the pending end-of-animation timer, so a fast minimize→restore
     // can't have the earlier click's timer land afterwards (see setRoundSummaryMinimized).
     private sheetAnimTimer: number | null = null;
@@ -582,13 +585,51 @@ export class Game {
      *  needReload, so it can't change mid-session — width is the only live input, and a matchMedia listener
      *  covers it (no general resize handler needed). */
     private setupNarrowSidebar() {
-        window.matchMedia('(max-width: 1000px)').addEventListener('change', () => this.layoutNarrowSidebar());
+        this.narrowMq().addEventListener('change', () => this.layoutNarrowSidebar());
         this.layoutNarrowSidebar();
     }
 
     /**
+     * Viewport width at which this game's WIDE (three-column) layout becomes viable, from the formula in
+     * .claude/responsive.md:
+     *
+     *     viewport = CARD × scale + FIXED + 263      (263 = BGA's own player-panel column + margins)
+     *
+     * Both inputs are fixed for the session — the content shape is the variant plus player count, and the
+     * card-size preference is needReload — so this is ONE width per game, not a set of breakpoints. That
+     * is what lets the narrow layout be a class rather than a media query, with the floors living here
+     * only instead of being restated in Game.scss.
+     *
+     * Replaces a hardcoded 1000px that was below every shape's real floor (the cheapest, Casual at Small,
+     * needs 1278), so the band above it rendered the wide layout squeezed — #ucs-board-strip is
+     * flex: 0 0 auto, so #ucs-center-stack was what gave.
+     *
+     * CARD/FIXED per shape come from responsive.md's "Every shape, totalled". Avid uses the STACKED-Santa
+     * numbers, which are what its wide layout costs when it first becomes viable — the unscaled Santa row
+     * is an upgrade applied further up, at $avid-santa-row-floors in Game.scss. Express 3P likewise uses
+     * its Santa-row cost, not the Santa-column fold ($santa-column-floors).
+     */
+    private wideLayoutFloor(): number {
+        const c = document.documentElement.classList;
+        const scale = c.contains('ucs-cards-large') ? 1.5 : c.contains('ucs-cards-small') ? 0.95 : 1;
+        const count = Object.keys(this.gamedatas.players).length;
+        let card = 590, fixed = 454;                          // Casual, and Avid with its Santas stacked
+        if (this.gamedatas.express) {
+            if (count <= 2)       { card = 770; fixed = 466; } // 3 Fads → a five-card parameter row
+            else if (count === 3) { card = 696; fixed = 388; }
+            else                  { card = 696; fixed = 442; }
+        }
+        return Math.round(card * scale + fixed + 263);
+    }
+
+    /** The narrow/wide boundary as a media query, built once from wideLayoutFloor(). */
+    private narrowMq(): MediaQueryList {
+        return (this.narrowMqCache ??= window.matchMedia(`(max-width: ${this.wideLayoutFloor() - 1}px)`));
+    }
+
+    /**
      * Express · viewport ≤ 1000px, at EVERY card size: tuck #ucs-rt-col (Round Tracker) and #ucs-opponents
-     * into a right-hand #ucs-sidebar beside the parameter row (styled by the .ucs-narrow-sidebar grid in
+     * into a right-hand #ucs-sidebar beside the parameter row (styled by the .ucs-narrow grid in
      * Game.scss), so the row stops spanning full width and the vertical stack shortens. Outside that mode,
      * return both containers to their wide-layout homes: the opponents to #ucs-right-col, and the Round
      * Tracker either above them there (3P Express, see rtTopRight) or bottom-left in #ucs-lower. Moves the
@@ -610,7 +651,7 @@ export class Game {
         // Large (the sidebar sizes its cards off container queries — 100cqi in Game.scss — not off
         // --ucs-card-scale, so the preference never changed what fits), and Casual/Avid (which have no
         // Round Tracker to park, but do have opponents, and were left on the untuned vertical stack).
-        const active = window.matchMedia('(max-width: 1000px)').matches;
+        const active = this.narrowMq().matches;
 
         // Which Secret Santa zone wants a full-width row rather than the parameter column: Express at
         // 3-4P (two landscape cards) and Avid (three). Casual's single card fits the column.
@@ -631,7 +672,7 @@ export class Game {
             // strip — one settled layout, one single card.
             const lift = this.gamedatas.express ? (count >= 3 ? wideSanta : null) : wideSanta;
             if (lift && lift.parentElement !== upper) upper.appendChild(lift);
-            table.classList.add('ucs-narrow-sidebar');
+            table.classList.add('ucs-narrow');
         } else {
             // Restore the wide layout: opponents back into the right column, and the Round Tracker either
             // above them (3P Express) or bottom-left in #ucs-lower, before my Knitting Area.
@@ -650,7 +691,7 @@ export class Game {
             } else if (lower && myArea && rt.parentElement !== lower) {
                 lower.insertBefore(rt, myArea);
             }
-            table.classList.remove('ucs-narrow-sidebar');
+            table.classList.remove('ucs-narrow');
             const sidebar = document.getElementById('ucs-sidebar');
             if (sidebar && sidebar.childElementCount === 0) sidebar.remove();
         }

@@ -1702,12 +1702,20 @@ $ucs-sheet-anim: 220ms;
     z-index: 949;
 }
 
-// ---- Responsive: narrow window (< 1000px) — everything stacks in one column ---------------------
+// ---- Responsive: narrow window — everything stacks in one column --------------------------------
 // The desktop layout is a wide three-column strip (board strip · centre trick · opponents) with a
-// full-width Knitting Area beneath. Below ~1000px there isn't room for the columns side by side, so the
-// whole thing collapses to a single vertical stack at full width. (An earlier tablet-specific "reference
+// full-width Knitting Area beneath. Below the width where those columns fit, the whole thing collapses
+// to a vertical stack with the Round-Tracker/opponents sidebar. (An earlier tablet-specific "reference
 // rail" was retired in the layout rework; the tier derivations in .claude/responsive.md predate it.)
-@media (max-width: 1000px) {
+//
+// Driven by a CLASS, not a media query. The switch width is per content shape and per card size — the
+// cheapest shape needs 1278px and the dearest 1884 — and a single hardcoded 1000 left every shape
+// rendering a squeezed wide layout in the band above it (#ucs-board-strip is flex: 0 0 auto, so
+// #ucs-center-stack was what gave). Both inputs are fixed for a session: the shape is the variant plus
+// player count, and the card-size preference is needReload. So Game.ts::wideLayoutFloor computes ONE
+// width from the responsive.md formula and Game.ts::layoutNarrowSidebar toggles this class at it —
+// one source of truth, rather than the same floors restated in CSS and JS.
+#ucs-table.ucs-narrow {
     #ucs-upper { flex-direction: column; }
     #ucs-lower { flex-direction: column; }
     // Full width for the stacked play zones and knitting area.
@@ -1760,14 +1768,13 @@ $ucs-sheet-anim: 220ms;
         }
     }
 
-    // Express, narrow, non-Large: layoutNarrowSidebar (Game.ts) relocates the Round Tracker + opponents
-    // into #ucs-sidebar and flags #ucs-table.ucs-narrow-sidebar. Re-lay #ucs-upper as a grid so the
-    // parameter row + Secret Santa sit top-left, the sidebar (Round Tracker over opponents) sits to the
-    // RIGHT of the parameter row, and the Draft Pool / Trade Area run full width beneath both. (A float
-    // can't do this here — #ucs-upper is a flex/column container in this width band, which ignores floats.)
-    // Applies at every card size: the cards below size off 100cqi, not --ucs-card-scale, so the preference
-    // doesn't change what fits in this layout.
-    #ucs-table.ucs-narrow-sidebar #ucs-upper {
+    // layoutNarrowSidebar (Game.ts) relocates the Round Tracker + opponents into #ucs-sidebar. Re-lay
+    // #ucs-upper as a grid so the parameter row + Secret Santa sit top-left, the sidebar (Round Tracker
+    // over opponents) sits to the RIGHT of the parameter row, and the Draft Pool / Trade Area run full
+    // width beneath both. (A float can't do this here — #ucs-upper is a flex/column container in this
+    // band, which ignores floats.) Applies at every card size: the cards below size off 100cqi, not
+    // --ucs-card-scale, so the preference doesn't change what fits in this layout.
+    #ucs-upper {
         display: grid;
         grid-template-columns: minmax(0, 1fr) auto;   // parameter column | sidebar (sized to the tracker)
         grid-template-areas:
@@ -1779,10 +1786,10 @@ $ucs-sheet-anim: 220ms;
     }
     // Both of #ucs-right-col's children now live in #ucs-sidebar, so the empty wrapper is dropped
     // outright — left in, it would be auto-placed into a row of its own by the grid above.
-    #ucs-table.ucs-narrow-sidebar #ucs-right-col { display: none; }
-    #ucs-table.ucs-narrow-sidebar #ucs-board-strip  { grid-area: strip; }
-    #ucs-table.ucs-narrow-sidebar #ucs-center-stack { grid-area: center; }
-    #ucs-table.ucs-narrow-sidebar #ucs-sidebar {
+    #ucs-right-col { display: none; }
+    #ucs-board-strip  { grid-area: strip; }
+    #ucs-center-stack { grid-area: center; }
+    #ucs-sidebar {
         grid-area: side;
         display: flex;
         flex-direction: column;
@@ -1791,12 +1798,12 @@ $ucs-sheet-anim: 220ms;
     }
     // In the sidebar the opponents stack vertically (each full sidebar width, the same compact pip summary
     // used across the narrow layout), not the across-the-page row-wrap above.
-    #ucs-table.ucs-narrow-sidebar #ucs-sidebar #ucs-opponents {
+    #ucs-sidebar #ucs-opponents {
         flex-direction: column;
         flex-wrap: nowrap;
         width: 100%;
     }
-    #ucs-table.ucs-narrow-sidebar #ucs-sidebar .ucs-oppo {
+    #ucs-sidebar .ucs-oppo {
         flex: 0 0 auto;
         width: 100%;
     }
@@ -1805,19 +1812,19 @@ $ucs-sheet-anim: 220ms;
     // instead of a fixed px. The board strip is the query container; cqi is read on its children
     // (#ucs-gameplay / #ucs-my-santa) because container-query units resolve against an ancestor container,
     // never the element itself. --ucs-card-h tracks whatever --ucs-card-w each player count sets below.
-    #ucs-table.ucs-narrow-sidebar #ucs-board-strip { container-type: inline-size; }
-    #ucs-table.ucs-narrow-sidebar #ucs-gameplay {
+    #ucs-board-strip { container-type: inline-size; }
+    #ucs-gameplay {
         width: 100%;
         --ucs-card-h: calc(var(--ucs-card-w) * 1.556);
     }
 
     // 2 players (3 Fads): Fads + Perfect Fit + Trendy Yarn all on ONE row — five cards across, filling it.
-    #ucs-table.ucs-narrow-sidebar.ucs-players-2 #ucs-gameplay {
+    &.ucs-players-2 #ucs-gameplay {
         --ucs-card-w: calc((100cqi - 24px) / 5);           // 5 cards + four 6px gaps
     }
-    #ucs-table.ucs-narrow-sidebar.ucs-players-2 .ucs-gameplay-row { flex-wrap: nowrap; gap: 6px; }
-    #ucs-table.ucs-narrow-sidebar.ucs-players-2 .ucs-fad-cards,
-    #ucs-table.ucs-narrow-sidebar.ucs-players-2 .ucs-gp-pftr { gap: 6px; }
+    &.ucs-players-2 .ucs-gameplay-row { flex-wrap: nowrap; gap: 6px; }
+    &.ucs-players-2 .ucs-fad-cards,
+    &.ucs-players-2 .ucs-gp-pftr { gap: 6px; }
 
     // 3–4 players (4–5 Fads): the wide layout's block, at this column's card size — Fads in a 2-wide
     // grid with Trendy Yarn over Perfect Fit in a third column beside them. Both counts come out exactly
@@ -1830,29 +1837,29 @@ $ucs-sheet-anim: 220ms;
     // ((100cqi - 18px) / 4, ~25% narrower than 3P's cards): with 5 Fads the only way to stay at 3P's card
     // size is a third row, and a third row pushes the Draft Pool off a phone screen. Height is the scarce
     // axis here, so it wins.
-    #ucs-table.ucs-narrow-sidebar.ucs-players-3 #ucs-gameplay {
+    &.ucs-players-3 #ucs-gameplay {
         --ucs-card-w: calc((100cqi - 12px) / 3);           // 3 cards + two 6px gaps
     }
-    #ucs-table.ucs-narrow-sidebar.ucs-players-4 #ucs-gameplay {
+    &.ucs-players-4 #ucs-gameplay {
         --ucs-card-w: calc((100cqi - 18px) / 4);           // 4 cards + three 6px gaps
     }
-    #ucs-table.ucs-narrow-sidebar.ucs-players-3 .ucs-gameplay-row,
-    #ucs-table.ucs-narrow-sidebar.ucs-players-4 .ucs-gameplay-row {
+    &.ucs-players-3 .ucs-gameplay-row,
+    &.ucs-players-4 .ucs-gameplay-row {
         flex-direction: row;
         align-items: flex-end;
         width: 100%;
         gap: 6px;                                          // + the Fad grid's own 6px = the 12px assumed above
     }
-    #ucs-table.ucs-narrow-sidebar.ucs-players-3 .ucs-fad-cards {
+    &.ucs-players-3 .ucs-fad-cards {
         display: grid;
         grid-template-columns: repeat(2, var(--ucs-card-w));   // 4 Fads → 2 rows
     }
-    #ucs-table.ucs-narrow-sidebar.ucs-players-4 .ucs-fad-cards {
+    &.ucs-players-4 .ucs-fad-cards {
         display: grid;
         grid-template-columns: repeat(3, var(--ucs-card-w));   // 5 Fads → 2 rows (3 then 2)
     }
-    #ucs-table.ucs-narrow-sidebar.ucs-players-3 .ucs-gp-pftr,
-    #ucs-table.ucs-narrow-sidebar.ucs-players-4 .ucs-gp-pftr {
+    &.ucs-players-3 .ucs-gp-pftr,
+    &.ucs-players-4 .ucs-gp-pftr {
         flex-direction: column-reverse;                    // Trendy Yarn on top, Perfect Fit under it
         align-items: flex-start;
         gap: 6px;
@@ -1863,20 +1870,20 @@ $ucs-sheet-anim: 220ms;
     // (Fad · Perfect Fit · Trendy Yarn) — the same three-across derivation Express 3P uses. The sidebar
     // beside it carries the opponents alone. Player count doesn't subdivide these: fadsOnDisplay() is
     // players + 1 in Express ONLY (see responsive.md, "How many arrangements are there, really?").
-    #ucs-table.ucs-narrow-sidebar:not(.ucs-express) #ucs-gameplay {
+    &:not(.ucs-express) #ucs-gameplay {
         --ucs-card-w: calc((100cqi - 12px) / 3);           // 3 cards + two 6px gaps
     }
-    #ucs-table.ucs-narrow-sidebar:not(.ucs-express) .ucs-gameplay-row {
+    &:not(.ucs-express) .ucs-gameplay-row {
         flex-wrap: nowrap;
         gap: 6px;
     }
-    #ucs-table.ucs-narrow-sidebar:not(.ucs-express) .ucs-fad-cards,
-    #ucs-table.ucs-narrow-sidebar:not(.ucs-express) .ucs-gp-pftr { gap: 6px; }
+    &:not(.ucs-express) .ucs-fad-cards,
+    &:not(.ucs-express) .ucs-gp-pftr { gap: 6px; }
 
     // Casual's one landscape Secret Santa stays in the parameter column, sized like one of the Express
     // pair so it doesn't tower over the row above it. (Its cqi resolves against #ucs-board-strip, which
     // is why this can only apply while the card is still inside the strip — Avid's is lifted out below.)
-    #ucs-table.ucs-narrow-sidebar:not(.ucs-express):not(.ucs-avid) #ucs-secret-santa {
+    &:not(.ucs-express):not(.ucs-avid) #ucs-secret-santa {
         --ucs-card-w: calc((100cqi - 12px) / 3.14);
         --ucs-card-h: calc(var(--ucs-card-w) * 1.567);
     }
@@ -1890,19 +1897,19 @@ $ucs-sheet-anim: 220ms;
     // Lifted out of the strip it loses that container-query context and has to become one itself, with the
     // sizing on its child — cqi always resolves against an ANCESTOR container, never the element carrying
     // container-type (same reason #ucs-gameplay reads the strip's cqi rather than the strip its own).
-    #ucs-table.ucs-narrow-sidebar.ucs-avid #ucs-secret-santa {
+    &.ucs-avid #ucs-secret-santa {
         grid-area: santa;
         container-type: inline-size;
         width: 100%;
     }
-    #ucs-table.ucs-narrow-sidebar.ucs-avid #ucs-secret-santa .ucs-santa-cards {
+    &.ucs-avid #ucs-secret-santa .ucs-santa-cards {
         --ucs-card-w: calc((100cqi - 24px) / 4.7);         // 3 rotated slots (h ≈ 1.567w) + two 12px gaps
         --ucs-card-h: calc(var(--ucs-card-w) * 1.567);
         justify-content: center;
     }
 
     // Secret Santa: the two landscape (rotated) cards fill their row side by side (all player counts).
-    #ucs-table.ucs-narrow-sidebar #ucs-my-santa {
+    #ucs-my-santa {
         --ucs-card-w: calc((100cqi - 12px) / 3.14);        // 2 rotated slots (h ≈ 1.567w) + a 12px gap
         --ucs-card-h: calc(var(--ucs-card-w) * 1.567);
     }
@@ -1916,14 +1923,14 @@ $ucs-sheet-anim: 220ms;
     // has to become one itself — with the sizing moved onto its child, since cqi always resolves against
     // an ANCESTOR container and never the element carrying container-type (same reason #ucs-gameplay
     // reads the strip's cqi rather than the strip reading its own).
-    #ucs-table.ucs-narrow-sidebar.ucs-players-3 #ucs-my-santa,
-    #ucs-table.ucs-narrow-sidebar.ucs-players-4 #ucs-my-santa {
+    &.ucs-players-3 #ucs-my-santa,
+    &.ucs-players-4 #ucs-my-santa {
         grid-area: santa;
         container-type: inline-size;
         width: 100%;
     }
-    #ucs-table.ucs-narrow-sidebar.ucs-players-3 #ucs-my-santa .ucs-santa-cards,
-    #ucs-table.ucs-narrow-sidebar.ucs-players-4 #ucs-my-santa .ucs-santa-cards {
+    &.ucs-players-3 #ucs-my-santa .ucs-santa-cards,
+    &.ucs-players-4 #ucs-my-santa .ucs-santa-cards {
         --ucs-card-w: calc((100cqi - 12px) / 3.14);
         --ucs-card-h: calc(var(--ucs-card-w) * 1.567);
     }
@@ -1962,8 +1969,8 @@ $ucs-sheet-anim: 220ms;
 // the Draft Pool: its cards are a fixed multiple of the Card-size preference, and the tracker is
 // narrower than a full opponents panel, so the centre column loses no width. Excluded only from the
 // ≤1000px sidebar layout, which has its own arrangement of the same cards.
-#ucs-table.ucs-express.ucs-players-3:not(.ucs-narrow-sidebar),
-#ucs-table.ucs-express.ucs-players-4:not(.ucs-narrow-sidebar) {
+#ucs-table.ucs-express.ucs-players-3:not(.ucs-narrow),
+#ucs-table.ucs-express.ucs-players-4:not(.ucs-narrow) {
     // DOM order is Perfect Fit then Trendy Yarn; column-REVERSE puts Trendy Yarn on top with Perfect Fit
     // under it, without reordering the markup. 6px gap to match the Fad grid, so the two card rows of
     // this column line up with the Fad rows beside it.
@@ -1983,11 +1990,11 @@ $ucs-sheet-anim: 220ms;
 // Fad grid: a fixed column count per player count, so it can never reflow to a ragged 3+1. 3P has 4 Fads
 // → 2×2. 4P has 5 → 3 then 2; a 2-wide grid would fit in less width still, but three rows of Fads makes
 // the strip taller than the whole centre column, and 3-across already brings 4P inside a 1920 screen.
-#ucs-table.ucs-express.ucs-players-3:not(.ucs-narrow-sidebar) .ucs-fad-display .ucs-fad-cards {
+#ucs-table.ucs-express.ucs-players-3:not(.ucs-narrow) .ucs-fad-display .ucs-fad-cards {
     display: grid;
     grid-template-columns: repeat(2, auto);
 }
-#ucs-table.ucs-express.ucs-players-4:not(.ucs-narrow-sidebar) .ucs-fad-display .ucs-fad-cards {
+#ucs-table.ucs-express.ucs-players-4:not(.ucs-narrow) .ucs-fad-display .ucs-fad-cards {
     display: grid;
     grid-template-columns: repeat(3, auto);
 }
@@ -2016,8 +2023,12 @@ $ucs-sheet-anim: 220ms;
 // way), so it keeps the full-size art. Tier A only — below 1000px the whole table is a single column
 // where vertical space is the scarce axis, and Casual/Avid have not been through the narrow pass yet
 // (see backlog).
+// :not(.ucs-narrow) on both blocks below — the narrow layout now starts at the shape's real floor
+// (1602 for Avid at Large), so it overlaps this min-width band. Without the guard these win on
+// specificity (they carry an extra `html` element selector) and would re-stack the Santas inside the
+// narrow layout, which gives them their own full-width row precisely to avoid that.
 @media (min-width: 1001px) {
-    #ucs-table.ucs-avid #ucs-secret-santa .ucs-santa-cards {
+    #ucs-table.ucs-avid:not(.ucs-narrow) #ucs-secret-santa .ucs-santa-cards {
         flex-direction: column;
         align-items: flex-start;
     }
@@ -2025,7 +2036,7 @@ $ucs-sheet-anim: 220ms;
 $avid-santa-row-floors: (small: 1650px, medium: 1660px, large: 1820px);
 @each $size, $floor in $avid-santa-row-floors {
     @media (min-width: $floor) {
-        html.ucs-cards-#{$size} #ucs-table.ucs-avid #ucs-secret-santa {
+        html.ucs-cards-#{$size} #ucs-table.ucs-avid:not(.ucs-narrow) #ucs-secret-santa {
             // Deliberately NOT multiplied by --ucs-card-scale — see above.
             --ucs-card-w: 128px;
             --ucs-card-h: 200px;
@@ -2057,7 +2068,7 @@ $avid-santa-row-floors: (small: 1650px, medium: 1660px, large: 1820px);
 $santa-column-floors: (medium: 1450px, large: 1840px);
 @each $size, $floor in $santa-column-floors {
     @media (min-width: $floor) {
-        html.ucs-cards-#{$size} #ucs-table.ucs-express.ucs-players-3:not(.ucs-narrow-sidebar) {
+        html.ucs-cards-#{$size} #ucs-table.ucs-express.ucs-players-3:not(.ucs-narrow) {
             #ucs-board-strip {
                 flex-direction: row;
                 align-items: flex-start; // Santa column tops out level with the Fad label

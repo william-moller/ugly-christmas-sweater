@@ -19,22 +19,21 @@ vocabulary:
 |------|-------|-----------------|----------|----------|
 | **Variant** | avid / casual / express | game mode, option `101`; `isExpress()` / `isAvid()` | **which components exist** (Round Tracker, Fad display, claimed-Fad chips, extra Secret Santas) — a DOM-presence axis, not a sizing one | server gamedatas + client branches |
 | **Card-size preference** | small / medium / large | pref `101` → `<html>.ucs-cards-{small,medium,large}` → `--ucs-card-scale` | a **discrete multiplier** on interactive card art only (hand, centre stack, own knitting); needs a reload | `gamepreferences.jsonc` + `Game.scss` |
-| **Display size** | phone / tablet / monitor | responsive **Tier C / B / A** at `<450` / `450–1000` / `≥1000` px `innerWidth` | **layout structure** (stacked / rail / four-column grid) | this doc + `@media` in `Game.scss` |
+| **Display size** | phone / tablet / monitor | **narrow / wide**, split at the shape's own floor (`Game.ts::wideLayoutFloor`), plus a `<450px` phone tweak | **layout structure** (stacked+sidebar / three-column) | this doc + `#ucs-table.ucs-narrow` in `Game.scss` |
 
 Template: **"In [variant], at [tier / px], with card size [pref] — [component] should [change]."**
 
-Defaults when an axis is omitted (so all three needn't be spelled out every time): **Tier A** (monitor,
-≥1000px), card size **Medium**, variant **Express**. Say "all variants" / "all sizes" / "everywhere"
+Defaults when an axis is omitted (so all three needn't be spelled out every time): **Tier A** (monitor —
+the wide layout), card size **Medium**, variant **Express**. Say "all variants" / "all sizes" / "everywhere"
 to explicitly leave an axis unscoped.
 
 Keep **preference ≠ display size** sharp: "Large" is a user's chosen multiplier, "monitor" is a viewport
 width — a phone user can pick Large and a monitor user can pick Small. They're set in different places,
 so "bigger cards on desktop" is ambiguous until you say which one you mean.
 
-Two scope caveats already documented below, restated because they change how an instruction lands: the
-Tier vocabulary is currently specified **against Express only** (Casual/Avid haven't been through the
-responsive pass — see Open items), and Tier C (phones) is **unimplemented**. An instruction into either
-region gets design questions from me, not just a nudged number.
+The tier *names* below (A/B/C) are kept as vocabulary for the width bands, but they are no longer three
+fixed structures: there are **two** — narrow and wide — and the switch between them is per shape and per
+card size, not a shared px constant. See "The narrow/wide boundary".
 
 ## Size floors (the non-negotiables)
 
@@ -77,11 +76,11 @@ phones), 768 (iPad portrait), 1024+ (tablet landscape / desktop).
 > **Stale-structure caveat (verify against `Game.scss`).** The per-tier *structures* below — the
 > four-column grid, the 120px reference rail — predate the current layout: the grid was reworked to
 > flex (`#ucs-upper` / `#ucs-lower`), the tablet rail was retired (see the note in `Game.scss`'s
-> desktop `@media` block), and the narrow view now uses the Express Round-Tracker sidebar
-> (`.ucs-narrow-sidebar`, toggled in `Game.ts::layoutNarrowSidebar`). Treat the tier structures as
+> desktop `@media` block), and the narrow view is now a sidebar layout
+> (`.ucs-narrow`, toggled in `Game.ts::layoutNarrowSidebar` at the width `wideLayoutFloor()` returns, for every variant and card size). Treat the tier structures as
 > historical rationale; the **size floors above are the durable part**.
 
-### Tier A — wide, ≥1000px
+### Tier A — wide (at or above the shape's floor; see "The narrow/wide boundary")
 The full four-column grid: `params | santa | center | oppo`, knitting under the centre.
 
 **Express · 3 and 4 players** fold the board strip instead of running it flat, because Express deals
@@ -132,7 +131,7 @@ free there.
 None of this shrinks the Draft Pool: at Tier A its cards are a fixed multiple of the Card-size
 preference, not a fraction of the container, and the tracker is narrower than a full opponents panel.
 Holds at **every card-size preference**. The DOM moves live in `Game.ts::layoutNarrowSidebar`
-(`rtTopRight()`); the ≤1000px sidebar layout is excluded via `:not(.ucs-narrow-sidebar)` and keeps its
+(`rtTopRight()`); the narrow sidebar layout is excluded via `:not(.ucs-narrow)` and keeps its
 own arrangement of the same cards.
 
 **Express · 3 players · Medium and Large, on a wide enough viewport** adds one more fold: my two Secret
@@ -249,10 +248,40 @@ Fad face), while `secretSantasPerPlayer()` is fixed per variant:
 and nothing else; opponent count changes the right column's height, not the arrangement. Card size
 should multiply this by **one** — it is a scale factor, and the formula above is how it stays one.
 
-**Why 1000px:** the desktop layout needs roughly `params + centre (four cards + gaps) + opponents +
-gaps + padding` ≈ **980px** before it gets cramped, so the stacked layout collapses at
-`@media (max-width: 1000px)` in `Game.scss`. (An earlier build switched at 800px, leaving 800–1000px
-rendering a squeezed desktop — that discrepancy is resolved.)
+## The narrow/wide boundary
+
+There is no shared breakpoint px. `Game.ts::wideLayoutFloor()` computes **one** width for the session
+from the formula above, and `layoutNarrowSidebar` toggles `#ucs-table.ucs-narrow` at it; every narrow
+rule in `Game.scss` hangs off that class rather than a `@media`. This works because both inputs are
+fixed for a session — the content shape (variant + player count) and the card-size preference, which is
+`needReload`. **The floors live in `wideLayoutFloor()` only.** Don't restate them in CSS; that
+duplication is exactly what the class exists to avoid.
+
+The floors it produces, per shape and size:
+
+| Shape | CARD | FIXED | Small | Medium | Large |
+|-------|-----:|------:|------:|-------:|------:|
+| Casual · Avid | 590 | 454 | 1278 | 1307 | 1602 |
+| Express 2P | 770 | 466 | 1461 | 1499 | 1884 |
+| Express 3P | 696 | 388 | 1312 | 1347 | 1695 |
+| Express 4P | 696 | 442 | 1366 | 1401 | 1749 |
+
+Avid uses the **stacked**-Santa numbers and Express 3P the **Santa-row** numbers — what each shape costs
+when its wide layout first becomes viable. The unscaled Avid row and the 3P Santa column are upgrades
+applied further up, at `$avid-santa-row-floors` / `$santa-column-floors`, and those two still live in
+`Game.scss` because they select *within* the wide layout rather than deciding which layout runs.
+
+Consequence worth knowing: **Express 2P at Large switches to narrow below 1884px**, so a 1600px laptop
+now gets the narrow layout for that shape. That is the intended reading of item 3 below — 1884 was
+signed off on a 1920 monitor and never fitted a 1600px laptop; it previously rendered squeezed there.
+
+Anything inside a `@media (min-width: …)` block that styles the wide layout needs `:not(.ucs-narrow)`.
+Those blocks carry an extra `html` element selector, so they out-specify the narrow rules and would
+otherwise win inside the overlap band (which now exists for every shape whose floor is above 1000).
+
+*(Superseded: an earlier build switched at 800px and then at a flat 1000px. 1000 was below every shape's
+real floor — the cheapest is 1278 — so the band above it rendered the wide layout squeezed, since
+`#ucs-board-strip` is `flex: 0 0 auto` and `#ucs-center-stack` was what gave.)*
 
 ### Tier B — rail, 450–1000px
 Two columns: a fixed 120px reference rail (Perfect Fit → Trendy Yarn → Fad chips → Round Tracker) and
@@ -286,9 +315,9 @@ exactly the width the cards need. At 320px the same arithmetic yields 61px, stil
 
 ## Open items
 
-- The narrow view is built for **Express** at Small/Medium. Every other combination (Express 3–4P,
-  Express Large, Express wide, and **Casual/Avid** — whose Fad keeps full card art and whose revealed
-  Secret Santa widens the strip) still needs a visual pass. Tracked in [`backlog.md`](backlog.md)
-  under "Visual polish sweep."
-- True-phone widths (<450px) now render via the Express narrow-sidebar layout down to ~360px; the
-  other variants/counts there are part of the same sweep.
+- The narrow layout now covers **every variant at every card size** down to ~360px, but only Express at
+  Small/Medium has had an eyes-on pass. Everything else is derived-and-built, not looked at. Tracked in
+  [`backlog.md`](backlog.md) under "Visual polish sweep."
+- Casual/Avid narrow is arithmetic only: the parameter row is three across and Avid's three landscape
+  Secret Santas take a full-width row at `(100cqi - 24px) / 4.7` (~69px cards at 360px, against the 56px
+  interactive floor). Avid at 360 has the least slack of any shape in the game.
