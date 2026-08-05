@@ -26,7 +26,9 @@ class RoundReview extends GameState
             id: 75,
             type: StateType::MULTIPLE_ACTIVE_PLAYER,
             description: clienttranslate('Other players are reviewing the round results'),
-            descriptionMyTurn: clienttranslate('Review the round results, then click to continue'),
+            // Trails off deliberately: the Continue action button renders right after the title, so the
+            // sentence finishes on the button itself.
+            descriptionMyTurn: clienttranslate('Review the round results, then click'),
         );
     }
 
