@@ -1536,8 +1536,8 @@ html[data-theme=dark] {
   opacity: 0.9;
 }
 
-/* Every patch I still owe a round-end assignment gets a pulsing gold glow so it's obvious where to
-   look; the inline value/icon picker (.ucs-assign-pop) is attached beside its sweater. */
+/* The patch being assigned right now gets a pulsing gold glow so it's obvious where to look; the
+   inline value/icon picker (.ucs-assign-pop) is attached beside its sweater. */
 @keyframes ucs-assign-glow {
   0%, 100% {
     outline-color: #ffd54a;
@@ -1555,8 +1555,14 @@ html[data-theme=dark] {
   animation: ucs-assign-glow 1.2s ease-in-out infinite;
 }
 
+.ucs-card.ucs-assign-queued {
+  outline: 2px dashed rgba(255, 213, 74, 0.55);
+  outline-offset: 1px;
+}
+
 /* Value/icon picker popover, anchored to the right of the patch's sweater (the build is position:
-   relative). It floats over neighbouring zones via a high z-index. */
+   relative). It floats over neighbouring zones via a high z-index — which is why only the patch
+   currently being assigned gets one (see Game.renderKnitting). */
 .ucs-assign-pop {
   position: absolute;
   top: 0;
@@ -1565,25 +1571,23 @@ html[data-theme=dark] {
   display: flex;
   flex-direction: column;
   gap: 6px;
-  padding: 8px 10px;
+  padding: 8px;
   background: #2b2b2b;
   border: 2px solid #ffd54a;
   border-radius: 10px;
   box-shadow: 0 6px 20px rgba(0, 0, 0, 0.6);
-  width: 208px;
+  width: max-content;
 }
 
-.ucs-assign-row {
-  display: flex;
-  flex-wrap: wrap;
+.ucs-assign-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 34px);
   gap: 4px;
-  justify-content: center;
 }
 
 .ucs-assign-opt {
-  min-width: 26px;
   height: 30px;
-  padding: 0 6px;
+  padding: 0;
   font-weight: 700;
   font-size: 15px;
   color: #fff;
@@ -1598,7 +1602,7 @@ html[data-theme=dark] {
 }
 
 .ucs-assign-opt.ucs-assign-icon {
-  min-width: 34px;
+  height: 34px;
   padding: 2px;
   display: inline-flex;
   align-items: center;

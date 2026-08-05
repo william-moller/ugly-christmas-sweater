@@ -96,10 +96,3 @@ not of the code.
   the watercolour background per card and shift each cell to a consistent registration (L body to its
   right edge, R to its left, B centred), so any L+R+B tiles. Heuristic; verify across all 52 cards by
   eye. The layout itself (rotate B, centre, butt) is already correct.
-- **Patch assignment UI: compact grid + one-at-a-time** — at end of round, choosing a patch's value
-  and icon currently renders one tall single-column button list per patch, stacked side by side. Two
-  problems: (1) the buttons waste space — lay them out like a keypad, ~4 numbers wide, and the same
-  for the icon buttons, so the menu is a compact grid instead of a full-height column. (2) When a
-  player has multiple patches to assign, resolve them one at a time: today all menus show at once and
-  the second patch's sweater sits fully hidden behind the first patch's selection menu, so the player
-  can't see the card they're assigning to.

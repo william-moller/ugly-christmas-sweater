@@ -1637,10 +1637,13 @@ class Game {
                 else {
                     el.classList.add('ucs-floating'); // a floating patch — orientation not set yet
                 }
-                // Round-end assignment: every patch I still owe an assignment glows (a value/icon
-                // picker is attached beside it below).
-                if (this.assignPending.includes(Number(card.id)))
+                // Round-end assignment: the patch being assigned right now glows (its value/icon
+                // picker is attached beside the sweater below). Patches still queued behind it get a
+                // static marker — they glow in turn, one at a time.
+                if (Number(card.id) === this.assignPending[0])
                     el.classList.add('ucs-assign-glow');
+                else if (this.assignPending.includes(Number(card.id)))
+                    el.classList.add('ucs-assign-queued');
                 this.attachTooltip(el, card);
                 build.appendChild(el);
             });
@@ -1698,16 +1701,16 @@ class Game {
                 badge.title = _('Current VP this sweater scores');
                 build.appendChild(badge);
             }
-            // Round-end: attach an inline value/icon picker beside each patch in this sweater that I
-            // still owe an assignment (no action-bar buttons — the choice sits right by the glowing
-            // patch). Only in my own live area (not the opponent popin / compact read-out).
+            // Round-end: attach the inline value/icon picker beside the patch being assigned, if it
+            // lives in this sweater (no action-bar buttons — the choice sits right by the glowing
+            // patch). One picker at a time: the popover floats over the neighbouring sweaters, so
+            // showing every pending patch's menu at once hid the very cards still to be assigned.
+            // Only in my own live area (not the opponent popin / compact read-out).
             if (playerId === this.myId && !targetEl && this.onAssignPatch) {
-                let pickerIdx = 0;
-                builds[buildNo].forEach((card) => {
-                    if (this.assignPending.includes(Number(card.id))) {
-                        build.appendChild(this.makeAssignPicker(Number(card.id), pickerIdx++));
-                    }
-                });
+                const current = this.assignPending[0];
+                if (builds[buildNo].some((card) => Number(card.id) === current)) {
+                    build.appendChild(this.makeAssignPicker(current));
+                }
             }
             zone.appendChild(build);
         });
@@ -2625,50 +2628,53 @@ class Game {
         this.bga.statusBar.removeActionButtons();
         this.renderKnitting(this.myId); // drop the pickers / glow
     }
-    /** Status-bar title for the assignment phase (no action buttons — the pickers are on the board). */
+    /** Status-bar title for the assignment phase (no action buttons — the picker is on the board). */
     updateAssignTitle() {
         const sb = this.bga.statusBar;
         sb.removeActionButtons();
         if (!this.onAssignPatch)
             return;
-        sb.setTitle(this.assignPending.length > 0
-            ? _('Assign a value and icon to each of your patch cards')
-            : _('Waiting for other players…'));
+        const left = this.assignPending.length;
+        if (left === 0)
+            sb.setTitle(_('Waiting for other players…'));
+        else if (left === 1)
+            sb.setTitle(_('Assign a value and icon to your patch card'));
+        // Patches are assigned one at a time, so say how many are still queued behind this one.
+        else
+            sb.setTitle(_('Assign a value and icon to your patch card (${left} to go)'), { left });
     }
     /**
-     * The inline value/icon picker attached beside a pending patch (round-end). A row of values 1-12 and
-     * a row of the four icons; each remembers its choice in `assignSel[cardId]`. Once both are chosen a
-     * Confirm sends `actAssignPatch`, drops the patch from the pending set, and re-renders. `index`
-     * offsets stacked pickers when one sweater holds more than one pending patch.
+     * The inline value/icon picker attached beside the patch currently being assigned (round-end). Values
+     * 1-12 as a 4-wide keypad and the four icons on the same four columns; each remembers its choice in
+     * `assignSel[cardId]`. Once both are chosen a Confirm sends `actAssignPatch`, drops the patch from the
+     * pending set, and re-renders — which brings up the next patch's picker.
      */
-    makeAssignPicker(cardId, index) {
+    makeAssignPicker(cardId) {
         var _a;
         const sel = ((_a = this.assignSel)[cardId] ?? (_a[cardId] = { value: null, icon: null }));
         const pop = document.createElement('div');
         pop.className = 'ucs-assign-pop';
-        if (index > 0)
-            pop.style.top = `${index * 132}px`;
-        const valRow = document.createElement('div');
-        valRow.className = 'ucs-assign-row';
+        const valGrid = document.createElement('div');
+        valGrid.className = 'ucs-assign-grid';
         for (let v = 1; v <= 12; v++) {
             const b = document.createElement('button');
             b.className = 'ucs-assign-opt' + (sel.value === v ? ' ucs-assign-chosen' : '');
             b.textContent = String(v);
             b.onclick = () => { sel.value = v; this.renderKnitting(this.myId); };
-            valRow.appendChild(b);
+            valGrid.appendChild(b);
         }
-        const iconRow = document.createElement('div');
-        iconRow.className = 'ucs-assign-row';
+        const iconGrid = document.createElement('div');
+        iconGrid.className = 'ucs-assign-grid';
         this.material.icons.forEach((ic) => {
             const b = document.createElement('button');
             b.className = 'ucs-assign-opt ucs-assign-icon' + (sel.icon === ic ? ' ucs-assign-chosen' : '');
             b.innerHTML = `<span class="ucs-icon ucs-icon-${ic}"></span>`;
             b.title = ic;
             b.onclick = () => { sel.icon = ic; this.renderKnitting(this.myId); };
-            iconRow.appendChild(b);
+            iconGrid.appendChild(b);
         });
-        pop.appendChild(valRow);
-        pop.appendChild(iconRow);
+        pop.appendChild(valGrid);
+        pop.appendChild(iconGrid);
         if (sel.value != null && sel.icon != null) {
             const v = sel.value, ic = sel.icon, cb = this.onAssignPatch;
             const confirm = document.createElement('button');
