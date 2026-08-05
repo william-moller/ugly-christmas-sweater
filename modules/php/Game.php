@@ -1707,6 +1707,16 @@ class Game extends \Bga\GameFramework\Table
             if ($fadVp > 0) {
                 static::DbQuery("UPDATE `player` SET `player_fad_points` = `player_fad_points` + $fadVp WHERE `player_id` = $pid");
             }
+            // Raw SQL on purpose, and the Studio dry-run build warns about it. player_score_aux holds
+            // -(unbuilt sweaters) here, i.e. it MUST go negative, and the framework's PlayerCounter is
+            // bounded (createPlayerCounter defaults to min: 0, and the framework defines
+            // OutOfRangeCounterException) — castlecombo passes an explicit third argument to
+            // playerScoreAux->set() to deal with exactly that. Whether ->inc() with a negative delta
+            // throws, clamps, or is fine here is NOT verifiable from the local _ide_helper stub, which
+            // doesn't carry PlayerCounter's method signatures. Converting blind risks throwing inside
+            // per-round scoring; the warning it would silence is advisory. Nothing in this codebase ever
+            // READS the aux counter (EndScore re-reads the column in SQL), so the stale-cache problem the
+            // warning is about has no reader to bite. Verify on a Studio table before changing this.
             if ($unbuilt > 0) {
                 static::DbQuery("UPDATE `player` SET `player_score_aux` = `player_score_aux` - $unbuilt WHERE `player_id` = $pid");
             }
