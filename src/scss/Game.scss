@@ -43,6 +43,7 @@
 // =====================================================================================
 
 @use "sass:list";
+@use "sass:map";
 @use "sweater-sprites"; // GENERATED per-card sprite face classes (scripts/build-sprites.mjs)
 @use "secondary-sprites"; // GENERATED Stage-2 card faces (scripts/build-secondary-sprites.mjs)
 @use "icon-sprites"; // GENERATED sweater-icon art classes (scripts/build-icons.mjs)
@@ -2033,13 +2034,34 @@ $ucs-sheet-anim: 220ms;
         align-items: flex-start;
     }
 }
-$avid-santa-row-floors: (small: 1650px, medium: 1660px, large: 1820px);
+// The row now SHRINKS rather than collapsing to a column. Pinning it to 128x200 meant that below the
+// width where three full-size slots fit, the whole arrangement fell back to stacking — which is the one
+// thing the row exists to avoid, and it wasted the width it was trying to protect (three cards in a
+// column leave the strip one card wide and the space beside them empty).
+//
+// Rearranging responsive.md's formula: everything that is NOT the three rotated slots costs
+// `320 x scale + 733` — the Draft Pool's scaling cards, plus this shape's other FIXED terms and the 56px
+// the Santa zone spends on its own gaps, padding and rotated-label overhang. So each slot can take a
+// third of what's left, capped at the art's natural 200px:
+//
+//     slot = min(200px, (100vw - (320 x scale + 733)) / 3)
+//
+// The cap binds at 1637 / 1653 / 1813 — exactly the pinned-row floors this replaces, so at those widths
+// and above nothing changes. Below them the row survives at a smaller size instead of disappearing.
+$card-scales: (small: 0.95, medium: 1, large: 1.5);
+// Floors: where a slot would drop below 125px (an 80px card). Deliberately NOT the 95px reference floor
+// from responsive.md — that one is derived from the Round Tracker's wreath numerals, which a Secret
+// Santa card doesn't have. These same cards already render at ~69px in the narrow layout, so 80 is
+// conservative; it can go lower if a real window still stacks.
+$avid-santa-row-floors: (small: 1415px, medium: 1430px, large: 1590px);
 @each $size, $floor in $avid-santa-row-floors {
+    $others: 320px * map.get($card-scales, $size) + 733px;
     @media (min-width: $floor) {
         html.ucs-cards-#{$size} #ucs-table.ucs-avid:not(.ucs-narrow) #ucs-secret-santa {
-            // Deliberately NOT multiplied by --ucs-card-scale — see above.
-            --ucs-card-w: 128px;
-            --ucs-card-h: 200px;
+            // Deliberately NOT multiplied by --ucs-card-scale — see above. The 0.64 is the art's own
+            // 128/200 ratio, so the cards keep their shape as the row shrinks.
+            --ucs-card-h: min(200px, calc((100vw - #{$others}) / 3));
+            --ucs-card-w: calc(var(--ucs-card-h) * 0.64);
             .ucs-santa-cards {
                 flex-direction: row;
                 align-items: center;

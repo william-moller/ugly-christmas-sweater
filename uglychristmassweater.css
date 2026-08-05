@@ -2304,30 +2304,30 @@ table.ucs-scorepad th, table.ucs-scorepad td {
     align-items: flex-start;
   }
 }
-@media (min-width: 1650px) {
+@media (min-width: 1415px) {
   html.ucs-cards-small #ucs-table.ucs-avid:not(.ucs-narrow) #ucs-secret-santa {
-    --ucs-card-w: 128px;
-    --ucs-card-h: 200px;
+    --ucs-card-h: min(200px, calc((100vw - 1037px) / 3));
+    --ucs-card-w: calc(var(--ucs-card-h) * 0.64);
   }
   html.ucs-cards-small #ucs-table.ucs-avid:not(.ucs-narrow) #ucs-secret-santa .ucs-santa-cards {
     flex-direction: row;
     align-items: center;
   }
 }
-@media (min-width: 1660px) {
+@media (min-width: 1430px) {
   html.ucs-cards-medium #ucs-table.ucs-avid:not(.ucs-narrow) #ucs-secret-santa {
-    --ucs-card-w: 128px;
-    --ucs-card-h: 200px;
+    --ucs-card-h: min(200px, calc((100vw - 1053px) / 3));
+    --ucs-card-w: calc(var(--ucs-card-h) * 0.64);
   }
   html.ucs-cards-medium #ucs-table.ucs-avid:not(.ucs-narrow) #ucs-secret-santa .ucs-santa-cards {
     flex-direction: row;
     align-items: center;
   }
 }
-@media (min-width: 1820px) {
+@media (min-width: 1590px) {
   html.ucs-cards-large #ucs-table.ucs-avid:not(.ucs-narrow) #ucs-secret-santa {
-    --ucs-card-w: 128px;
-    --ucs-card-h: 200px;
+    --ucs-card-h: min(200px, calc((100vw - 1213px) / 3));
+    --ucs-card-w: calc(var(--ucs-card-h) * 0.64);
   }
   html.ucs-cards-large #ucs-table.ucs-avid:not(.ucs-narrow) #ucs-secret-santa .ucs-santa-cards {
     flex-direction: row;

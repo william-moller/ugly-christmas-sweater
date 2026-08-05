@@ -114,8 +114,23 @@ overhang`), so only the Draft Pool still scales:
 viewport = 320 × scale + 1333      # 320 = Draft Pool 4 × 80; the strip is now a pure FIXED term
 ```
 
-→ **1637 / 1653 / 1813** at Small / Medium / Large, rounded to floors of **1650 / 1660 / 1820** in
-`$avid-santa-row-floors` (`Game.scss`). Below its floor a size keeps the stacked column.
+→ **1637 / 1653 / 1813** at Small / Medium / Large — the widths at which three *full-size* slots fit.
+
+Those are no longer the floors, because pinning the row to 128×200 made it all-or-nothing: one pixel
+below and it collapsed to a column, which wastes the very width the row exists to reclaim (three cards
+stacked leave the strip one card wide and the space beside them empty). The row now **shrinks** instead.
+Rearranged, everything that is *not* the three slots costs `320 × scale + 733`, so:
+
+```
+slot = min(200px, (100vw - (320 × scale + 733)) / 3)
+```
+
+The cap binds at exactly 1637 / 1653 / 1813, so at those widths and above this renders identically to
+the pinned row. `$avid-santa-row-floors` is now where a slot would fall under **125px (an 80px card)** —
+**1415 / 1430 / 1590** — and only below that does the stacked column come back.
+
+Note the 95px reference-card floor does **not** bind here: it is derived from the Round Tracker's wreath
+numerals, and a Secret Santa card has none. The narrow layout already renders these same cards at ~69px.
 
 The Express folds above only ever make the strip **narrower**, so neither carries a width floor. The Avid
 row and the Express Secret Santa column both *widen* it, and therefore both do.
