@@ -1,0 +1,59 @@
+'''Ugly Christmas Sweaters''' combines trick-taking, drafting and set collection. Each trick decides the order you draft in; the cards you draft are thirds of a sweater that you knit together in your own area. Highest total VP wins.
+
+== Gameplay ==
+
+A round is a series of tricks, and every trick runs Trade, then Draft, then Knit.
+
+=== Trade Phase (the trick) ===
+
+* The lead player plays 1 card face-up to the Trade Area. Going clockwise, everyone else must follow by matching the led card's '''colour OR icon''' — either one satisfies it. A player who can do neither may play any card.
+* Following is only what makes a play legal; it confers no advantage when the trick resolves. An off-suit high card can still take top priority.
+
+The trick does not win the cards. It sets the '''Draft Order''' — the order players pick in — by this priority:
+
+* '''Perfect Fit''' (super trump): a card whose value equals the Perfect Fit number takes the top spot. If several do, the one played later wins. A card matching '''both''' the Perfect Fit number and the Trendy Yarn colour beats a later Perfect Fit card that does not match the colour.
+* '''Trendy Yarn''' (trump colour): with no Perfect Fit played, any card of the Trendy Yarn colour beats every other colour regardless of value; among them the highest value wins.
+* '''Value''': otherwise the highest value wins (12 is strongest, 1 weakest).
+* Ties go to the player who played later in turn order.
+
+=== Draft Phase ===
+
+* In Draft Order, each player takes 1 card from the 4-card Draft Pool and places it into their Knitting Area.
+* You may not draft the cards just played into the Trade Area — those become the '''next''' trick's Draft Pool.
+
+=== Knit Phase ===
+
+Every Sweater Card is one third of a garment: '''L''' (upper left), '''R''' (upper right) or '''B''' (the hem, centred across the bottom). A completed sweater is one L plus one R plus one B.
+
+* Only the card you just drafted may be placed. It can start a new sweater or join one you have already started.
+* A card can only go into the slot matching its own orientation. You may place it '''over''' an existing piece of that same orientation, which discards the covered card.
+* Placed cards never move, and two sweaters can never be merged.
+* '''Patches''' are wild. In a trick, a patch copies the value and icon of the card played immediately before it; a patch that leads copies any card in the Draft Pool. Once placed, its value and icon stay undecided until scoring, when you choose them. Its colour is always fixed.
+
+== End of Round and Scoring ==
+
+The round ends when a player completes their 3rd sweater, or when hands run out. Players who come later in the current Draft Order still take their turn. '''Unfinished sweaters are wiped and score nothing.'''
+
+Each completed sweater scores:
+
+* '''+2 VP''' — for the sweater itself.
+* '''+2 VP''' — its three values are three consecutive numbers. There is no wrap-around: 11-12-1 does not count.
+* '''+3 VP per objective''' — it matches an active '''Fad'''. Each Fad card carries two objectives, one colour and one icon, and each scores separately. Under the "Clash Is In" Fad the sweater must instead be all different colours and all different icons.
+* '''+1 VP each''' — all one colour that is not the Fad colour, and, separately, all one icon that is not the Fad icon. A sweater can score both.
+* '''+3 VP''' — it satisfies your '''Secret Santa''', a hidden request for a colour and an icon. Each card in the sweater counts toward either its colour or its icon, not both.
+
+After the final round the highest total wins. Ties are broken by fewest unbuilt sweaters, then by most Fad points.
+
+== Variants and Options ==
+
+'''Game mode'''
+
+* '''Casual''' — the base game. 3 rounds, with 1 Secret Santa dealt fresh each round. Satisfying it is optional and there is no penalty for missing it.
+* '''Express''' — a single round. 2 Secret Santas each; Fads are claimed by the first sweater to fulfil them; Trendy Yarn rotates during the round and Perfect Fit is replaced whenever it is matched; the round ends on the 4th sweater.
+* '''Avid''' — 3 rounds, but 3 Secret Santas are dealt once at the start and last all game, tracked across rounds and revealed as each is completed. Each still scores +3 VP, but '''a player who has not completed all three by the end of the game scores 0.'''
+
+'''Difficulty''' (Casual only) — Beginner reveals Fads only, Novice adds Trendy Yarn, Expert uses all three round parameters.
+
+'''Bonus cards''' (Expert difficulty) — each player gets one Special Ability card. The Little Brothers Colour Coordinate is a +3 VP objective; Tina Can Tink lets you move or swap a placed piece at round end; Mixed-up Maria lets you ignore the orientation rule once; Billy's a Brute lets you jump to the front of the draft once, but the card you take is discarded rather than kept.
+
+'''Player count''' — with 2 players you play and draft 2 cards per trick. With 3 players the pool holds 4 cards but only 3 are drafted.
