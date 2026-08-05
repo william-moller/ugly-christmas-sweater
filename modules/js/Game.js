@@ -429,12 +429,15 @@ class Game {
         this.tinaSelB = null;
         this.tinaBuildNo = null;
         this.tinaSlot = null;
-        // Round-end patch assignment (AssignPatches state): the patch card ids I still owe an assignment
-        // (each glows and gets its own inline value/icon picker beside it), plus the in-progress value/icon
-        // choice per patch (keyed by card id — several patches can be pending at once).
+        // Round-end patch assignment (AssignPatches state): the patch card ids I still owe an assignment, in
+        // the order they're worked through — [0] is the one glowing and holding the picker — plus the
+        // in-progress value/icon choice per patch (keyed by card id; a choice survives until its Confirm).
         this.onAssignPatch = null;
         this.assignPending = [];
         this.assignSel = {};
+        // Round summary minimize/restore: the pending end-of-animation timer, so a fast minimize→restore
+        // can't have the earlier click's timer land afterwards (see setRoundSummaryMinimized).
+        this.sheetAnimTimer = null;
         // Confirm/Reset gate: a pending play/draft waits for the player to confirm (or auto-confirms via
         // the action button's countdown). The abort controller cancels that countdown on Reset / leave.
         this.confirmAbort = null;
@@ -2720,7 +2723,79 @@ class Game {
         this.hideRoundSummary();
     }
     hideRoundSummary() {
+        // Kill any in-flight minimize: its timer would otherwise fire against a dismissed sheet and
+        // leave a restore chip on screen with nothing behind it.
+        if (this.sheetAnimTimer !== null) {
+            clearTimeout(this.sheetAnimTimer);
+            this.sheetAnimTimer = null;
+        }
         document.getElementById('ucs-score-popin')?.remove();
+        document.getElementById('ucs-score-restore')?.remove();
+    }
+    /**
+     * Minimize / restore the summary. Minimizing is **not** Okay: the overlay and its backdrop get out
+     * of the way so the knitting areas underneath can be read and clicked, but the round is not
+     * acknowledged and the state doesn't advance. A restore chip parked beside the "?" help button
+     * brings the sheet straight back.
+     *
+     * The sheet animates to/from that corner, so `display: none` can only be applied once the shrink has
+     * played — hence the timer. Duration lives in SHEET_ANIM_MS and must match `$ucs-sheet-anim` in
+     * Game.scss; a timer rather than `animationend` so a browser that suppresses the animation (reduced
+     * motion, background tab) still ends up in the right state.
+     */
+    setRoundSummaryMinimized(min) {
+        const overlay = document.getElementById('ucs-score-popin');
+        if (!overlay)
+            return;
+        if (this.sheetAnimTimer !== null) {
+            clearTimeout(this.sheetAnimTimer);
+            this.sheetAnimTimer = null;
+        }
+        overlay.classList.remove('ucs-popin-closing', 'ucs-popin-opening');
+        void overlay.offsetWidth; // reflow: re-adding a class in the same frame won't restart its animation
+        if (min) {
+            overlay.classList.add('ucs-popin-closing');
+            this.sheetAnimTimer = window.setTimeout(() => {
+                this.sheetAnimTimer = null;
+                overlay.classList.remove('ucs-popin-closing');
+                overlay.classList.add('ucs-popin-minimized');
+                this.showRoundSummaryChip();
+            }, Game.SHEET_ANIM_MS);
+            return;
+        }
+        document.getElementById('ucs-score-restore')?.remove();
+        overlay.classList.remove('ucs-popin-minimized');
+        overlay.classList.add('ucs-popin-opening');
+        this.sheetAnimTimer = window.setTimeout(() => {
+            this.sheetAnimTimer = null;
+            overlay.classList.remove('ucs-popin-opening');
+        }, Game.SHEET_ANIM_MS);
+    }
+    /** The lower-left chip that brings a minimized summary back. */
+    showRoundSummaryChip() {
+        if (document.getElementById('ucs-score-restore'))
+            return;
+        const chip = document.createElement('button');
+        chip.id = 'ucs-score-restore';
+        chip.className = 'ucs-score-restore';
+        chip.title = _('Show the round summary');
+        chip.setAttribute('aria-label', _('Show the round summary'));
+        chip.innerHTML = `<svg class="ucs-score-restore-art" viewBox="0 0 24 24" aria-hidden="true">`
+            + `<path class="ucs-sr-body" d="M7 4 H10 C10 7 14 7 14 4 H17 L22 8.2 L19 11.6 L17 10 V21 H7 V10 L5 11.6 L2 8.2 Z"/>`
+            + `<path class="ucs-sr-stripe" d="M7.6 13.4 L12 16 L16.4 13.4"/>`
+            + `</svg>`;
+        chip.onclick = () => this.setRoundSummaryMinimized(false);
+        // Park it in bga-help's fixed lower-left strip: we inherit its pinning and its flex gap, so the
+        // chip can never land on top of the "?" button. Without that container we'd have no way back to
+        // the sheet, so pin ourselves instead (.ucs-score-restore-solo).
+        const host = document.getElementById('bga-help_buttons');
+        if (host) {
+            host.appendChild(chip);
+        }
+        else {
+            chip.classList.add('ucs-score-restore-solo');
+            this.bga.gameArea.getElement().appendChild(chip);
+        }
     }
     /**
      * Build the end-of-round scoring summary — an HTML recreation of the printed ScorePad: category rows
@@ -2735,6 +2810,9 @@ class Game {
         overlay.className = 'ucs-popin ucs-score-popin';
         const backdrop = document.createElement('div');
         backdrop.className = 'ucs-popin-backdrop';
+        // Clicking away from the sheet minimizes rather than dismisses — it's the natural gesture for
+        // "let me see the board", and unlike Okay it costs nothing (the sheet is one click away).
+        backdrop.onclick = () => this.setRoundSummaryMinimized(true);
         overlay.appendChild(backdrop);
         const box = document.createElement('div');
         box.className = 'ucs-popin-box ucs-score-box';
@@ -2764,6 +2842,14 @@ class Game {
         }
         const foot = document.createElement('div');
         foot.className = 'ucs-score-foot';
+        // Minimize sits before Okay: in RoundReview, Okay acknowledges and lets the next round deal, so
+        // it's the one-way door. Anyone wanting a look at the board should reach the reversible one first.
+        const minimize = document.createElement('button');
+        minimize.className = 'ucs-score-min';
+        minimize.textContent = _('Minimize');
+        minimize.title = _('Look at the board — the summary stays available');
+        minimize.onclick = () => this.setRoundSummaryMinimized(true);
+        foot.appendChild(minimize);
         const okay = document.createElement('button');
         okay.className = 'ucs-score-okay';
         okay.textContent = _('Okay');
@@ -3187,5 +3273,6 @@ class Game {
             el.style.display = show ? 'block' : 'none';
     }
 }
+Game.SHEET_ANIM_MS = 220; // keep in step with $ucs-sheet-anim in Game.scss
 
 export { Game };

@@ -1583,6 +1583,7 @@ table.ucs-scorepad {
 .ucs-score-foot {
     display: flex;
     justify-content: center;
+    gap: 10px;
     padding: 12px;
     position: sticky;
     bottom: 0;
@@ -1599,6 +1600,97 @@ table.ucs-scorepad {
     border-radius: 8px;
     cursor: pointer;
     &:hover { background: #c9342b; }
+}
+// Minimize is the reversible sibling of Okay, so it's outlined rather than filled — Okay stays the
+// only button that looks like the one to press when you're done with the sheet.
+.ucs-score-min {
+    padding: 8px 20px;
+    font-weight: 700;
+    font-size: 15px;
+    color: #5a5348;
+    background: transparent;
+    border: 1px solid #b8ae99;
+    border-radius: 8px;
+    cursor: pointer;
+    &:hover { background: #efe8d8; color: #3a352d; }
+}
+
+// Minimized: the whole overlay — backdrop included — steps aside so the knitting areas underneath are
+// readable AND clickable. The sheet is not dismissed; .ucs-score-restore below brings it back.
+.ucs-popin.ucs-popin-minimized { display: none; }
+
+// ---- Minimize / restore animation -----------------------------------------------------------------
+// The sheet shrinks into (and grows back out of) the lower-left corner where the chip lives, so the two
+// read as the same object rather than one thing vanishing and another appearing. `display: none` can't
+// be animated, so the JS applies it after the shrink has played — duration must match Game.SHEET_ANIM_MS.
+$ucs-sheet-anim: 220ms;
+
+@keyframes ucs-sheet-out {
+    from { opacity: 1; transform: none; }
+    to   { opacity: 0; transform: scale(0.18) translate(-30%, 40%); }
+}
+@keyframes ucs-sheet-in {
+    from { opacity: 0; transform: scale(0.18) translate(-30%, 40%); }
+    to   { opacity: 1; transform: none; }
+}
+@keyframes ucs-backdrop-fade {
+    from { opacity: 1; }
+    to   { opacity: 0; }
+}
+
+.ucs-popin-closing {
+    // `forwards` holds the sheet shrunk for the frames between the animation ending and the JS timer
+    // applying display:none — without it the sheet snaps back to full size for a blink.
+    .ucs-score-box { transform-origin: bottom left; animation: ucs-sheet-out $ucs-sheet-anim ease-in forwards; }
+    .ucs-popin-backdrop { animation: ucs-backdrop-fade $ucs-sheet-anim ease-in forwards; }
+}
+.ucs-popin-opening {
+    .ucs-score-box { transform-origin: bottom left; animation: ucs-sheet-in $ucs-sheet-anim ease-out; }
+    .ucs-popin-backdrop { animation: ucs-backdrop-fade $ucs-sheet-anim ease-out reverse; }
+}
+@keyframes ucs-chip-pop {
+    from { opacity: 0; transform: scale(0.4); }
+    to   { opacity: 1; transform: scale(1); }
+}
+
+// Restore chip. Lives inside bga-help's fixed lower-left strip (a flex row), so it matches the "?"
+// button's 52px circle and sits beside it — same festive red, same thin white ring — with a green
+// sweater in place of the "?".
+.ucs-score-restore {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 52px;
+    height: 52px;
+    padding: 0;
+    border-radius: 50%;
+    border: 2px solid #fff;
+    background: #8b0f03; // matches the help button's buttonBackground
+    box-shadow: 2px 4px 6px 0 rgba(0, 0, 0, 0.55);
+    cursor: pointer;
+    animation: ucs-chip-pop 160ms ease-out;
+    &:hover { background: #a81605; }
+}
+.ucs-score-restore-art {
+    width: 30px;
+    height: 30px;
+}
+.ucs-sr-body { fill: #2e9e52; }
+// The knit stripe across the chest — enough to read as an *ugly* sweater at 30px, not just a garment.
+.ucs-sr-stripe {
+    fill: none;
+    stroke: #cdf3d9;
+    stroke-width: 1.6;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+// Fallback pin, only used if bga-help's container is missing (see Game.setRoundSummaryMinimized).
+.ucs-score-restore-solo {
+    position: fixed;
+    bottom: 12px;
+    left: 8px;
+    z-index: 949;
 }
 
 // ---- Responsive: narrow window (< 1000px) — everything stacks in one column ---------------------

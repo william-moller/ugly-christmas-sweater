@@ -1953,6 +1953,7 @@ table.ucs-scorepad th, table.ucs-scorepad td {
 .ucs-score-foot {
   display: flex;
   justify-content: center;
+  gap: 10px;
   padding: 12px;
   position: sticky;
   bottom: 0;
@@ -1972,6 +1973,122 @@ table.ucs-scorepad th, table.ucs-scorepad td {
 }
 .ucs-score-okay:hover {
   background: #c9342b;
+}
+
+.ucs-score-min {
+  padding: 8px 20px;
+  font-weight: 700;
+  font-size: 15px;
+  color: #5a5348;
+  background: transparent;
+  border: 1px solid #b8ae99;
+  border-radius: 8px;
+  cursor: pointer;
+}
+.ucs-score-min:hover {
+  background: #efe8d8;
+  color: #3a352d;
+}
+
+.ucs-popin.ucs-popin-minimized {
+  display: none;
+}
+
+@keyframes ucs-sheet-out {
+  from {
+    opacity: 1;
+    transform: none;
+  }
+  to {
+    opacity: 0;
+    transform: scale(0.18) translate(-30%, 40%);
+  }
+}
+@keyframes ucs-sheet-in {
+  from {
+    opacity: 0;
+    transform: scale(0.18) translate(-30%, 40%);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes ucs-backdrop-fade {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+.ucs-popin-closing .ucs-score-box {
+  transform-origin: bottom left;
+  animation: ucs-sheet-out 220ms ease-in forwards;
+}
+.ucs-popin-closing .ucs-popin-backdrop {
+  animation: ucs-backdrop-fade 220ms ease-in forwards;
+}
+
+.ucs-popin-opening .ucs-score-box {
+  transform-origin: bottom left;
+  animation: ucs-sheet-in 220ms ease-out;
+}
+.ucs-popin-opening .ucs-popin-backdrop {
+  animation: ucs-backdrop-fade 220ms ease-out reverse;
+}
+
+@keyframes ucs-chip-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.4);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+.ucs-score-restore {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 52px;
+  height: 52px;
+  padding: 0;
+  border-radius: 50%;
+  border: 2px solid #fff;
+  background: #8b0f03;
+  box-shadow: 2px 4px 6px 0 rgba(0, 0, 0, 0.55);
+  cursor: pointer;
+  animation: ucs-chip-pop 160ms ease-out;
+}
+.ucs-score-restore:hover {
+  background: #a81605;
+}
+
+.ucs-score-restore-art {
+  width: 30px;
+  height: 30px;
+}
+
+.ucs-sr-body {
+  fill: #2e9e52;
+}
+
+.ucs-sr-stripe {
+  fill: none;
+  stroke: #cdf3d9;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.ucs-score-restore-solo {
+  position: fixed;
+  bottom: 12px;
+  left: 8px;
+  z-index: 949;
 }
 
 @media (max-width: 1000px) {
