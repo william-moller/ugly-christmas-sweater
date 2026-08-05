@@ -438,6 +438,11 @@ html[data-theme="dark"] {
     flex-direction: row;
     flex-wrap: wrap;
     align-items: flex-end;
+    // Centred (checklist: elements that don't fill the horizontal space should be). The board strip is
+    // as wide as its widest term, which in Avid is the Secret Santa row, not this one — so the parameter
+    // cards sat against the strip's left edge with the Santa row running well past them underneath.
+    // A no-op wherever this row IS the widest term, which is every Express and Casual shape.
+    justify-content: center;
     gap: 12px;
 }
 // Perfect Fit + Trendy Yarn pair. A plain row by default (they sit side by side after the Fads, exactly
@@ -638,6 +643,8 @@ html[data-theme="dark"] {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
+    // #ucs-placement is a full-width panel but these rows are a handful of buttons wide.
+    justify-content: center;
     gap: 5px;
     margin: 4px 0;
 }
@@ -865,9 +872,15 @@ html[data-theme="dark"] {
     }
 }
 
+// My Knitting Area's builds. Centred per the BGA pre-release checklist ("if elements don't occupy all
+// available horizontal space, they should be centered"): the panel is full width at every tier
+// (#ucs-my-area is flex: 1 1 auto wide, width: 100% narrow) but a player holds one or two sweaters for
+// most of a round, so left-aligned they sat against one edge of a very wide green panel. Only visible
+// where there IS slack — once the builds fill the row this is a no-op.
 .ucs-knitting {
     display: flex;
     flex-wrap: wrap;
+    justify-content: center;
     gap: 12px;
     min-height: var(--ucs-card-h);
 }
@@ -1906,7 +1919,6 @@ $ucs-sheet-anim: 220ms;
     &.ucs-avid #ucs-secret-santa .ucs-santa-cards {
         --ucs-card-w: calc((100cqi - 24px) / 4.7);         // 3 rotated slots (h ≈ 1.567w) + two 12px gaps
         --ucs-card-h: calc(var(--ucs-card-w) * 1.567);
-        justify-content: center;
     }
 
     // Secret Santa: the two landscape (rotated) cards fill their row side by side (all player counts).
@@ -1945,7 +1957,6 @@ $ucs-sheet-anim: 220ms;
         --ucs-card-w: calc(72px * var(--ucs-card-scale, 1));
         --ucs-card-h: calc(72px * 1.556 * var(--ucs-card-scale, 1));
     }
-    .ucs-gameplay-row { justify-content: center; }
     #ucs-opponents .ucs-oppo { flex: 1 1 100%; }
 }
 
@@ -2210,6 +2221,8 @@ $santa-column-floors: (medium: 1450px, large: 1840px);
     display: flex;
     gap: 8px;
     align-items: center;
+    // Casual's single card under a three-card parameter row has most of the strip's width spare.
+    justify-content: center;
 }
 // Express: my Secret Santa card(s) sit in the board strip, directly under the parameter row, side by
 // side (see .ucs-santa-cards) so they fit under the width of that row. Sized to match the tabletop feel.
@@ -2218,7 +2231,9 @@ $santa-column-floors: (medium: 1450px, large: 1840px);
     --ucs-card-h: calc(188px * var(--ucs-card-scale, 1));
     display: flex;
     flex-direction: column;
-    align-items: flex-start;
+    // stretch, not flex-start: the card row below needs the zone's full width before it can centre
+    // itself in it. The label keeps its own text-align: left.
+    align-items: stretch;
     gap: 2px;
     margin-bottom: 6px;
 }
@@ -2232,7 +2247,9 @@ $santa-column-floors: (medium: 1450px, large: 1840px);
     flex-wrap: wrap;
     gap: 12px;
     align-items: center;
-    justify-content: flex-start;
+    // The pair is narrower than the parameter row above it in every Express shape (388px against 450+
+    // at 2P), so centre it under that row rather than leaving it against the left edge.
+    justify-content: center;
 }
 // The slot reserves the rotated card's landscape footprint (w↔h swapped) so it doesn't overlap.
 .ucs-santa-slot {

@@ -61,13 +61,24 @@ not of the code.
   trickykids) uses `clamp()` or a container query at all; fluid card sizing is not the idiom here.
   Options, cheapest first:
   - **Re-pitch the scale.** Our base 80px is *below* soothsayers' small (100px) while our Large (120px)
-    matches their large — so Large is doing the work of "normal". Raising base to ~95–100 and Large to
-    ~`1.2 ×` puts Large's floor at ≈1600 against Medium's 1443 (per the formula in
-    [`responsive.md`](responsive.md)) — not identical, but close enough that **one** floor at 1600 could
-    serve all three sizes, costing Medium only a 157px band where it could have folded and doesn't.
-    Today's `1.5 ×` spreads those floors 392px apart, which is why they can't share a number. Costs a
-    re-check of the tuned layouts (2P Express is signed off — don't regress it); the numbers themselves
-    now fall out of the formula rather than needing re-derivation.
+    matches their large — so Large is doing the work of "normal". Raise base to ~96 and Large to `1.2 ×`.
+    **Correcting an earlier claim here: this does not lower the floors, it raises them.** The base
+    multiplies every size, so Small and Medium get ~20% bigger cards and need ~20% more width. Re-derived
+    at base 96 / Large 1.2, against today in brackets:
+
+    | Shape | Small | Medium | Large |
+    |-------|------:|-------:|------:|
+    | Casual · Avid | 1390 (1278) | 1425 (1307) | 1567 (1602) |
+    | Express 2P | 1607 (1461) | 1653 (1499) | 1838 (1884) |
+    | Express 3P | 1556 (1408) | 1603 (1447) | 1789 (1836) |
+    | Express 4P | 1498 (1366) | 1540 (1401) | 1707 (1749) |
+
+    Within-shape spread does collapse as intended (Casual 324 → 177), but the cheapest floor rises 112px
+    and the dearest barely moves. So what the re-pitch actually buys is **a bigger Medium** — the
+    felt-filling that Large was raised to `1.5 ×` for in the first place — and it should be judged as
+    that, a desktop aesthetics change, not as a layout fix. It is **not** a prerequisite for anything
+    responsive: the narrow layout sizes off container queries, never off `--ucs-card-scale`. Costs a
+    re-check of every tuned layout (2P Express is signed off — don't regress it).
   - **Leave the scale, cap the strip.** Keep 1.5 × but stop it overflowing: `max-width` on the board
     strip, or let it wrap. Smallest change; leaves the floors in place.
   - **Fluid sizing off the container.** Only if the first two prove insufficient — it would be novel

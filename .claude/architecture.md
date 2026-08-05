@@ -89,6 +89,57 @@ one patch per colour, so the P is a boolean flag, not a count). Colours/icons co
 render, 0 included, so the grid is stable. Icons sit on a light chip because the icon sprite art has
 near-white detail that greys out on a dark panel.
 
+### Layout: narrow vs wide is a class, not a media query
+
+`Game.ts::wideLayoutFloor()` computes **one** viewport width for the session and
+`layoutNarrowSidebar()` toggles `#ucs-table.ucs-narrow` at it via `matchMedia`; every narrow rule in
+`Game.scss` hangs off that class. This works because both inputs are constant for a session — the
+content shape (variant + player count) and the card-size preference, which is `needReload`. The floors
+live in that function **only**; don't restate them in CSS. Full derivation and the per-shape table are
+in [`responsive.md`](responsive.md).
+
+`layoutNarrowSidebar` also **moves containers by id** — `#ucs-rt-col` and `#ucs-opponents` into a
+generated `#ucs-sidebar`, and the wide Secret Santa zone (`#ucs-my-santa` in Express at 3–4P,
+`#ucs-secret-santa` in Avid) up into `#ucs-upper` for a full-width grid row. It moves the *containers*,
+not their contents, so `renderRoundTracker()` (targets `#ucs-rt-col`) and the opponent tables keep
+working wherever those containers currently live. It is idempotent and safe to re-run.
+
+Two traps this cost us, both live in the code comments too:
+
+- A zone lifted out of `#ucs-board-strip` loses that query container, so it has to become one itself —
+  and the `cqi` sizing then has to move onto its **child**, because container-query units resolve
+  against an *ancestor* container, never the element carrying `container-type`.
+- Anything inside a `@media (min-width: …)` block that styles the wide layout needs `:not(.ucs-narrow)`.
+  Those blocks carry an extra `html` element selector, so they out-specify the class-based narrow rules
+  and win inside the overlap band — which now exists for every shape whose floor is above 1000.
+
+### Round-end patch assignment (`beginAssignPatches`)
+
+`AssignPatches` is `MULTIPLE_ACTIVE_PLAYER`, so on the JS side you are **not** flagged active during
+`onEnteringState` — gating on `isCurrentPlayerActive` there always bails. The server args say which
+patches are whose, so the client drives off that instead.
+
+Patches are resolved **one at a time**: only `assignPending[0]` glows and gets the inline value/icon
+picker, the rest carry a static dashed marker, and the status bar counts down. The picker popover is
+absolutely positioned to the right of its sweater, so rendering one per pending patch hid the very
+cards still to be assigned. Confirming sends `actAssignPatch`, drops that patch and re-renders, which
+brings up the next.
+
+### Round-end scoring summary (`renderRoundSummary`)
+
+One overlay, two modes. In `RoundReview` it is **modal** and its Okay acknowledges (`actContinueRound`),
+which is what lets the next round deal; the action bar carries a **Continue** button wired to the same
+handler, so a minimized sheet never has to be reopened to say you're ready. After the **final** round
+there is no `RoundReview` state at all — `ScoreRound` returns `EndScore` directly — so nothing is gated
+and the sheet renders **modeless** (`renderRoundSummary(args, undefined, false)`): no backdrop, and
+`pointer-events` pass through everywhere except the sheet, leaving the end-of-game screen live.
+
+`setRoundSummaryMinimized()` shrinks the sheet into a restore chip parked in bga-help's fixed lower-left
+strip (so it inherits that pinning and can't land on the "?" button). `display: none` can't be animated,
+so a **timer** applies it after the shrink plays — `SHEET_ANIM_MS` and `$ucs-sheet-anim` must stay in
+step. A timer rather than `animationend`, so a browser that suppresses the animation still lands in the
+right state; and `hideRoundSummary()` clears that timer, or an Okay mid-minimize strands the chip.
+
 ### Client animations (FLIP flights)
 
 Card motion between zones uses a **FLIP** helper (`flipCardFrom` in `Game.ts`): the destination
