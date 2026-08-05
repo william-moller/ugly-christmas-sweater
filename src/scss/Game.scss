@@ -1619,6 +1619,15 @@ table.ucs-scorepad {
 // readable AND clickable. The sheet is not dismissed; .ucs-score-restore below brings it back.
 .ucs-popin.ucs-popin-minimized { display: none; }
 
+// Final round: there is nothing to acknowledge — ScoreRound goes straight to EndScore, so the game has
+// already ended by the time this renders. The sheet floats over the end screen rather than gating it:
+// no backdrop, and clicks pass through everywhere except the sheet itself, so the end-of-game panel and
+// BGA's own controls stay live underneath whether or not the player ever closes it.
+.ucs-popin-modeless {
+    pointer-events: none;
+    .ucs-popin-box { pointer-events: auto; }
+}
+
 // ---- Minimize / restore animation -----------------------------------------------------------------
 // The sheet shrinks into (and grows back out of) the lower-left corner where the chip lives, so the two
 // read as the same object rather than one thing vanishing and another appearing. `display: none` can't

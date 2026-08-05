@@ -2704,18 +2704,27 @@ class Game {
      * Okay button acknowledges — once all players click, the next round deals. Rendered from the state
      * args, so it survives a refresh. A player who already acknowledged (non-active, e.g. F5 while
      * waiting) doesn't see it again.
+     *
+     * The same acknowledgement is offered twice: the sheet's Okay, and a Continue button in the action
+     * bar. The action bar is the one that's always reachable — the sheet can be minimized, which puts its
+     * Okay behind a restore click — and the state's descriptionMyTurn already tells the player to
+     * continue, so until now it named a button that wasn't there.
      */
     showRoundReview(detail, isCurrentPlayerActive, onContinue) {
         if (!isCurrentPlayerActive) {
             this.hideRoundSummary();
             return;
         }
-        this.bga.statusBar.removeActionButtons();
-        this.renderRoundSummary(detail, () => {
-            this.hideRoundSummary();
-            this.bga.statusBar.setTitle(_('Waiting for other players…'));
+        const sb = this.bga.statusBar;
+        sb.removeActionButtons();
+        const acknowledge = () => {
+            this.hideRoundSummary(); // takes the restore chip with it, minimized or not
+            sb.removeActionButtons();
+            sb.setTitle(_('Waiting for other players…'));
             onContinue();
-        });
+        };
+        this.renderRoundSummary(detail, acknowledge);
+        sb.addActionButton(_('Continue'), acknowledge, { color: 'primary' });
     }
     /** Tear down the summary overlay when leaving RoundReview (next round is about to be dealt). */
     endRoundReview() {
@@ -2803,17 +2812,19 @@ class Game {
      * wires the Okay button; without it the button just closes the overlay (used for the final round,
      * which has no RoundReview acknowledgement gate).
      */
-    renderRoundSummary(detail, onOkay) {
+    renderRoundSummary(detail, onOkay, modal = true) {
         this.hideRoundSummary();
         const overlay = document.createElement('div');
         overlay.id = 'ucs-score-popin';
-        overlay.className = 'ucs-popin ucs-score-popin';
-        const backdrop = document.createElement('div');
-        backdrop.className = 'ucs-popin-backdrop';
-        // Clicking away from the sheet minimizes rather than dismisses — it's the natural gesture for
-        // "let me see the board", and unlike Okay it costs nothing (the sheet is one click away).
-        backdrop.onclick = () => this.setRoundSummaryMinimized(true);
-        overlay.appendChild(backdrop);
+        overlay.className = 'ucs-popin ucs-score-popin' + (modal ? '' : ' ucs-popin-modeless');
+        if (modal) {
+            const backdrop = document.createElement('div');
+            backdrop.className = 'ucs-popin-backdrop';
+            // Clicking away from the sheet minimizes rather than dismisses — it's the natural gesture for
+            // "let me see the board", and unlike Okay it costs nothing (the sheet is one click away).
+            backdrop.onclick = () => this.setRoundSummaryMinimized(true);
+            overlay.appendChild(backdrop);
+        }
         const box = document.createElement('div');
         box.className = 'ucs-popin-box ucs-score-box';
         const fadTitle = detail.fad?.title ? ` · ${_('Fad')}: ${detail.fad.title}` : '';
@@ -2852,7 +2863,8 @@ class Game {
         foot.appendChild(minimize);
         const okay = document.createElement('button');
         okay.className = 'ucs-score-okay';
-        okay.textContent = _('Okay');
+        // Only the RoundReview sheet acknowledges anything; the final-round one just goes away.
+        okay.textContent = onOkay ? _('Okay') : _('Close');
         okay.onclick = () => { if (onOkay)
             onOkay();
         else
@@ -3246,8 +3258,9 @@ class Game {
     }
     /**
      * A round was scored. Non-final rounds show the scoring-summary overlay from the RoundReview state
-     * (all players, Okay = acknowledge → next round). The FINAL round has no RoundReview state, so show
-     * the summary here with a close-only Okay before the game moves to the end screen.
+     * (all players, Okay = acknowledge → next round). The FINAL round has no RoundReview state — ScoreRound
+     * goes straight to EndScore — so nothing here gates anything; the sheet is shown modeless so the end
+     * screen underneath stays usable, and closing it is optional.
      */
     async notif_roundScored(args) {
         // The draft phase is over and we're moving on — the "last trick" banner is spent.
@@ -3258,7 +3271,7 @@ class Game {
             this.renderAvidRevealed();
         }
         if (args.round >= this.gamedatas.totalRounds) {
-            this.renderRoundSummary(args); // final round: no acknowledgement gate, Okay just closes it
+            this.renderRoundSummary(args, undefined, false); // modeless: never in the way of the end screen
         }
     }
     /** The hand's end was triggered mid-draft (a player completed their Nth sweater): show the banner
