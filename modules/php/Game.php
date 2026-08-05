@@ -12,10 +12,10 @@
  */
 declare(strict_types=1);
 
-namespace Bga\Games\UglyChristmasSweater;
+namespace Bga\Games\UglyChristmasSweaters;
 
-use Bga\Games\UglyChristmasSweater\States\NewRound;
-use Bga\Games\UglyChristmasSweater\States\PlayCard;
+use Bga\Games\UglyChristmasSweaters\States\NewRound;
+use Bga\Games\UglyChristmasSweaters\States\PlayCard;
 
 class Game extends \Bga\GameFramework\Table
 {

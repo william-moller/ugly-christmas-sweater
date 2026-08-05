@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace Bga\Games\UglyChristmasSweater\States;
+namespace Bga\Games\UglyChristmasSweaters\States;
 
 use Bga\GameFramework\StateType;
 use Bga\GameFramework\States\GameState;
-use Bga\Games\UglyChristmasSweater\Game;
+use Bga\Games\UglyChristmasSweaters\Game;
 
 /** Score the round, then start the next round or end the game after the last round (Casual 3 / Express 1). */
 class ScoreRound extends GameState

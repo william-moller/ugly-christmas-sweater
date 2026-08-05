@@ -64,9 +64,9 @@ extra columns** — so per-card dynamic extras live in a **separate `card_meta` 
 `player_score` = cumulative VP (winner metric). `player_score_aux` = tie-break, set at game end by
 `EndScore` as a composite of fewest-unbuilt-sweaters then Fad points.
 
-## Client (`src/` → build → `modules/js/Game.js`, `uglychristmassweater.css`)
+## Client (`src/` → build → `modules/js/Game.js`, `uglychristmassweaters.css`)
 
-TypeScript + SCSS. **Edit `src/`, never the generated `modules/js/Game.js` or `uglychristmassweater.css`**
+TypeScript + SCSS. **Edit `src/`, never the generated `modules/js/Game.js` or `uglychristmassweaters.css`**
 (overwritten every build).
 
 - `src/ts/Game.ts` — the client entry (rollup `input`); holds selection state and all rendering.
@@ -162,7 +162,7 @@ if the snapshot is missing (e.g. an F5 mid-flight).
 ## Build / toolchain
 
 TypeScript + SCSS are enabled (`package.json`):
-- `npm run build` = `build:ts` (**rollup** compiles `src/ts/Game.ts` → `modules/js/Game.js`, ES format, `inlineDynamicImports`, `treeshake:false` — see `rollup.config.mjs`) + `build:scss` (**sass** compiles `src/scss/Game.scss` → `uglychristmassweater.css`).
+- `npm run build` = `build:ts` (**rollup** compiles `src/ts/Game.ts` → `modules/js/Game.js`, ES format, `inlineDynamicImports`, `treeshake:false` — see `rollup.config.mjs`) + `build:scss` (**sass** compiles `src/scss/Game.scss` → `uglychristmassweaters.css`).
 - `npm run watch` — rebuild both on save during development.
 - `node_modules/` is gitignored; `package-lock.json` is committed.
 

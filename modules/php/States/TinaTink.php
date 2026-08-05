@@ -2,13 +2,13 @@
 
 declare(strict_types=1);
 
-namespace Bga\Games\UglyChristmasSweater\States;
+namespace Bga\Games\UglyChristmasSweaters\States;
 
 use Bga\GameFramework\StateType;
 use Bga\GameFramework\States\GameState;
 use Bga\GameFramework\States\PossibleAction;
-use Bga\Games\UglyChristmasSweater\Game;
-use Bga\Games\UglyChristmasSweater\Material;
+use Bga\Games\UglyChristmasSweaters\Game;
+use Bga\Games\UglyChristmasSweaters\Material;
 
 /**
  * Tina Can Tink (bonus): at round end, BEFORE scoring (and before patch assignment), the (unused) Tina

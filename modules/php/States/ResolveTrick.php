@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace Bga\Games\UglyChristmasSweater\States;
+namespace Bga\Games\UglyChristmasSweaters\States;
 
 use Bga\GameFramework\StateType;
 use Bga\GameFramework\States\GameState;
-use Bga\Games\UglyChristmasSweater\Game;
+use Bga\Games\UglyChristmasSweaters\Game;
 
 /**
  * Resolve the trick into a draft order, assign the "1" Draft card (which also becomes the next leader),

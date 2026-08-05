@@ -9,7 +9,7 @@
  */
 declare(strict_types=1);
 
-namespace Bga\Games\UglyChristmasSweater;
+namespace Bga\Games\UglyChristmasSweaters;
 
 class Material
 {

@@ -27,7 +27,7 @@ const DIRS = ['modules', 'img', 'misc'];
 // the server denies overwriting them (they stay local, build-time only): the bga-*.d.ts TypeScript
 // typedefs and _ide_helper.php (PHP autocomplete stub).
 const FILES = [
-    'uglychristmassweater.css',
+    'uglychristmassweaters.css',
     'gameinfos.jsonc', 'gameoptions.jsonc', 'gamepreferences.jsonc', 'stats.jsonc',
     'dbmodel.sql', 'LICENCE_BGA',
 ];

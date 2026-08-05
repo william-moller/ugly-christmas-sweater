@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace Bga\Games\UglyChristmasSweater\States;
+namespace Bga\Games\UglyChristmasSweaters\States;
 
 use Bga\GameFramework\StateType;
 use Bga\GameFramework\States\GameState;
-use Bga\Games\UglyChristmasSweater\Game;
+use Bga\Games\UglyChristmasSweaters\Game;
 
 /**
  * End-of-trick cleanup: the trade-area cards become the next draft pool, hands refill to 9, then either

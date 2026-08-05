@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Bga\Games\UglyChristmasSweater\States;
+namespace Bga\Games\UglyChristmasSweaters\States;
 
 use Bga\GameFramework\StateType;
-use Bga\Games\UglyChristmasSweater\Game;
+use Bga\Games\UglyChristmasSweaters\Game;
 
 const ST_END_GAME = 99;
 

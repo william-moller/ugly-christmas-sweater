@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace Bga\Games\UglyChristmasSweater\States;
+namespace Bga\Games\UglyChristmasSweaters\States;
 
 use Bga\GameFramework\StateType;
 use Bga\GameFramework\States\GameState;
-use Bga\Games\UglyChristmasSweater\Game;
+use Bga\Games\UglyChristmasSweaters\Game;
 
 /**
  * Dead-end state used ONLY on Studio (when Game::$preventEndGame is set) in place of actually ending

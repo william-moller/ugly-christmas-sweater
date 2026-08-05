@@ -88,8 +88,8 @@ not of the code.
     Small) and unchanged by the folds, so likely fine, but unverified since the layout reworks.
 - **Animations** — more of them. *Open question:* which moments? Trick resolution and scoring look
   like the gaps.
-- **How-to-play rules summary** — publish [`../docs/Gamehelpuglychristmassweater.wiki`](../docs/Gamehelpuglychristmassweater.wiki)
-  to https://en.doc.boardgamearena.com/Gamehelpuglychristmassweater. It is a **wiki page, not a repo
+- **How-to-play rules summary** — publish [`../docs/Gamehelpuglychristmassweaters.wiki`](../docs/Gamehelpuglychristmassweaters.wiki)
+  to https://en.doc.boardgamearena.com/Gamehelpuglychristmassweaters. It is a **wiki page, not a repo
   file** — BGA renders `Gamehelp<gamename>` into the in-game "How to play?" panel — so it needs a logged-in
   edit on the BGA doc wiki and cannot be deployed. Keep the repo copy as the source and re-paste on change.
   BGA's own UX guidance puts rules, hints and scoring tips on this page rather than in in-game popups, so
