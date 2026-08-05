@@ -2109,6 +2109,10 @@ table.ucs-scorepad th, table.ucs-scorepad td {
   #ucs-my-area {
     width: 100%;
   }
+  #ucs-my-area {
+    --ucs-card-w: min(calc(80px * var(--ucs-card-scale, 1)), 25vw);
+    --ucs-card-h: calc(var(--ucs-card-w) * 1.556);
+  }
   #ucs-center-stack {
     container-type: inline-size;
   }
@@ -2219,6 +2223,31 @@ table.ucs-scorepad th, table.ucs-scorepad td {
     flex-direction: column-reverse;
     align-items: flex-start;
     gap: 6px;
+  }
+  #ucs-table.ucs-narrow-sidebar:not(.ucs-express) #ucs-gameplay {
+    --ucs-card-w: calc((100cqi - 12px) / 3);
+  }
+  #ucs-table.ucs-narrow-sidebar:not(.ucs-express) .ucs-gameplay-row {
+    flex-wrap: nowrap;
+    gap: 6px;
+  }
+  #ucs-table.ucs-narrow-sidebar:not(.ucs-express) .ucs-fad-cards,
+  #ucs-table.ucs-narrow-sidebar:not(.ucs-express) .ucs-gp-pftr {
+    gap: 6px;
+  }
+  #ucs-table.ucs-narrow-sidebar:not(.ucs-express):not(.ucs-avid) #ucs-secret-santa {
+    --ucs-card-w: calc((100cqi - 12px) / 3.14);
+    --ucs-card-h: calc(var(--ucs-card-w) * 1.567);
+  }
+  #ucs-table.ucs-narrow-sidebar.ucs-avid #ucs-secret-santa {
+    grid-area: santa;
+    container-type: inline-size;
+    width: 100%;
+  }
+  #ucs-table.ucs-narrow-sidebar.ucs-avid #ucs-secret-santa .ucs-santa-cards {
+    --ucs-card-w: calc((100cqi - 24px) / 4.7);
+    --ucs-card-h: calc(var(--ucs-card-w) * 1.567);
+    justify-content: center;
   }
   #ucs-table.ucs-narrow-sidebar #ucs-my-santa {
     --ucs-card-w: calc((100cqi - 12px) / 3.14);

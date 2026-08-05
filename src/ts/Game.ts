@@ -577,18 +577,17 @@ export class Game {
         if (express) col.appendChild(this.roundTrackerEl(express));
     }
 
-    /** Wire the narrow-view Round-Tracker sidebar (Express only): lay it out now and again whenever the
-     *  viewport crosses the 1000px boundary. Card size (gamepreferences 101) is needReload, so it can't
-     *  change mid-session — width is the only live input, and a matchMedia listener covers it (no general
-     *  resize handler needed). */
+    /** Wire the narrow-view Round-Tracker sidebar (Express only — Casual/Avid have no tracker): lay it out
+     *  now and again whenever the viewport crosses the 1000px boundary. Card size (gamepreferences 101) is
+     *  needReload, so it can't change mid-session — width is the only live input, and a matchMedia listener
+     *  covers it (no general resize handler needed). */
     private setupNarrowSidebar() {
-        if (!this.gamedatas.express) return;
         window.matchMedia('(max-width: 1000px)').addEventListener('change', () => this.layoutNarrowSidebar());
         this.layoutNarrowSidebar();
     }
 
     /**
-     * Express · viewport ≤ 1000px · card size ≠ Large: tuck #ucs-rt-col (Round Tracker) and #ucs-opponents
+     * Express · viewport ≤ 1000px, at EVERY card size: tuck #ucs-rt-col (Round Tracker) and #ucs-opponents
      * into a right-hand #ucs-sidebar beside the parameter row (styled by the .ucs-narrow-sidebar grid in
      * Game.scss), so the row stops spanning full width and the vertical stack shortens. Outside that mode,
      * return both containers to their wide-layout homes: the opponents to #ucs-right-col, and the Round
@@ -602,14 +601,20 @@ export class Game {
         const upper = document.getElementById('ucs-upper');
         const rt = document.getElementById('ucs-rt-col');
         const oppo = document.getElementById('ucs-opponents');
-        const santa = document.getElementById('ucs-my-santa');
+        const santa = document.getElementById('ucs-my-santa');        // Express: my 2 objectives
+        const santaOne = document.getElementById('ucs-secret-santa'); // Casual: 1 · Avid: 3
         const count = Object.keys(this.gamedatas.players).length;
         if (!table || !upper || !rt || !oppo) return;
 
-        const large = document.documentElement.classList.contains('ucs-cards-large');
-        const active = !!this.gamedatas.express
-            && window.matchMedia('(max-width: 1000px)').matches
-            && !large;
+        // Every variant and every card size. Two former exclusions, both policy rather than arithmetic:
+        // Large (the sidebar sizes its cards off container queries — 100cqi in Game.scss — not off
+        // --ucs-card-scale, so the preference never changed what fits), and Casual/Avid (which have no
+        // Round Tracker to park, but do have opponents, and were left on the untuned vertical stack).
+        const active = window.matchMedia('(max-width: 1000px)').matches;
+
+        // Which Secret Santa zone wants a full-width row rather than the parameter column: Express at
+        // 3-4P (two landscape cards) and Avid (three). Casual's single card fits the column.
+        const wideSanta = this.gamedatas.express ? santa : (this.gamedatas.avid ? santaOne : null);
 
         if (active) {
             let sidebar = document.getElementById('ucs-sidebar');
@@ -618,12 +623,14 @@ export class Game {
                 sidebar.id = 'ucs-sidebar';
                 upper.appendChild(sidebar);
             }
-            sidebar.appendChild(rt);   // Round Tracker on top
+            sidebar.appendChild(rt);   // Round Tracker on top (empty in Casual/Avid — they have none)
             sidebar.appendChild(oppo); // opponents directly beneath it
-            // 3–4P: lift my Secret Santa pair out of the board strip so it can take a full-width grid row
-            // of its own (grid-area: santa). The sidebar ends above this row, so left in the strip the
-            // pair wasted a sidebar's width of space. 2P keeps it in the strip — that layout is settled.
-            if (santa && count >= 3 && santa.parentElement !== upper) upper.appendChild(santa);
+            // Lift the wide Secret Santa zone out of the board strip so it can take a full-width grid row
+            // of its own (grid-area: santa). The sidebar ends above this row, so left in the strip those
+            // landscape cards wasted a sidebar's width of space. Express 2P and Casual keep theirs in the
+            // strip — one settled layout, one single card.
+            const lift = this.gamedatas.express ? (count >= 3 ? wideSanta : null) : wideSanta;
+            if (lift && lift.parentElement !== upper) upper.appendChild(lift);
             table.classList.add('ucs-narrow-sidebar');
         } else {
             // Restore the wide layout: opponents back into the right column, and the Round Tracker either
@@ -633,8 +640,11 @@ export class Game {
             const myArea = document.getElementById('ucs-my-area');
             const strip = document.getElementById('ucs-board-strip');
             if (right && oppo.parentElement !== right) right.appendChild(oppo);
-            // Secret Santa back to the end of the board strip (its original slot, after #ucs-secret-santa).
+            // Secret Santa zones back into the board strip, in their original order: #ucs-gameplay,
+            // #ucs-secret-santa, #ucs-my-santa. Appending #ucs-my-santa first gives the other one a
+            // reference node to insert before, so the order holds however many were lifted.
             if (santa && strip && santa.parentElement !== strip) strip.appendChild(santa);
+            if (santaOne && strip && santaOne.parentElement !== strip) strip.insertBefore(santaOne, santa);
             if (this.rtTopRight()) {
                 if (right && rt.parentElement !== right) right.insertBefore(rt, oppo);
             } else if (lower && myArea && rt.parentElement !== lower) {

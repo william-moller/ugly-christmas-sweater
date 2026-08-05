@@ -1714,6 +1714,16 @@ $ucs-sheet-anim: 220ms;
     #ucs-center-stack,
     #ucs-my-area { width: 100%; }
 
+    // My knitting area is the last zone still sized straight off the Card-size preference, and a sweater
+    // is two cards wide (L+R over B) — so at Large on a phone one sweater claimed 240px of a 344px screen.
+    // Cap it at a share of the viewport: the preference still orders the sizes, but it can no longer set
+    // how many sweaters fit per row. 25vw keeps two builds across at 360px and stops biting entirely by
+    // ~960px, where the uncapped size is smaller than the cap anyway.
+    #ucs-my-area {
+        --ucs-card-w: min(calc(#{$card-w} * var(--ucs-card-scale, 1)), 25vw);
+        --ucs-card-h: calc(var(--ucs-card-w) * 1.556);
+    }
+
     // Grow the interactive Draft Pool / Trade Area cards to fill the stacked column, but cap them so they
     // never overflow it: the pool holds up to 4 cards in a row and the trade frame is one slot per card
     // in the trick, so size off the container's own inline width (cqi) divided across 4. Capped at 1.6×
@@ -1755,7 +1765,8 @@ $ucs-sheet-anim: 220ms;
     // parameter row + Secret Santa sit top-left, the sidebar (Round Tracker over opponents) sits to the
     // RIGHT of the parameter row, and the Draft Pool / Trade Area run full width beneath both. (A float
     // can't do this here — #ucs-upper is a flex/column container in this width band, which ignores floats.)
-    // Large never gets the class, so it keeps the plain vertical stack.
+    // Applies at every card size: the cards below size off 100cqi, not --ucs-card-scale, so the preference
+    // doesn't change what fits in this layout.
     #ucs-table.ucs-narrow-sidebar #ucs-upper {
         display: grid;
         grid-template-columns: minmax(0, 1fr) auto;   // parameter column | sidebar (sized to the tracker)
@@ -1845,6 +1856,49 @@ $ucs-sheet-anim: 220ms;
         flex-direction: column-reverse;                    // Trendy Yarn on top, Perfect Fit under it
         align-items: flex-start;
         gap: 6px;
+    }
+
+    // ---- Casual / Avid, narrow ------------------------------------------------------------------
+    // Neither has a Round Tracker and both render a single Fad, so the parameter row is three cards
+    // (Fad · Perfect Fit · Trendy Yarn) — the same three-across derivation Express 3P uses. The sidebar
+    // beside it carries the opponents alone. Player count doesn't subdivide these: fadsOnDisplay() is
+    // players + 1 in Express ONLY (see responsive.md, "How many arrangements are there, really?").
+    #ucs-table.ucs-narrow-sidebar:not(.ucs-express) #ucs-gameplay {
+        --ucs-card-w: calc((100cqi - 12px) / 3);           // 3 cards + two 6px gaps
+    }
+    #ucs-table.ucs-narrow-sidebar:not(.ucs-express) .ucs-gameplay-row {
+        flex-wrap: nowrap;
+        gap: 6px;
+    }
+    #ucs-table.ucs-narrow-sidebar:not(.ucs-express) .ucs-fad-cards,
+    #ucs-table.ucs-narrow-sidebar:not(.ucs-express) .ucs-gp-pftr { gap: 6px; }
+
+    // Casual's one landscape Secret Santa stays in the parameter column, sized like one of the Express
+    // pair so it doesn't tower over the row above it. (Its cqi resolves against #ucs-board-strip, which
+    // is why this can only apply while the card is still inside the strip — Avid's is lifted out below.)
+    #ucs-table.ucs-narrow-sidebar:not(.ucs-express):not(.ucs-avid) #ucs-secret-santa {
+        --ucs-card-w: calc((100cqi - 12px) / 3.14);
+        --ucs-card-h: calc(var(--ucs-card-w) * 1.567);
+    }
+
+    // Avid's three landscape Secret Santas are the most expensive term in the game — the wide layout only
+    // stacks them above 1000px and below that they ran as an unsized row. Give them a full-width grid row
+    // (layoutNarrowSidebar lifts the zone into #ucs-upper) and derive the card from it: three rotated
+    // slots across, so at 360px they land at ~69px wide — clear of the 56px interactive floor, and no
+    // stacking, which is what made them cost ~600px of height at Large in the wide layout.
+    //
+    // Lifted out of the strip it loses that container-query context and has to become one itself, with the
+    // sizing on its child — cqi always resolves against an ANCESTOR container, never the element carrying
+    // container-type (same reason #ucs-gameplay reads the strip's cqi rather than the strip its own).
+    #ucs-table.ucs-narrow-sidebar.ucs-avid #ucs-secret-santa {
+        grid-area: santa;
+        container-type: inline-size;
+        width: 100%;
+    }
+    #ucs-table.ucs-narrow-sidebar.ucs-avid #ucs-secret-santa .ucs-santa-cards {
+        --ucs-card-w: calc((100cqi - 24px) / 4.7);         // 3 rotated slots (h ≈ 1.567w) + two 12px gaps
+        --ucs-card-h: calc(var(--ucs-card-w) * 1.567);
+        justify-content: center;
     }
 
     // Secret Santa: the two landscape (rotated) cards fill their row side by side (all player counts).
