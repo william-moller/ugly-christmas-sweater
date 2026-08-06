@@ -15,6 +15,37 @@ not of the code.
 - **Centering audit** — checklist: if elements don't occupy all available horizontal space, they should
   be centered. Only two places do it today (`.ucs-gameplay-row` under 450px, Avid's Secret Santa row);
   every other zone needs checking at narrow widths, where a shrink-to-fit row leaves the slack.
+- **Special testing sweep** — the checklist's own *Special testing* block. None of it can be done from
+  the repo; every item needs a live table, and the whole block sits *before* the alpha request.
+  - **Minified JS + minified CSS** — toggle both on the manage-game page, then play. This is the only
+    thing that behaves differently in production from every test run so far; BGA's own wording is that
+    it stops the game shipping stuck on "Connecting to game". Use a **Casual 3-round or Avid** table,
+    not Express — Express never enters `RoundReview`, so it exercises neither the round-summary sheet,
+    the minimize chip, nor the Continue button. Two reasons to confirm rather than assume it passes:
+    state handlers register by **string literal** precisely so the minifier cannot mangle the mapping,
+    and `Game.js` ships as a bundled ES module with top-level `await`.
+  - **Spectator** — red arrow by "Test spectator" under the player panels. All public information
+    visible, no private: hands, unrevealed Secret Santas, any face-up-to-owner-only state.
+  - **Replay from last move** — click a notification-log entry mid-game.
+  - **Full replay** — "Replay game" on the table page after finishing, start to end, no errors.
+  - **Browsers** — Chrome and Firefox required; Edge and Safari recommended.
+  - **Real phone** — much of the narrow layout is derived arithmetically and has never been seen on
+    hardware. The visual polish sweep below lists which shapes are in that position.
+  - **Realtime mode** at default clocks, to confirm `giveExtraTime()` keeps players from timing out.
+  - **Waiting screen** — game start can fail against it.
+- **Verify the Bonus cards option end to end.** `gameoptions.jsonc` option **102** (Off/On) deals one
+  face-up Special Ability card per player at game start (`Game::bonusEnabled`), persisting all game.
+  It is *doubly* gated by `displaycondition` — shown only when Difficulty (option 100) is Expert, which
+  is itself shown only in Casual — so the selector has three routes to reach and each needs checking:
+  - **Casual** — the creator must set Difficulty to Expert before Bonus cards appears at all.
+  - **Express** / **Avid** — Difficulty is hidden at its Expert default, so Bonus cards should appear.
+
+  Where it is hidden the creator sees `notdisplayedmessage` instead; confirm that copy reads correctly.
+  Then play with it **On** and confirm all 4 Special Ability cards resolve, that a card is visible to
+  opponents (it is dealt face-up), and that it survives a round boundary in the 3-round modes.
+  ⚠️ Editing `gameoptions.jsonc` and deploying is **not** enough — BGA caches options in its DB. Click
+  **"Reload game options configuration"** on the manage-game page, *then* recreate the table, or the
+  change will not appear at all (see [`../../.claude/deploy.md`](../../.claude/deploy.md)).
 
 ## Polish / UX
 
