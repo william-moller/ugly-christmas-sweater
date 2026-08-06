@@ -79,6 +79,9 @@ class PlayCard extends GameState
     function zombie(int $playerId)
     {
         $args = $this->getArgs();
+        if (empty($args['playableCardsIds'])) {
+            return NextInTrick::class;
+        }
         $choice = $this->getRandomZombieChoice($args['playableCardsIds']);
         // copy_from = 0: a leading patch falls back to the first numbered pool card server-side.
         return $this->actPlayCard($choice, 0, $playerId, $args);
