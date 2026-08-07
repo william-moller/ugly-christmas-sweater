@@ -21,6 +21,11 @@ vocabulary:
 | **Card-size preference** | small / medium / large | pref `101` → `<html>.ucs-cards-{small,medium,large}` → `--ucs-card-scale` | a **discrete multiplier** on interactive card art only (hand, centre stack, own knitting); needs a reload | `gamepreferences.jsonc` + `Game.scss` |
 | **Display size** | phone / tablet / monitor | **narrow / wide**, split at the shape's own floor (`Game.ts::wideLayoutFloor`), plus a `<450px` phone tweak | **layout structure** (stacked+sidebar / three-column) | this doc + `#ucs-table.ucs-narrow` in `Game.scss` |
 
+Note that **pref `101` is one of three player preferences**, and the only one that is a layout axis —
+`100` (confirm gate) and `102` (hand sort) change behaviour, not arrangement, so they never enter a
+layout coordinate. All three are tabulated in
+[`architecture.md`](architecture.md#player-preferences-gamepreferencesjsonc).
+
 Template: **"In [variant], at [tier / px], with card size [pref] — [component] should [change]."**
 
 Defaults when an axis is omitted (so all three needn't be spelled out every time): **Tier A** (monitor —

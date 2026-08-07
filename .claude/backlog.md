@@ -128,3 +128,15 @@ not of the code.
   the watercolour background per card and shift each cell to a consistent registration (L body to its
   right edge, R to its left, B centred), so any L+R+B tiles. Heuristic; verify across all 52 cards by
   eye. The layout itself (rotate B, centre, butt) is already correct.
+
+## Code health / tooling
+
+- **Fold `build:icons` into `npm run build:sprites`.** There are three sprite generators but
+  `build:sprites` runs only two, so "rebuild the art" silently skips `img/icons.png` and every
+  `.ucs-icon` renders blank. Making `build:sprites` run all three removes the trap at the source; the
+  docs currently work around it by telling you to run both. Keep `build:icons` as its own script for
+  iterating on the icon keying, which is slow and rarely needed.
+- **Move stat initialisation onto the stat objects.** `Game.php` initialises with the deprecated
+  `initStat()` but increments with the current `$this->tableStats->inc()` / `$this->playerStats->inc()`.
+  Both work; the mix is the problem — it makes `grep incStat` return nothing and reads as if the stats
+  are never incremented. Use one API.

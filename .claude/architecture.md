@@ -64,6 +64,26 @@ extra columns** — so per-card dynamic extras live in a **separate `card_meta` 
 `player_score` = cumulative VP (winner metric). `player_score_aux` = tie-break, set at game end by
 `EndScore` as a composite of fewest-unbuilt-sweaters then Fad points.
 
+## Statistics (`stats.jsonc`)
+
+One table stat + ten player stats, all `int`. BGA's pre-alpha checklist requires *meaningful* stats,
+which here means the six `points_*` stats decompose the final score along exactly the rows of the
+scoring table in [`game-rules.md`](game-rules.md) — so a player can see *where* their VP came from, and
+so a scoring bug shows up as a stat that doesn't sum to `player_score`.
+
+| Stat | Scope | Incremented | Notes |
+|------|-------|-------------|-------|
+| `rounds` | table | `Game.php::scoreRound` | Rounds actually played (1 in Express, up to 3 otherwise). |
+| `tricks_won` | player | `States/ResolveTrick.php` | Credited to `$order[0]` — **the top of the resolved Draft Order**. No one "wins" a trick in this game, hence the label "Tricks won (led the draft)". |
+| `sweaters_started` / `sweaters_built` / `patches_scored` | player | `Game.php::scoreRound` | Completed-sweater counts; patches counted only in *completed* sweaters, matching the rule that patches in incomplete sweaters never score. |
+| `points_sweaters` · `points_runs` · `points_fad` · `points_secret_santa` · `points_nonfad_color` · `points_nonfad_icon` | player | `Game.php::scoreRound` | Computed off the same `sweaterParts` walk that awards the VP, deliberately, so the stats and the scored VP cannot drift. Colour and icon are separate stats because non-Fad matches score independently (+1 each) — see the scoring table. |
+
+⚠️ **Mixed stat APIs.** Setup initialises with the **deprecated** `initStat()` (`Game.php:219-232`);
+every increment uses the **current** `$this->tableStats->inc()` / `$this->playerStats->inc()`. Both work,
+but `initStat`/`setStat`/`incStat` are deprecated in favour of the stat objects (see
+[`../../.claude/reference/migration-guide.md`](../../.claude/reference/migration-guide.md)) — worth
+noting before you grep for `incStat` and wrongly conclude the stats are never incremented.
+
 ## Client (`src/` → build → `modules/js/Game.js`, `uglychristmassweaters.css`)
 
 TypeScript + SCSS. **Edit `src/`, never the generated `modules/js/Game.js` or `uglychristmassweaters.css`**
@@ -75,6 +95,32 @@ TypeScript + SCSS. **Edit `src/`, never the generated `modules/js/Game.js` or `u
 - `src/ts/libs.ts` — `BgaAnimations` / `BgaCards` (loaded from BGA at runtime; not bundled).
 - `src/ts/types.d.ts` — gamedatas / notif / args types.
 - `src/scss/Game.scss` — the single stylesheet.
+
+### Player preferences (`gamepreferences.jsonc`)
+
+Three, all client-side. Only **101** is a layout axis; the other two are behavioural and are easy to
+mistake for bugs during a testing sweep, which is why they're listed here rather than only in the jsonc.
+
+| # | Preference | Read in | Applies |
+|---|-----------|---------|---------|
+| **100** | Confirm before acting — `0` Off / `1` auto-confirm / `2` manual | `Game.ts::confirmMode` → `confirmAction` | live |
+| **101** | Card size — Small / Medium / Large → `--ucs-card-scale` | `<html>` `cssPref` class + `Game.ts::setupHandStock` | **needs reload** |
+| **102** | Hand sort — draw order / by colour / by icon | `Game.ts::handSortMode` → `handSort` | live, via `userPreferences.onChange` |
+
+**100 is the game's undo.** `confirmAction` wraps *every* interactive action (`PlayCard`, `DraftCard`,
+`AssignPatches`, `BillyChoice`, `TinaTink`): it puts a Confirm / **Reset turn** step in the action bar
+*before* anything is sent to the server, so Reset discards the whole pending selection with nothing
+public. Mode `1` fires Confirm via BGA's native autoclick countdown (abortable); `2` waits for a click;
+`0` skips the gate. Two deliberate fallbacks — an unreadable preference and a gate that fails to render
+both **act immediately** rather than strand the turn behind a broken gate. Testing implication: "the
+card click does nothing" is usually mode `2` waiting for a Confirm, not a dead handler.
+
+**101** is the discrete multiplier on *interactive* card art only; the narrow/wide split reads it too.
+Full treatment — including why it is `needReload` and how it interacts with the width floors — is in
+[`responsive.md`](responsive.md).
+
+**102** re-sorts the `bga-cards` hand stock in place (`sort:` on the stock, plus a re-sort on every hand
+render). Patches have no printed icon, so they sort last in *by icon*.
 
 ### Player-panel knitting tally
 
@@ -175,9 +221,9 @@ The 52 sweater/patch faces are packed into one CSS sprite (`img/sweaters.jpg`, a
 colour, col = value 0..12 with 0 = patch) plus a shared `img/card-back.jpg`; the script also emits the
 GENERATED `src/scss/_sweater-sprites.scss` (one `.ucs-face-<colour>_<value>` position class per card).
 Its input is the publisher PNGs (path hard-coded in the script) mapped by the card→file table verified
-against `Material::FACES`. `img/` is **gitignored** (publisher IP), so on a fresh checkout the sprites
-must be regenerated with `npm run build:sprites` before the art will show; the emitted SCSS partial *is*
-committed so the CSS still builds without the art. Uses the `sharp` dev-dependency. The script trims the
+against `Material::FACES`. The emitted SCSS partial *is* committed, so the CSS builds on a fresh
+checkout even though the art doesn't ship — see **Regenerating the art** below. Uses the `sharp`
+dev-dependency. The script trims the
 ~37.5px print bleed off the 750×1125 PNGs (→ 675×1050, a **bridge card**, ratio **0.643**) so the sweater
 art reaches the card edge; all six `--ucs-card-w/h` contexts in `Game.scss` are kept at that 0.643 ratio.
 
@@ -194,3 +240,51 @@ reversible via `--reverse`), so the build maps read plainly (e.g. `fad-05-red-ca
 **Fad deck (verified from art):** 10 physical cards = 8 distinct colour+icon fads + "Clash Is In" ×2. Each
 colour appears on two cards paired with a *different* icon (NOT one tidy colour⇄icon pair ×2). See
 `Material::fads()`.
+
+### Sweater-icon sprites (`scripts/build-icons.mjs`, `npm run build:icons`)
+
+The **third** generator, and the one that is easy to miss because it is *not* part of `build:sprites`.
+It bakes the four sweater icons (snowman / candy cane / bell / tree) into one transparent
+`img/icons.png` (4 × 128px square cells) plus the GENERATED `src/scss/_icon-sprites.scss` (`.ucs-icon`
+base + one class per icon), consumed wherever an icon appears outside printed card art — the patch
+wild-value badge, the `AssignPatches` picker, the player-panel tally.
+
+Two constraints that are baked into the script and must not be undone in CSS:
+
+- The source PNGs sit each icon on a pale watercolour rectangle, which the script keys out by
+  colour-distance from the sampled corner. What survives has **near-white detail** (snowman body, candy
+  cane stripes), so these must be shown on a **light** chip — on a dark surface they grey out. This is
+  the same constraint the panel tally notes above.
+- The snowman's linework is thin enough to anti-alias back to light grey at the ~20–40px it renders, so
+  the script darkens strokes away from white (`boost`) and thickens them (`thicken`) **at source
+  resolution**. A CSS `filter: brightness()` greys the body and `contrast()` lightens the above-midpoint
+  strokes, so neither can substitute — if an icon reads badly, fix it in the script and re-run.
+
+### Regenerating the art (fresh checkout)
+
+`img/` is **gitignored** (publisher IP), so a fresh clone has no art at all. The generated SCSS partials
+*are* committed, so `npm run build` succeeds — you just get empty/broken backgrounds until the sprites
+are rebuilt. All three generators read the same hard-coded publisher `ART_DIR` (a local path outside the
+repo), so this only works on a machine that has the art:
+
+```
+npm run build:sprites   # img/sweaters.jpg + img/card-back.jpg + img/secondary.jpg
+npm run build:icons     # img/icons.png                       <-- NOT covered by build:sprites
+```
+
+⚠️ **`npm run build:sprites` runs only the two card-face scripts.** `build:icons` is a separate npm
+script; run both or every `.ucs-icon` stays blank. (Folding icons into `build:sprites` would remove the
+trap — tracked in [`backlog.md`](backlog.md).)
+
+Supporting one-offs, neither wired to an npm script:
+
+- `scripts/rename-art.mjs` — renamed the publisher PNGs to systematic names; reversible via `--reverse`.
+- `scripts/analyze-bleed.mjs` — how the ~37.5px print bleed above was *derived* (scans inward from each
+  edge of sample cards for the frame line). Re-run it if the publisher ever reissues the art at a
+  different trim, rather than nudging the constant.
+- `scripts/sprite-preview.html` — opens the built sheets straight from disk (relative paths, no BGA) to
+  eyeball every generated face at once. Fastest check that a sprite rebuild landed correctly.
+- `scripts/build-banner.mjs` — composes the BGA metadata **banner** (1386×400 JPG, no text) from the
+  box-front art. Not a game asset and not deployed: the banner is uploaded by hand through BGA's Game
+  Metadata Manager. Writes beside the repo (`BANNER_OUT` to redirect) and its JPG must never be
+  committed.
