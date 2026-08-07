@@ -21,7 +21,7 @@ only what's specific to this game.
 |-------|------|
 | Open work: release blockers, polish, open questions | [`.claude/backlog.md`](.claude/backlog.md) |
 | Game rules, components, card data, scoring, variants, Bonus cards | [`.claude/game-rules.md`](.claude/game-rules.md) |
-| Framework, state machine, data model, client layout, build | [`.claude/architecture.md`](.claude/architecture.md) |
+| Framework, state machine, data model, statistics, player preferences, client layout, build & sprite pipelines | [`.claude/architecture.md`](.claude/architecture.md) |
 | Narrow/wide layout, the per-shape width floors, card/text size floors and where they come from | [`.claude/responsive.md`](.claude/responsive.md) |
 | Official rulebook (PDF) | [`docs/ugly-christmas-sweater-rules.pdf`](docs/ugly-christmas-sweater-rules.pdf) |
 | SFTP/deploy, test tables, framework conventions, PHP-lint scar | [`../.claude/`](../.claude/) (shared) |
