@@ -52,8 +52,14 @@ class EndScore extends \Bga\GameFramework\States\GameState
         // DbQuery is a static on Table, so it must be called on Game — `static::` here resolves to
         // EndScore, which is a GameState and has no such method (fatal, and this line is unconditional,
         // so it took down the end of EVERY game until it was first played through).
+        //
+        // CAST(... AS SIGNED) is load-bearing: player_fad_points is INT UNSIGNED (dbmodel.sql), and
+        // MySQL evaluates the WHOLE expression as BIGINT UNSIGNED if any operand is unsigned. The
+        // player_score_aux term is deliberately negative here, so without the cast the multiplication
+        // is out of range and the UPDATE errors out.
         Game::DbQuery(
-            "UPDATE `player` SET `player_score_aux` = `player_score_aux` * " . Game::TIEBREAK_K . " + `player_fad_points`"
+            "UPDATE `player` SET `player_score_aux` = `player_score_aux` * " . Game::TIEBREAK_K
+            . " + CAST(`player_fad_points` AS SIGNED)"
         );
 
         // On Studio, stop instead of ending so the finished table stays open for inspection.
