@@ -2100,34 +2100,31 @@ class Game extends \Bga\GameFramework\Table
     }
 
     /**
-     * Studio debug: zombie-play forward until the round is scored, landing on the RoundReview sheet
-     * (or on GameStopped if this was the final round). `roundNo` is bumped by ScoreRound *before* it
-     * hands off to RoundReview, so it is the signal that the round is done; the terminal-state clause
-     * is what stops the final round, where ScoreRound routes to EndScore and never bumps it.
+     * Studio debug: zombie-play forward by a BOUNDED number of moves. Click it repeatedly to advance.
      *
-     * Moves are real (playUntil drives the states' own zombie() handlers), so the state it lands in is
-     * a genuine game state — but they are also random, so the round will usually end on hands running
-     * out rather than on the Nth completed sweater.
+     * ⚠️ Do NOT raise the default much, and do not write an unbounded "play to end of round" on top of
+     * this. An earlier version did exactly that and the framework killed it with "Zombie infinite loop"
+     * (Table::checkZombieTurn) before a single play was committed — the whole request rolls back on that
+     * exception, so it also looks deceptively like nothing ran at all. The framework appears to cap how
+     * many zombie turns one request may execute, and a full round here (12–16 tricks × players, plus a
+     * draft turn each) is several times the ~50 moves the BGA tutorials' own bounded examples use.
+     *
+     * For actually reaching the round-end and end-game phases, use debug_forceRoundEnd() and
+     * debug_setRound() instead — they are deterministic and use no zombie turns at all. This one is for
+     * building up a plausible board first.
+     *
+     * Stops early if the round gets scored (`roundNo` is bumped by ScoreRound before it hands off to
+     * RoundReview) or the game reaches its terminus — on Studio that is GameStopped (97) rather than a
+     * real end (see $preventEndGame), and its zombie() is a deliberate no-op, so 97 has to count.
      */
-    public function debug_playToEndRound()
+    public function debug_playMoves(int $moves = 20)
     {
         $round = (int) $this->globals->get('roundNo');
+        $cap   = max(1, min($moves, 50));
         $this->debug->playUntil(
-            fn(int $count) => (int) $this->globals->get('roundNo') > $round
+            fn(int $count) => $count >= $cap
+                || (int) $this->globals->get('roundNo') > $round
                 || ($this->gamestate->getCurrentMainStateId() ?? 0) >= 97
-                || $count >= 300
-        );
-    }
-
-    /**
-     * Studio debug: zombie-play forward to the end of the game. On Studio that terminus is GameStopped
-     * (97) rather than a real end — see $preventEndGame — and its zombie() is deliberately a no-op, so
-     * the state check has to catch 97 or this would spin against the count cap.
-     */
-    public function debug_playToEndGame()
-    {
-        $this->debug->playUntil(
-            fn(int $count) => ($this->gamestate->getCurrentMainStateId() ?? 0) >= 97 || $count >= 1000
         );
     }
 
