@@ -36,7 +36,7 @@ class EndScore extends \Bga\GameFramework\States\GameState
             foreach (array_keys($this->game->loadPlayersBasicInfos()) as $pid) {
                 $pid = (int) $pid;
                 if (count((array) ($ssDone[$pid] ?? [])) < Game::AVID_SECRET_SANTAS) {
-                    static::DbQuery("UPDATE `player` SET `player_score` = 0 WHERE `player_id` = $pid");
+                    Game::DbQuery("UPDATE `player` SET `player_score` = 0 WHERE `player_id` = $pid");
                 }
             }
         }
@@ -49,7 +49,10 @@ class EndScore extends \Bga\GameFramework\States\GameState
         //   aux := (-unbuilt) * K + fadPoints,  where at this point aux already holds (-unbuilt).
         // K just needs to exceed any achievable Fad-point total (a few dozen), so #1 always dominates
         // #2 and #2 only separates players tied on #1.
-        static::DbQuery(
+        // DbQuery is a static on Table, so it must be called on Game — `static::` here resolves to
+        // EndScore, which is a GameState and has no such method (fatal, and this line is unconditional,
+        // so it took down the end of EVERY game until it was first played through).
+        Game::DbQuery(
             "UPDATE `player` SET `player_score_aux` = `player_score_aux` * " . Game::TIEBREAK_K . " + `player_fad_points`"
         );
 
