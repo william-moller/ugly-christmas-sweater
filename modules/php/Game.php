@@ -14,6 +14,7 @@ declare(strict_types=1);
 
 namespace Bga\Games\UglyChristmasSweaters;
 
+use Bga\GameFramework\Actions\Debug;
 use Bga\Games\UglyChristmasSweaters\States\NewRound;
 use Bga\Games\UglyChristmasSweaters\States\PlayCard;
 
@@ -2067,21 +2068,99 @@ class Game extends \Bga\GameFramework\Table
     // ===========================================================================================
     //  Debug helpers
     // ===========================================================================================
+    //
+    // Every method here is prefixed `debug_`, which is what makes the framework list it in the Studio
+    // debug menu (the bug icon in the top bar). Nothing in the game calls them, so they are inert
+    // until clicked and the game runs identically with them present; the menu itself is Studio-only.
+    // No-argument methods fire on click, ones with parameters open a popin for the values first.
+    //
+    // #[Debug(reload: true)] reloads the client after the call — needed on anything that rewrites the
+    // DB behind the client's back, because those mutations send no notifications of their own.
 
     public function debug_goToState(int $state = 10)
     {
         $this->gamestate->jumpToState($state);
     }
 
-    /** Studio debug: jump straight to round scoring (handy for exercising the scoring/round-end UI). */
+    /**
+     * Studio debug: jump straight to round scoring (handy for exercising the scoring/round-end UI).
+     * ⚠️ This bypasses TinaTink (62) and AssignPatches (65), so it does NOT exercise the real
+     * round-end path — use debug_forceRoundEnd() for that. It also scores whatever is on the table,
+     * which mid-round is usually no completed sweaters and therefore a near-empty scorepad.
+     */
     public function debug_forceRoundOver()
     {
-        $this->jumpToState(70); // ScoreRound
+        $this->gamestate->jumpToState(70); // ScoreRound
     }
 
     /** Studio debug: nudge a player's score (e.g. to reach the end-game path without playing it out). */
     public function debug_addScore(int $playerId, int $delta)
     {
         $this->bga->playerScore->inc($playerId, $delta);
+    }
+
+    /**
+     * Studio debug: zombie-play forward until the round is scored, landing on the RoundReview sheet
+     * (or on GameStopped if this was the final round). `roundNo` is bumped by ScoreRound *before* it
+     * hands off to RoundReview, so it is the signal that the round is done; the terminal-state clause
+     * is what stops the final round, where ScoreRound routes to EndScore and never bumps it.
+     *
+     * Moves are real (playUntil drives the states' own zombie() handlers), so the state it lands in is
+     * a genuine game state — but they are also random, so the round will usually end on hands running
+     * out rather than on the Nth completed sweater.
+     */
+    public function debug_playToEndRound()
+    {
+        $round = (int) $this->globals->get('roundNo');
+        $this->debug->playUntil(
+            fn(int $count) => (int) $this->globals->get('roundNo') > $round
+                || ($this->gamestate->getCurrentMainStateId() ?? 0) >= 97
+                || $count >= 300
+        );
+    }
+
+    /**
+     * Studio debug: zombie-play forward to the end of the game. On Studio that terminus is GameStopped
+     * (97) rather than a real end — see $preventEndGame — and its zombie() is deliberately a no-op, so
+     * the state check has to catch 97 or this would spin against the count cap.
+     */
+    public function debug_playToEndGame()
+    {
+        $this->debug->playUntil(
+            fn(int $count) => ($this->gamestate->getCurrentMainStateId() ?? 0) >= 97 || $count >= 1000
+        );
+    }
+
+    /**
+     * Studio debug: force the round to end through the REAL path — TinaTink → AssignPatches →
+     * ScoreRound → RoundReview/EndScore — by exhausting the card supply so isRoundOver() is true on
+     * its own, then re-entering EndTrickCleanup.
+     *
+     * Both hands and piles have to be emptied, not just hands: EndTrickCleanup calls refillHands()
+     * *before* it asks isRoundOver(), so hands alone would simply be topped back up from the piles and
+     * the round would carry on.
+     *
+     * The table is doctored afterwards — it can no longer answer "does the round end correctly in
+     * normal play?" — so save state before calling this if you want to come back.
+     */
+    #[Debug(reload: true)]
+    public function debug_forceRoundEnd()
+    {
+        $this->cards->moveAllCardsInLocation(self::LOC_HAND, self::LOC_DISCARD);
+        foreach (array_keys($this->loadPlayersBasicInfos()) as $pid) {
+            $this->cards->moveAllCardsInLocation($this->pileLoc((int) $pid), self::LOC_DISCARD);
+        }
+        $this->gamestate->jumpToState(60); // EndTrickCleanup
+    }
+
+    /**
+     * Studio debug: set the current round number. Set it to totalRounds() to make the next scoring pass
+     * take the end-of-game branch (ScoreRound → EndScore) instead of dealing another round, which is
+     * the cheap way to reach final scoring without playing three rounds.
+     */
+    #[Debug(reload: true)]
+    public function debug_setRound(int $round)
+    {
+        $this->globals->set('roundNo', max(1, min($round, $this->totalRounds())));
     }
 }
