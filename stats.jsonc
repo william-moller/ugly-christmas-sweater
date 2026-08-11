@@ -25,6 +25,13 @@
             "name": "Sweaters completed",
             "type": "int"
         },
+        // Tie-break #1 in readable form. player_score_aux encodes this as -(unbuilt) * TIEBREAK_K,
+        // which is not something a player can read off the results screen — this stat is.
+        "sweaters_unbuilt": {
+            "id": 20,
+            "name": "Sweaters left unbuilt (tie-breaker)",
+            "type": "int"
+        },
         "patches_scored": {
             "id": 13,
             "name": "Patch cards scored (in completed sweaters)",

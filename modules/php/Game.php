@@ -223,6 +223,7 @@ class Game extends \Bga\GameFramework\Table
             $this->initStat('player', 'tricks_won', 0, (int) $pid);          // incremented in ResolveTrick
             $this->initStat('player', 'sweaters_started', 0, (int) $pid);    // the rest are incremented in scoreRound
             $this->initStat('player', 'sweaters_built', 0, (int) $pid);
+            $this->initStat('player', 'sweaters_unbuilt', 0, (int) $pid);
             $this->initStat('player', 'patches_scored', 0, (int) $pid);
             $this->initStat('player', 'points_sweaters', 0, (int) $pid);
             $this->initStat('player', 'points_runs', 0, (int) $pid);
@@ -1813,6 +1814,8 @@ class Game extends \Bga\GameFramework\Table
 
             if ($started > 0)        $this->playerStats->inc('sweaters_started', $started, $pid);
             if ($completed > 0)      $this->playerStats->inc('sweaters_built', $completed, $pid);
+            // Same $unbuilt that feeds player_score_aux below, so the stat and the tie-break cannot drift.
+            if ($unbuilt > 0)        $this->playerStats->inc('sweaters_unbuilt', $unbuilt, $pid);
             if ($patches > 0)        $this->playerStats->inc('patches_scored', $patches, $pid);
             if ($ptsSweaters > 0)    $this->playerStats->inc('points_sweaters', $ptsSweaters, $pid);
             if ($ptsRuns > 0)        $this->playerStats->inc('points_runs', $ptsRuns, $pid);

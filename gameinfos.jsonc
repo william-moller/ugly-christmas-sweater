@@ -51,6 +51,16 @@
     // Example: "tie_breaker_description": "Number of remaining cards in hand",
     "tie_breaker_description": "Fewest unbuilt sweaters; if still tied, most total Fad points",
 
+    // player_score_aux folds BOTH tie-breakers into one int (see EndScore + Game::TIEBREAK_K):
+    //     -(unbuilt sweaters) * 1000 + (total Fad points)
+    // These multipliers let the results screen split it back apart and show the two values separately
+    // instead of the raw composite, which reads as meaningless to a player.
+    // ⚠️ UNVERIFIED for a NEGATIVE composite: the wiki's examples are all positive, so whether -3997
+    // renders as (-4, 3) (floor division) or (-3, -997) (truncating division) is BGA's choice, not ours.
+    // If it comes out as the latter, drop this line — the "Sweaters left unbuilt" stat carries the same
+    // information legibly and does not depend on the split.
+    "tie_breaker_split": [1000, 1],
+
     // If in the game, all losers are equal (no score to rank them or explicit in the rules that losers are not ranked between them), set this to true
     // The game end result will display "Winner" for the 1st player and "Loser" for all other players
     "losers_not_ranked": false,
