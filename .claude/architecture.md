@@ -48,6 +48,51 @@ The per-trick loop is `PlayCard ↔ NextInTrick → ResolveTrick → BillyChoice
 → EndTrickCleanup`, looping back to `PlayCard` until the round ends, then
 `TinaTink → AssignPatches → ScoreRound → RoundReview → NewRound` (or `EndScore` after the last round).
 
+### Studio debug helpers (`Game.php`, bottom)
+
+`debug_*` methods appear in the Studio bug-icon menu; see
+[`../../.claude/framework.md`](../../.claude/framework.md) for how that menu works and why the
+zombie-driven one must stay bounded. What matters here is **which helper reaches which phase**:
+
+| Helper | Kind | Reaches |
+|--------|------|---------|
+| `debug_playMoves(int $moves = 20)` | zombie-driven | a plausible board — built sweaters, patches to assign. Bounded and capped at 50 on purpose; click it repeatedly. |
+| `debug_forceRoundEnd()` | deterministic | the real `TinaTink → AssignPatches → ScoreRound → RoundReview/EndScore` chain |
+| `debug_setRound(int)` | deterministic | set to `totalRounds()` so the next scoring pass takes the `EndScore` branch |
+| `debug_forceRoundOver()` | deterministic | `ScoreRound` directly — **bypasses TinaTink and AssignPatches**, so it is not a round-end test |
+| `debug_goToState(int)` | deterministic | any state; **99 is how you actually end a game** (see below) |
+| `debug_addScore(int, int)` | deterministic | a target score without playing to it |
+
+Three things about this game specifically shaped those, each of which cost a round-trip:
+
+- **`debug_forceRoundEnd` empties the per-player piles as well as hands.** `EndTrickCleanup` calls
+  `refillHands()` **before** it asks `isRoundOver()`, so emptying hands alone just tops them straight
+  back up from the piles and the round carries on.
+- **`GameStopped` (97) is the terminus on Studio**, not 98/99, because `preventEndGame` is forced on
+  there (`Game.php` constructor). Its `zombie()` is a deliberate no-op, so any `playUntil` predicate
+  has to treat **97** as terminal or it spins against the move cap.
+- **To make the game genuinely end**, jump to state **99** (`debug_goToState`). That is precisely the
+  transition `EndScore` makes when `preventEndGame` is false — `EndScore`'s own work has already run
+  by the time you are parked at 97, so nothing is skipped by jumping.
+
+### Zombie play
+
+Every non-`GAME` state has a `zombie()`. Two carry real logic rather than a safe default:
+
+- `PlayCard::zombie` plays a random legal card.
+- `DraftCard::zombie` delegates to **`Game::zombieDraftPlacement()`**, which picks the existing
+  sweater nearest completion where the card lands *cleanly*, and opens a new build only when none
+  qualifies. "Cleanly" is load-bearing: `placeDraftedCard` throws on a patch with no slot, on a
+  missing/duplicate/filled floating-patch orientation, and on a Fad-locked build in Express — and a
+  `UserException` raised inside a zombie turn surfaces as a **failed skip turn**. It also never takes
+  an occupied slot, because that is a silent "place over" that discards the occupant, which a zombie
+  has no basis for judging. Originally this passed `build_no = 0` unconditionally, so an abandoned
+  player opened a brand-new sweater on every draft and finished with a spread of one-card builds
+  worth nothing.
+
+⚠️ Zombie code is **production behaviour** — it runs whenever a real player quits mid-game — so it is
+worth eyeballing on a normal table, not only under `debug_playMoves`.
+
 ## Data model (`dbmodel.sql`)
 
 The Deck component **auto-creates the `card` table with exactly its 5 standard columns and ignores
@@ -58,15 +103,22 @@ extra columns** — so per-card dynamic extras live in a **separate `card_meta` 
 - `gameplay_card` — a second Deck: Perfect Fit / Trendy Yarn / Fad cards, flipped to `active` per round.
 - `secret_santa` — Deck of the 16 hidden objectives (`box|hand|completed`, arg = owner).
 - `bonus_card` — Deck of the 4 Special Ability cards (`box|hand|used`, arg = owner); gameoption `102`.
-- `player.player_fad_points` — added column; tie-break #2 (total Fad points).
+- `player.player_fad_points` — added column; tie-break #2 (total Fad points). Declared `INT UNSIGNED`, which is right (Fad points never go negative) but means **any expression mixing it with the negative `player_score_aux` must `CAST(... AS SIGNED)`** or MySQL evaluates the lot as `BIGINT UNSIGNED` and errors — see [`../../.claude/framework.md`](../../.claude/framework.md).
 - Globals (declared in PHP): `round_no`, `leader_player_id`, plus per-feature globals (e.g. `roundResult` for F5-safe review, Billy/Maria/Tina bookkeeping).
 
-`player_score` = cumulative VP (winner metric). `player_score_aux` = tie-break, set at game end by
-`EndScore` as a composite of fewest-unbuilt-sweaters then Fad points.
+`player_score` = cumulative VP (winner metric). `player_score_aux` = tie-break, folded at game end by
+`EndScore` into one integer: `-(unbuilt) * TIEBREAK_K + fadPoints`, because BGA ranks on score then
+aux and has no third sort column. `unbuilt` **accumulates across all rounds** (`scoreRound` subtracts
+each round's total), so it is not a final-round figure.
+
+That composite is unreadable in the results-screen parentheses on its own, so two things decode it:
+`gameinfos.jsonc` `tie_breaker_split` asks BGA to display the components separately, and the
+`sweaters_unbuilt` stat carries the same number independently of whether the split behaves. See
+[`backlog.md`](backlog.md) — the split's handling of a *negative* composite is unverified.
 
 ## Statistics (`stats.jsonc`)
 
-One table stat + ten player stats, all `int`. BGA's pre-alpha checklist requires *meaningful* stats,
+One table stat + eleven player stats, all `int`. BGA's pre-alpha checklist requires *meaningful* stats,
 which here means the six `points_*` stats decompose the final score along exactly the rows of the
 scoring table in [`game-rules.md`](game-rules.md) — so a player can see *where* their VP came from, and
 so a scoring bug shows up as a stat that doesn't sum to `player_score`.
@@ -76,6 +128,7 @@ so a scoring bug shows up as a stat that doesn't sum to `player_score`.
 | `rounds` | table | `Game.php::scoreRound` | Rounds actually played (1 in Express, up to 3 otherwise). |
 | `tricks_won` | player | `States/ResolveTrick.php` | Credited to `$order[0]` — **the top of the resolved Draft Order**. No one "wins" a trick in this game, hence the label "Tricks won (led the draft)". |
 | `sweaters_started` / `sweaters_built` / `patches_scored` | player | `Game.php::scoreRound` | Completed-sweater counts; patches counted only in *completed* sweaters, matching the rule that patches in incomplete sweaters never score. |
+| `sweaters_unbuilt` | player | `Game.php::scoreRound` | Tie-break #1 in readable form. Incremented from the **same `$unbuilt`** that feeds `player_score_aux`, in the same loop, so the stat and the tie-break cannot drift. Exists because the aux composite is unreadable on the results screen. |
 | `points_sweaters` · `points_runs` · `points_fad` · `points_secret_santa` · `points_nonfad_color` · `points_nonfad_icon` | player | `Game.php::scoreRound` | Computed off the same `sweaterParts` walk that awards the VP, deliberately, so the stats and the scored VP cannot drift. Colour and icon are separate stats because non-Fad matches score independently (+1 each) — see the scoring table. |
 
 ⚠️ **Mixed stat APIs.** Setup initialises with the **deprecated** `initStat()` (`Game.php:219-232`);

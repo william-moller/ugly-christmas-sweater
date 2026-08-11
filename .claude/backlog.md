@@ -47,6 +47,16 @@ not of the code.
   **"Reload game options configuration"** on the manage-game page, *then* recreate the table, or the
   change will not appear at all (see [`../../.claude/deploy.md`](../../.claude/deploy.md)).
 
+- **Confirm `tie_breaker_split` decodes a NEGATIVE composite.** `player_score_aux` is
+  `-(unbuilt) * 1000 + fadPoints`, and `gameinfos.jsonc` now declares `"tie_breaker_split": [1000, 1]`
+  so the results screen shows the two keys separately instead of the raw number. Every example in the
+  wiki is a *positive* composite, so how BGA divides a negative one is its choice, not ours: floor
+  division renders `-3997` as **(-4, 3)** (what we want), truncation renders it **(-3, -997)**
+  (nonsense). Needs a table played to a genuine tie on score — two players on equal `player_score` —
+  since BGA only prints aux for tied players. If it truncates, **delete the `tie_breaker_split` line**;
+  the `sweaters_unbuilt` stat carries the same information and does not depend on it. The comment
+  above the line in `gameinfos.jsonc` says the same, so this can be settled from either end.
+
 ## Polish / UX
 
 - **Visual polish sweep — the layouts not yet hand-tuned.** The narrow/mobile pass so far covers
@@ -130,6 +140,21 @@ not of the code.
   eye. The layout itself (rotate B, centre, butt) is already correct.
 
 ## Code health / tooling
+
+- **Decide what `NextInTrick` should do when a hand is empty mid-trick.** `PlayCard::zombie` returns
+  `NextInTrick` when the active player has no playable cards, but `NextInTrick`'s only exit is a
+  *full* trick (`countCardInLocation(LOC_TRICK) >= players × cardsPerTurn`) — so an empty hand part-way
+  through a trick is a cycle with no exit, and the framework's zombie guard is the only thing that
+  stops it. The non-zombie path is worse in principle: a *live* player in that position sits at a turn
+  with no legal action and nothing to click.
+  Argued unreachable today, and that argument is the thing to re-check rather than trust: hands only
+  ever lose cards via `moveCardToTrick` (drafted cards come from the **pool**, never the hand), every
+  player plays `cardsPerTurn()` per trick, and piles start equal — so hands deplete in lockstep and
+  `allHandsEmpty()` ends the round at cleanup before the gap can open. Anything that moves cards into
+  or out of a hand unequally — a new bonus card, a rules variant — breaks that and makes it live.
+  Cheapest fix is a guard in `NextInTrick::onEnteringState`: bail to `ResolveTrick` when
+  `allHandsEmpty()`. Left alone so far only because it is game logic, not the debug tooling it was
+  found under.
 
 - **Fold `build:icons` into `npm run build:sprites`.** There are three sprite generators but
   `build:sprites` runs only two, so "rebuild the art" silently skips `img/icons.png` and every
