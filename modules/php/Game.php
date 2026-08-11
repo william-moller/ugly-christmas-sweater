@@ -1044,6 +1044,95 @@ class Game extends \Bga\GameFramework\Table
     }
 
     /**
+     * Choose where an abandoned player's drafted card should go: the arguments for actDraftCard, as
+     * ['build_no' => int, 'slot' => string, 'floating_patch_slot' => string].
+     *
+     * Adds to the existing sweater closest to completion whenever a CLEAN add is available there, and
+     * only opens a new sweater (build_no 0) when none is — a zombie that always started a new build
+     * finished the round with a spread of one-card sweaters and scored nothing.
+     *
+     * "Clean" is doing real work here: placeDraftedCard rejects or destroys several placements that are
+     * superficially legal, and a UserException raised inside a zombie turn surfaces as a failed skip
+     * turn. So a build only qualifies when every one of these holds:
+     *   - it is not Fad-locked (Express only — placeDraftedCard throws);
+     *   - the slot the card would take is FREE. An occupied slot is a silent "place over" that discards
+     *     the occupant, which a zombie has no basis for judging, so we never do it;
+     *   - if the build holds a floating patch, there is a SECOND free slot to orient it into, distinct
+     *     from the drafted card's own slot (placeDraftedCard throws on a missing, duplicate or filled
+     *     floating orientation).
+     * A completed build has no free slot and so drops out on its own.
+     */
+    public function zombieDraftPlacement(int $playerId, int $cardId): array
+    {
+        $fallback = ['build_no' => 0, 'slot' => '', 'floating_patch_slot' => ''];
+
+        $card    = $this->cards->getCard($cardId);
+        $isPatch = ((int) $card['type_arg']) === Material::PATCH_VALUE;
+        // A regular card always lands on its printed slot; a patch takes whichever slot we pick below.
+        $printedSlot = $isPatch ? null : Material::sweater($card['type'], (int) $card['type_arg'])['slot'];
+
+        // Same grouping placeDraftedCard does: oriented pieces per build, plus any floating patch.
+        $builds = [];
+        $floatingByBuild = [];
+        foreach ($this->getCardsWithExtras(self::LOC_KNITTING, $playerId) as $c) {
+            $b = (int) $c['buildNo'];
+            if ($c['slot'] !== null) {
+                $builds[$b][$c['slot']] = (int) $c['id'];
+            } else {
+                $floatingByBuild[$b] = (int) $c['id'];
+            }
+        }
+        $allBuildNos = array_unique(array_merge(array_keys($builds), array_keys($floatingByBuild)));
+        $locked = $this->isExpress() ? $this->lockedBuildsFor($playerId) : [];
+
+        $best = null;
+        $bestFilled = -1;
+        foreach ($allBuildNos as $b) {
+            if (in_array($b, $locked, true)) {
+                continue;
+            }
+            $filledSlots = array_keys($builds[$b] ?? []);
+            $freeSlots   = array_values(array_diff(Material::SLOTS, $filledSlots));
+            $hasFloating = isset($floatingByBuild[$b]);
+
+            // The drafted card's own slot: printed for a regular card, else any free one.
+            if ($isPatch) {
+                $slot = $freeSlots[0] ?? null;
+            } else {
+                $slot = in_array($printedSlot, $freeSlots, true) ? $printedSlot : null;
+            }
+            if ($slot === null) {
+                continue; // no clean add here (slot taken, or the build is finished)
+            }
+
+            // A floating patch needs its own distinct free slot, oriented in the same call.
+            $floatingSlot = '';
+            if ($hasFloating) {
+                $others = array_values(array_diff($freeSlots, [$slot]));
+                if (empty($others)) {
+                    continue; // nowhere to orient the floating patch → placeDraftedCard would throw
+                }
+                $floatingSlot = $others[0];
+            }
+
+            // Greedy: the build closest to completion wins, so zombies actually finish sweaters.
+            $filled = count($filledSlots);
+            if ($filled > $bestFilled) {
+                $bestFilled = $filled;
+                $best = [
+                    'build_no'            => $b,
+                    // A regular card ignores `slot` in placeDraftedCard (it uses the printed one); only a
+                    // patch needs it passed, and passing '' for the rest keeps the call unambiguous.
+                    'slot'                => $isPatch ? $slot : '',
+                    'floating_patch_slot' => $floatingSlot,
+                ];
+            }
+        }
+
+        return $best ?? $fallback;
+    }
+
+    /**
      * Place a drafted card into the active player's knitting area. A regular card uses its PRINTED
      * orientation (Material::FACES). A **Patch** never picks its value/icon here — those stay wild until
      * round-end scoring (see the AssignPatches state). A Patch's orientation:

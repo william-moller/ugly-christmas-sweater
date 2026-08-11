@@ -184,9 +184,13 @@ class DraftCard extends GameState
             return NextDrafter::class;
         }
         $choice = $this->getRandomZombieChoice($args['draftableIds']);
-        // Abandoned player: starting a new sweater (build_no 0) is always legal — a regular card lands
-        // at its printed slot, a patch floats; no floating-patch orientation is needed for a new build.
+        // Abandoned player: add to the existing sweater nearest completion where the card lands cleanly,
+        // else start a new one. Every placement this returns is one placeDraftedCard accepts without
+        // throwing — see Game::zombieDraftPlacement for what "cleanly" has to rule out.
         // use_maria = 0: never spend a bonus on a zombie's forced move.
-        return $this->actDraftCard($choice, 0, '', '', 0, $playerId, $args);
+        $place = $this->game->zombieDraftPlacement($playerId, $choice);
+        return $this->actDraftCard(
+            $choice, $place['build_no'], $place['slot'], $place['floating_patch_slot'], 0, $playerId, $args
+        );
     }
 }
