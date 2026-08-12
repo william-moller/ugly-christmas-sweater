@@ -138,30 +138,3 @@ not of the code.
   the watercolour background per card and shift each cell to a consistent registration (L body to its
   right edge, R to its left, B centred), so any L+R+B tiles. Heuristic; verify across all 52 cards by
   eye. The layout itself (rotate B, centre, butt) is already correct.
-
-## Code health / tooling
-
-- **Decide what `NextInTrick` should do when a hand is empty mid-trick.** `PlayCard::zombie` returns
-  `NextInTrick` when the active player has no playable cards, but `NextInTrick`'s only exit is a
-  *full* trick (`countCardInLocation(LOC_TRICK) >= players × cardsPerTurn`) — so an empty hand part-way
-  through a trick is a cycle with no exit, and the framework's zombie guard is the only thing that
-  stops it. The non-zombie path is worse in principle: a *live* player in that position sits at a turn
-  with no legal action and nothing to click.
-  Argued unreachable today, and that argument is the thing to re-check rather than trust: hands only
-  ever lose cards via `moveCardToTrick` (drafted cards come from the **pool**, never the hand), every
-  player plays `cardsPerTurn()` per trick, and piles start equal — so hands deplete in lockstep and
-  `allHandsEmpty()` ends the round at cleanup before the gap can open. Anything that moves cards into
-  or out of a hand unequally — a new bonus card, a rules variant — breaks that and makes it live.
-  Cheapest fix is a guard in `NextInTrick::onEnteringState`: bail to `ResolveTrick` when
-  `allHandsEmpty()`. Left alone so far only because it is game logic, not the debug tooling it was
-  found under.
-
-- **Fold `build:icons` into `npm run build:sprites`.** There are three sprite generators but
-  `build:sprites` runs only two, so "rebuild the art" silently skips `img/icons.png` and every
-  `.ucs-icon` renders blank. Making `build:sprites` run all three removes the trap at the source; the
-  docs currently work around it by telling you to run both. Keep `build:icons` as its own script for
-  iterating on the icon keying, which is slow and rarely needed.
-- **Move stat initialisation onto the stat objects.** `Game.php` initialises with the deprecated
-  `initStat()` but increments with the current `$this->tableStats->inc()` / `$this->playerStats->inc()`.
-  Both work; the mix is the problem — it makes `grep incStat` return nothing and reads as if the stats
-  are never incremented. Use one API.

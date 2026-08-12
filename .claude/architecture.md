@@ -285,7 +285,7 @@ The Stage-2 (non-sweater) cards are packed the same way by `scripts/build-second
 position class per face; base class `.ucs-art2`). Covers Perfect Fit (`ucs-gp-perfectfit-<1..6>`),
 Trendy Yarn (`ucs-gp-trendyyarn-<colour>`), Fad (`ucs-gp-fad-<1..10>`), Secret Santa (`ucs-santa-<1..16>`),
 Bonus (`ucs-bonus-<1..4>`), Draft Order (`ucs-draftorder-<1..4>`), Score Reference, Round Tracker, plus each
-deck's back. `npm run build:sprites` runs both sprite scripts. Consumers (`Game.ts`) add `.ucs-art2` + the
+deck's back. Consumers (`Game.ts`) add `.ucs-art2` + the
 face class to a `.ucs-card`-sized element; Secret Santa cards are turned `rotate(90deg)` (the art is drawn
 to read in landscape). The publisher source PNGs were renamed to systematic names (`scripts/rename-art.mjs`,
 reversible via `--reverse`), so the build maps read plainly (e.g. `fad-05-red-candycane.png`).
@@ -296,8 +296,7 @@ colour appears on two cards paired with a *different* icon (NOT one tidy colour�
 
 ### Sweater-icon sprites (`scripts/build-icons.mjs`, `npm run build:icons`)
 
-The **third** generator, and the one that is easy to miss because it is *not* part of `build:sprites`.
-It bakes the four sweater icons (snowman / candy cane / bell / tree) into one transparent
+The third generator run by `build:sprites`. It bakes the four sweater icons (snowman / candy cane / bell / tree) into one transparent
 `img/icons.png` (4 × 128px square cells) plus the GENERATED `src/scss/_icon-sprites.scss` (`.ucs-icon`
 base + one class per icon), consumed wherever an icon appears outside printed card art — the patch
 wild-value badge, the `AssignPatches` picker, the player-panel tally.
@@ -321,13 +320,12 @@ are rebuilt. All three generators read the same hard-coded publisher `ART_DIR` (
 repo), so this only works on a machine that has the art:
 
 ```
-npm run build:sprites   # img/sweaters.jpg + img/card-back.jpg + img/secondary.jpg
-npm run build:icons     # img/icons.png                       <-- NOT covered by build:sprites
+npm run build:sprites   # img/sweaters.jpg + img/card-back.jpg + img/secondary.jpg + img/icons.png
 ```
 
-⚠️ **`npm run build:sprites` runs only the two card-face scripts.** `build:icons` is a separate npm
-script; run both or every `.ucs-icon` stays blank. (Folding icons into `build:sprites` would remove the
-trap — tracked in [`backlog.md`](backlog.md).)
+`build:sprites` runs **all three** generators, so it is the only command needed to rebuild the art.
+`build:icons` remains as its own script purely for iterating on the icon keying (`boost`/`thicken`),
+which is slow and rarely needed — it is not a step you have to remember.
 
 Supporting one-offs, neither wired to an npm script:
 

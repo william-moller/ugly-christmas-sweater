@@ -2,7 +2,7 @@
  * build-secondary-sprites.mjs — pack the Stage-2 (non-sweater) card faces into one CSS sprite sheet
  * and emit the matching SCSS. Sibling of build-sprites.mjs (which handles the 52 sweater cards).
  *
- *   node scripts/build-secondary-sprites.mjs      (or: npm run build:sprites  — runs both)
+ *   node scripts/build-secondary-sprites.mjs      (or: npm run build:sprites — runs all three)
  *
  * Inputs : the publisher PNGs (750x1125) in ART_DIR. Every card->file mapping below was transcribed
  *          by reading each printed face and cross-checked against Material.php (fads(), secretSantas(),

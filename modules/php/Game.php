@@ -218,20 +218,23 @@ class Game extends \Bga\GameFramework\Table
         $this->globals->set('avidSSDone', []);
 
         // --- Stats (defined in stats.jsonc) ---------------------------------------------------
-        $this->initStat('table', 'rounds', 0);
-        foreach (array_keys($players) as $pid) {
-            $this->initStat('player', 'tricks_won', 0, (int) $pid);          // incremented in ResolveTrick
-            $this->initStat('player', 'sweaters_started', 0, (int) $pid);    // the rest are incremented in scoreRound
-            $this->initStat('player', 'sweaters_built', 0, (int) $pid);
-            $this->initStat('player', 'sweaters_unbuilt', 0, (int) $pid);
-            $this->initStat('player', 'patches_scored', 0, (int) $pid);
-            $this->initStat('player', 'points_sweaters', 0, (int) $pid);
-            $this->initStat('player', 'points_runs', 0, (int) $pid);
-            $this->initStat('player', 'points_fad', 0, (int) $pid);
-            $this->initStat('player', 'points_secret_santa', 0, (int) $pid);
-            $this->initStat('player', 'points_nonfad_color', 0, (int) $pid);
-            $this->initStat('player', 'points_nonfad_icon', 0, (int) $pid);
-        }
+        // Init through the SAME objects the increments use (tableStats / playerStats), not the deprecated
+        // initStat() — mixing the two made `grep incStat` return nothing and read as if stats were never
+        // touched. playerStats->init takes the whole list and covers every player itself, so no loop.
+        $this->tableStats->init('rounds', 0);
+        $this->playerStats->init([
+            'tricks_won',         // incremented in ResolveTrick
+            'sweaters_started',   // the rest are incremented in scoreRound
+            'sweaters_built',
+            'sweaters_unbuilt',
+            'patches_scored',
+            'points_sweaters',
+            'points_runs',
+            'points_fad',
+            'points_secret_santa',
+            'points_nonfad_color',
+            'points_nonfad_icon',
+        ], 0);
 
         // --- Deal the first round and start ---------------------------------------------------
         $this->setupRound();

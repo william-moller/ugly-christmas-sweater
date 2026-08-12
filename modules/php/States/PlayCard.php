@@ -80,6 +80,8 @@ class PlayCard extends GameState
     {
         $args = $this->getArgs();
         if (empty($args['playableCardsIds'])) {
+            // Empty hand (unreachable under the lockstep invariant — see NextInTrick's docblock).
+            // Safe to bounce back: NextInTrick skips empty hands and resolves when none can play.
             return NextInTrick::class;
         }
         $choice = $this->getRandomZombieChoice($args['playableCardsIds']);

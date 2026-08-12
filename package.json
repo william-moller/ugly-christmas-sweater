@@ -6,7 +6,7 @@
    "scripts": {
       "build:ts": "rollup -c",
       "build:scss": "sass --no-source-map src/scss/Game.scss uglychristmassweaters.css",
-      "build:sprites": "node scripts/build-sprites.mjs && node scripts/build-secondary-sprites.mjs",
+      "build:sprites": "node scripts/build-sprites.mjs && node scripts/build-secondary-sprites.mjs && node scripts/build-icons.mjs",
       "build:icons": "node scripts/build-icons.mjs",
       "clean:remote": "node scripts/clean-remote.mjs",
       "deploy": "node scripts/deploy.mjs",

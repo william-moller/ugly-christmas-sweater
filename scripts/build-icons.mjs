@@ -8,7 +8,8 @@
  * cane stripes) that keys cleanly on a LIGHT surface but greys on dark — so consumers must show these
  * on a light chip (see .ucs-wild-badge / .ucs-assign-icon).
  *
- * Run: node scripts/build-icons.mjs   (also `npm run build:icons`). Output is committed.
+ * Run: npm run build:sprites (runs all three generators). `npm run build:icons` runs just this one,
+ * for iterating on the keying/boost/thicken tuning. Output is committed.
  */
 import sharp from 'sharp';
 import { join, dirname } from 'path';
