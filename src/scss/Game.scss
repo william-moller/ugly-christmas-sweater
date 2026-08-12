@@ -80,6 +80,18 @@ $box-green-hi: #5ca338; // a touch lighter — the vignette centre
 html {
     background: radial-gradient(circle at 50% 38%, $box-green-hi 0%, $box-green 72%), $box-green;
     background-attachment: fixed;
+
+    // Diameter of the fixed lower-left circles (the bga-help "?" and the round-summary restore chip).
+    // A variable rather than a literal because the floating hand's side reserve is DERIVED from it
+    // below — bga-cards pins the fan to the viewport bottom once it scrolls past the fold, into the
+    // same band these buttons occupy, so the two numbers have to move together or the fan slides back
+    // under the buttons. Shrunk on small screens, where the reserve is the expensive part.
+    --ucs-corner-btn: 52px;
+    // Clearance each side of the floating fan: the button, its 8px offset from the edge, and 8px of air.
+    --ucs-corner-reserve: calc(var(--ucs-corner-btn) + 16px);
+}
+@media (max-width: 700px) {
+    html { --ucs-corner-btn: 40px; }
 }
 // BGA paints its own default texture on the game surface; make it transparent so the green shows.
 #game_play_area {
@@ -1677,15 +1689,15 @@ $ucs-sheet-anim: 220ms;
 }
 
 // Restore chip. Lives inside bga-help's fixed lower-left strip (a flex row), so it matches the "?"
-// button's 52px circle and sits beside it — same festive red, same thin white ring — with a green
-// sweater in place of the "?".
+// button's circle and sits beside it — same festive red, same thin white ring — with a green sweater
+// in place of the "?". Shares --ucs-corner-btn so the pair shrink together on small screens.
 .ucs-score-restore {
     flex: 0 0 auto;
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 52px;
-    height: 52px;
+    width: var(--ucs-corner-btn);
+    height: var(--ucs-corner-btn);
     padding: 0;
     border-radius: 50%;
     border: 2px solid #fff;
@@ -1696,8 +1708,8 @@ $ucs-sheet-anim: 220ms;
     &:hover { background: #a81605; }
 }
 .ucs-score-restore-art {
-    width: 30px;
-    height: 30px;
+    width: calc(var(--ucs-corner-btn) * 0.577);   // 30px in the 52px circle
+    height: calc(var(--ucs-corner-btn) * 0.577);
 }
 .ucs-sr-body { fill: #2e9e52; }
 // The knit stripe across the chest — enough to read as an *ugly* sweater at 30px, not just a garment.
@@ -1763,10 +1775,20 @@ $ucs-sheet-anim: 220ms;
 
     // The floating hand's asymmetry fix stays at every narrow width (see the desktop note on
     // #ucs-my-hand-wrap / the library's hardcoded 240px right reserve).
+    //
+    // Both margins clear the fixed furniture in the bottom corners rather than the 12px they used to
+    // carry: our "?" / restore-chip strip on the left, BGA's chat bubble on the right. This is the only
+    // lever that works — the fan is position:fixed to the viewport bottom while floating, so no amount
+    // of padding under the knitting area moves it out from under them. The fan responds by overlapping
+    // its cards rather than shrinking them, so they stay above the 56px interactive floor; the cost is
+    // seeing less of each card, which is why --ucs-corner-btn shrinks below 700px.
+    //
+    // Right uses the same derivation as left on the assumption BGA's bubble is about our button's size.
+    // If it still clips the fan on a real phone, this is the one number to raise.
     #ucs-my-hand-wrap { z-index: auto; }
     #ucs-my-hand .hand-stock.floating {
-        --bga-cards_hand-stock-floating-left-margin: 12px !important;
-        --bga-cards_hand-stock-floating-right-margin: 12px !important;
+        --bga-cards_hand-stock-floating-left-margin: var(--ucs-corner-reserve) !important;
+        --bga-cards_hand-stock-floating-right-margin: var(--ucs-corner-reserve) !important;
     }
 
     // Opponents run across as a wrapping row of chips (mini sweaters hidden, pip summary shown) rather
@@ -2348,8 +2370,8 @@ $santa-column-floors: (medium: 1450px, large: 1840px);
     align-items: flex-end;
 }
 .bga-help_button {
-    width: 52px;
-    height: 52px;
+    width: var(--ucs-corner-btn);
+    height: var(--ucs-corner-btn);
     border-radius: 50%;
     cursor: pointer;
     border: 2px solid #fff;
@@ -2361,7 +2383,8 @@ $santa-column-floors: (medium: 1450px, large: 1840px);
     background: var(--background);
     color: var(--color);
     font-weight: bold;
-    font-size: 28pt;
+    // Tracks the circle instead of a fixed 28pt (~37px), which overflowed the shrunk button.
+    font-size: calc(var(--ucs-corner-btn) * 0.72);
     line-height: 1;
 }
 // The scoring reference image inside BGA's popin dialog — fit to the viewport, keep its aspect ratio.

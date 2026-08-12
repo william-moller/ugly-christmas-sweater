@@ -492,8 +492,15 @@
 html {
   background: radial-gradient(circle at 50% 38%, #5ca338 0%, #4c8c2b 72%), #4c8c2b;
   background-attachment: fixed;
+  --ucs-corner-btn: 52px;
+  --ucs-corner-reserve: calc(var(--ucs-corner-btn) + 16px);
 }
 
+@media (max-width: 700px) {
+  html {
+    --ucs-corner-btn: 40px;
+  }
+}
 #game_play_area {
   background: transparent;
 }
@@ -2063,8 +2070,8 @@ table.ucs-scorepad th, table.ucs-scorepad td {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 52px;
-  height: 52px;
+  width: var(--ucs-corner-btn);
+  height: var(--ucs-corner-btn);
   padding: 0;
   border-radius: 50%;
   border: 2px solid #fff;
@@ -2078,8 +2085,8 @@ table.ucs-scorepad th, table.ucs-scorepad td {
 }
 
 .ucs-score-restore-art {
-  width: 30px;
-  height: 30px;
+  width: calc(var(--ucs-corner-btn) * 0.577);
+  height: calc(var(--ucs-corner-btn) * 0.577);
 }
 
 .ucs-sr-body {
@@ -2133,8 +2140,8 @@ table.ucs-scorepad th, table.ucs-scorepad td {
   z-index: auto;
 }
 #ucs-table.ucs-narrow #ucs-my-hand .hand-stock.floating {
-  --bga-cards_hand-stock-floating-left-margin: 12px !important;
-  --bga-cards_hand-stock-floating-right-margin: 12px !important;
+  --bga-cards_hand-stock-floating-left-margin: var(--ucs-corner-reserve) !important;
+  --bga-cards_hand-stock-floating-right-margin: var(--ucs-corner-reserve) !important;
 }
 #ucs-table.ucs-narrow #ucs-opponents {
   flex-direction: row;
@@ -2569,8 +2576,8 @@ table.ucs-scorepad th, table.ucs-scorepad td {
 }
 
 .bga-help_button {
-  width: 52px;
-  height: 52px;
+  width: var(--ucs-corner-btn);
+  height: var(--ucs-corner-btn);
   border-radius: 50%;
   cursor: pointer;
   border: 2px solid #fff;
@@ -2583,7 +2590,7 @@ table.ucs-scorepad th, table.ucs-scorepad td {
   background: var(--background);
   color: var(--color);
   font-weight: bold;
-  font-size: 28pt;
+  font-size: calc(var(--ucs-corner-btn) * 0.72);
   line-height: 1;
 }
 
