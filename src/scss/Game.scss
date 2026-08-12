@@ -1832,13 +1832,21 @@ $ucs-sheet-anim: 220ms;
         --ucs-card-h: calc(var(--ucs-card-w) * 1.556);
     }
 
+    // NOTE: every player-count rule in this section MUST carry .ucs-express. The counts describe Fad
+    // arrangements that only Express produces (fadsOnDisplay() is players + 1 in Express ONLY — Casual
+    // and Avid always render a single Fad), and .ucs-players-N is not self-limiting: it matches Casual
+    // and Avid too, at HIGHER specificity than the :not(.ucs-express) block below (2 ids + 3 classes vs
+    // 2 ids + 2 classes), so it wins on specificity regardless of source order. Dropping the qualifier
+    // silently hands Casual/Avid the Express block — which is what it did, giving Casual 4P a
+    // two-column Fad-grid + column-reverse Trendy/Perfect-Fit stack instead of its three-across row.
+
     // 2 players (3 Fads): Fads + Perfect Fit + Trendy Yarn all on ONE row — five cards across, filling it.
-    &.ucs-players-2 #ucs-gameplay {
+    &.ucs-express.ucs-players-2 #ucs-gameplay {
         --ucs-card-w: calc((100cqi - 24px) / 5);           // 5 cards + four 6px gaps
     }
-    &.ucs-players-2 .ucs-gameplay-row { flex-wrap: nowrap; gap: 6px; }
-    &.ucs-players-2 .ucs-fad-cards,
-    &.ucs-players-2 .ucs-gp-pftr { gap: 6px; }
+    &.ucs-express.ucs-players-2 .ucs-gameplay-row { flex-wrap: nowrap; gap: 6px; }
+    &.ucs-express.ucs-players-2 .ucs-fad-cards,
+    &.ucs-express.ucs-players-2 .ucs-gp-pftr { gap: 6px; }
 
     // 3–4 players (4–5 Fads): the wide layout's block, at this column's card size — Fads in a 2-wide
     // grid with Trendy Yarn over Perfect Fit in a third column beside them. Both counts come out exactly
@@ -1851,29 +1859,29 @@ $ucs-sheet-anim: 220ms;
     // ((100cqi - 18px) / 4, ~25% narrower than 3P's cards): with 5 Fads the only way to stay at 3P's card
     // size is a third row, and a third row pushes the Draft Pool off a phone screen. Height is the scarce
     // axis here, so it wins.
-    &.ucs-players-3 #ucs-gameplay {
+    &.ucs-express.ucs-players-3 #ucs-gameplay {
         --ucs-card-w: calc((100cqi - 12px) / 3);           // 3 cards + two 6px gaps
     }
-    &.ucs-players-4 #ucs-gameplay {
+    &.ucs-express.ucs-players-4 #ucs-gameplay {
         --ucs-card-w: calc((100cqi - 18px) / 4);           // 4 cards + three 6px gaps
     }
-    &.ucs-players-3 .ucs-gameplay-row,
-    &.ucs-players-4 .ucs-gameplay-row {
+    &.ucs-express.ucs-players-3 .ucs-gameplay-row,
+    &.ucs-express.ucs-players-4 .ucs-gameplay-row {
         flex-direction: row;
         align-items: flex-end;
         width: 100%;
         gap: 6px;                                          // + the Fad grid's own 6px = the 12px assumed above
     }
-    &.ucs-players-3 .ucs-fad-cards {
+    &.ucs-express.ucs-players-3 .ucs-fad-cards {
         display: grid;
         grid-template-columns: repeat(2, var(--ucs-card-w));   // 4 Fads → 2 rows
     }
-    &.ucs-players-4 .ucs-fad-cards {
+    &.ucs-express.ucs-players-4 .ucs-fad-cards {
         display: grid;
         grid-template-columns: repeat(3, var(--ucs-card-w));   // 5 Fads → 2 rows (3 then 2)
     }
-    &.ucs-players-3 .ucs-gp-pftr,
-    &.ucs-players-4 .ucs-gp-pftr {
+    &.ucs-express.ucs-players-3 .ucs-gp-pftr,
+    &.ucs-express.ucs-players-4 .ucs-gp-pftr {
         flex-direction: column-reverse;                    // Trendy Yarn on top, Perfect Fit under it
         align-items: flex-start;
         gap: 6px;
