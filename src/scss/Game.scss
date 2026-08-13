@@ -1741,6 +1741,21 @@ $ucs-sheet-anim: 220ms;
 // player count, and the card-size preference is needReload. So Game.ts::wideLayoutFloor computes ONE
 // width from the responsive.md formula and Game.ts::layoutNarrowSidebar toggles this class at it —
 // one source of truth, rather than the same floors restated in CSS and JS.
+// Upper bounds for the narrow layout's fluid (cqi) card sizing.
+//
+// The narrow layout is no longer a phone layout: since the boundary moved to each shape's real floor
+// it is what renders at EVERY width below that floor — up to 1602px for Casual at Large and 1884 for
+// Express 2P. Uncapped, `(100cqi - 12px) / 3` grew a Casual parameter card to ~376px on a 1536px
+// laptop: fluid sizing doing exactly what it was told, at a width it was never exercised at (the
+// narrow pass only ever went up to ~1000px — see backlog).
+//
+// Cap each at the WIDE layout's own Large size, since that is the largest these cards are ever meant
+// to be drawn anywhere: the 90px and 128px reference bases at --ucs-card-scale 1.5. Flat px rather
+// than scale-derived, so the narrow layout stays preference-independent as designed above. Below the
+// cap nothing changes, so phone widths are untouched.
+$narrow-ref-cap: 135px;   // 90 x 1.5  — Fads / Perfect Fit / Trendy Yarn
+$narrow-santa-cap: 192px; // 128 x 1.5 — Secret Santa cards
+
 #ucs-table.ucs-narrow {
     #ucs-upper { flex-direction: column; }
     #ucs-lower { flex-direction: column; }
@@ -1864,7 +1879,7 @@ $ucs-sheet-anim: 220ms;
 
     // 2 players (3 Fads): Fads + Perfect Fit + Trendy Yarn all on ONE row — five cards across, filling it.
     &.ucs-express.ucs-players-2 #ucs-gameplay {
-        --ucs-card-w: calc((100cqi - 24px) / 5);           // 5 cards + four 6px gaps
+        --ucs-card-w: min(#{$narrow-ref-cap}, (100cqi - 24px) / 5);   // 5 cards + four 6px gaps
     }
     &.ucs-express.ucs-players-2 .ucs-gameplay-row { flex-wrap: nowrap; gap: 6px; }
     &.ucs-express.ucs-players-2 .ucs-fad-cards,
@@ -1882,10 +1897,10 @@ $ucs-sheet-anim: 220ms;
     // size is a third row, and a third row pushes the Draft Pool off a phone screen. Height is the scarce
     // axis here, so it wins.
     &.ucs-express.ucs-players-3 #ucs-gameplay {
-        --ucs-card-w: calc((100cqi - 12px) / 3);           // 3 cards + two 6px gaps
+        --ucs-card-w: min(#{$narrow-ref-cap}, (100cqi - 12px) / 3);   // 3 cards + two 6px gaps
     }
     &.ucs-express.ucs-players-4 #ucs-gameplay {
-        --ucs-card-w: calc((100cqi - 18px) / 4);           // 4 cards + three 6px gaps
+        --ucs-card-w: min(#{$narrow-ref-cap}, (100cqi - 18px) / 4);   // 4 cards + three 6px gaps
     }
     &.ucs-express.ucs-players-3 .ucs-gameplay-row,
     &.ucs-express.ucs-players-4 .ucs-gameplay-row {
@@ -1915,7 +1930,7 @@ $ucs-sheet-anim: 220ms;
     // beside it carries the opponents alone. Player count doesn't subdivide these: fadsOnDisplay() is
     // players + 1 in Express ONLY (see responsive.md, "How many arrangements are there, really?").
     &:not(.ucs-express) #ucs-gameplay {
-        --ucs-card-w: calc((100cqi - 12px) / 3);           // 3 cards + two 6px gaps
+        --ucs-card-w: min(#{$narrow-ref-cap}, (100cqi - 12px) / 3);   // 3 cards + two 6px gaps
     }
     &:not(.ucs-express) .ucs-gameplay-row {
         flex-wrap: nowrap;
@@ -1928,7 +1943,7 @@ $ucs-sheet-anim: 220ms;
     // pair so it doesn't tower over the row above it. (Its cqi resolves against #ucs-board-strip, which
     // is why this can only apply while the card is still inside the strip — Avid's is lifted out below.)
     &:not(.ucs-express):not(.ucs-avid) #ucs-secret-santa {
-        --ucs-card-w: calc((100cqi - 12px) / 3.14);
+        --ucs-card-w: min(#{$narrow-santa-cap}, (100cqi - 12px) / 3.14);
         --ucs-card-h: calc(var(--ucs-card-w) * 1.567);
     }
 
@@ -1947,13 +1962,13 @@ $ucs-sheet-anim: 220ms;
         width: 100%;
     }
     &.ucs-avid #ucs-secret-santa .ucs-santa-cards {
-        --ucs-card-w: calc((100cqi - 24px) / 4.7);         // 3 rotated slots (h ≈ 1.567w) + two 12px gaps
+        --ucs-card-w: min(#{$narrow-santa-cap}, (100cqi - 24px) / 4.7); // 3 rotated slots (h ≈ 1.567w) + two 12px gaps
         --ucs-card-h: calc(var(--ucs-card-w) * 1.567);
     }
 
     // Secret Santa: the two landscape (rotated) cards fill their row side by side (all player counts).
     #ucs-my-santa {
-        --ucs-card-w: calc((100cqi - 12px) / 3.14);        // 2 rotated slots (h ≈ 1.567w) + a 12px gap
+        --ucs-card-w: min(#{$narrow-santa-cap}, (100cqi - 12px) / 3.14); // 2 rotated slots (h ≈ 1.567w) + a 12px gap
         --ucs-card-h: calc(var(--ucs-card-w) * 1.567);
     }
 
@@ -1974,7 +1989,7 @@ $ucs-sheet-anim: 220ms;
     }
     &.ucs-players-3 #ucs-my-santa .ucs-santa-cards,
     &.ucs-players-4 #ucs-my-santa .ucs-santa-cards {
-        --ucs-card-w: calc((100cqi - 12px) / 3.14);
+        --ucs-card-w: min(#{$narrow-santa-cap}, (100cqi - 12px) / 3.14);
         --ucs-card-h: calc(var(--ucs-card-w) * 1.567);
     }
 }
