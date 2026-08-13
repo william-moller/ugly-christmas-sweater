@@ -610,8 +610,7 @@ export class Game {
      * its Santa-row cost, not the Santa-column fold ($santa-column-floors).
      */
     private wideLayoutFloor(): number {
-        const c = document.documentElement.classList;
-        const scale = c.contains('ucs-cards-large') ? 1.5 : c.contains('ucs-cards-small') ? 0.95 : 1;
+        const scale = this.cardSizeScale();
         const count = Object.keys(this.gamedatas.players).length;
         let card = 590, fixed = 454;                          // Casual, and Avid with its Santas stacked
         if (this.gamedatas.express) {
@@ -620,6 +619,30 @@ export class Game {
             else                  { card = 696; fixed = 442; }
         }
         return Math.round(card * scale + fixed + 263);
+    }
+
+    /**
+     * The Card-size preference (gamepreferences 101) as its --ucs-card-scale multiplier.
+     *
+     * Read from the PREFERENCE, never from the html.ucs-cards-* class. That class is a `cssPref`, which
+     * BGA applies on its own schedule, and it was NOT yet on <html> when setup() first called
+     * wideLayoutFloor() — so a Large session computed the MEDIUM floor (1307), cached it in narrowMq()
+     * for the whole session, and left the wide layout running below its real floor (1602) with no way to
+     * recover. Symptom: at 1536px the Draft Pool wrapped to two rows, because #ucs-board-strip is
+     * flex: 0 0 auto and #ucs-center-stack was what gave (529.6px against the 532px four Large cards
+     * need). The CSS variable was unaffected — the cards were correctly Large — which is what made it
+     * look like crowding rather than a boundary that never fired.
+     *
+     * The preference value arrives with the page from the server, so it has no such ordering hazard.
+     * The class check stays as a fallback for any path where userPreferences isn't readable.
+     */
+    private cardSizeScale(): number {
+        const pref = Number(this.bga.userPreferences?.get?.(101));
+        if (pref === 3) return 1.5;  // Large
+        if (pref === 2) return 1;    // Medium
+        if (pref === 1) return 0.95; // Small
+        const c = document.documentElement.classList;
+        return c.contains('ucs-cards-large') ? 1.5 : c.contains('ucs-cards-small') ? 0.95 : 1;
     }
 
     /** The narrow/wide boundary as a media query, built once from wideLayoutFloor(). */

@@ -127,6 +127,12 @@ not of the code.
     precedent.
   - **Casual, wide (desktop)** — a confirmation sweep. It is the cheapest shape in the game (1278 at
     Small) and unchanged by the folds, so likely fine, but unverified since the layout reworks.
+- **`handSizeScale()` has the cssPref race that `wideLayoutFloor()` just shed.** It reads
+  `html.ucs-cards-*` off `document.documentElement` at setup, and BGA applies that class asynchronously —
+  the same ordering hazard that had a Large session caching the Medium narrow/wide floor all game. Here
+  the consequence is the fanned hand's card frame sized for Medium (1.0) instead of Large (1.4) whenever
+  the class lands after `setupHandStock()`. Fix is to reuse `cardSizeScale()`, which reads the preference
+  value. Worth checking whether any other DOM-class read shares the pattern before closing it out.
 - **Animations** — more of them. *Open question:* which moments? Trick resolution and scoring look
   like the gaps.
 - **Knitting area: normalise sweater art registration across cards** — the sweater silhouette is
