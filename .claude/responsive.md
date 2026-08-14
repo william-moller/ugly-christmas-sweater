@@ -73,6 +73,34 @@ headings were removed rather than shrunk).
 **Never below the floors — reflow instead.** If a tier can't fit its content at these sizes, it moves
 to the next tier's structure. Shrinking past a floor is not an option.
 
+## Upper caps — the narrow layout's fluid sizing
+
+Everything above is a *lower* bound. The narrow layout needs upper ones too, for a reason that only
+appeared once the boundary moved to each shape's real floor: **narrow stopped being a phone layout.**
+It is now what renders at every width below that floor — up to 1602px for Casual at Large and 1884 for
+Express 2P — so its fluid `100cqi` sizing, which divides the container across the row, gets handed
+containers several times wider than the ~1000px it was tuned against. Uncapped, a Casual parameter card
+resolved to **~376px on a 1536px laptop**: more than twice what the wide layout draws at Large, with the
+arithmetic working exactly as written.
+
+Every fluid rule is therefore capped at the **wide layout's own Large size** — the largest that card is
+ever meant to be drawn anywhere:
+
+| Cards | Cap | Derivation | Lives in |
+|-------|----:|------------|----------|
+| Fads / Perfect Fit / Trendy Yarn | 135px | 90px reference base × 1.5 | `$narrow-ref-cap` |
+| Secret Santa (Casual 1 · Express 2 · Avid 3) | 192px | 128px Santa base × 1.5 | `$narrow-santa-cap` |
+| Draft Pool / Trade Area | 128px | 80px interactive base × 1.6 | inline `min()` on `#ucs-draft-pool` |
+
+The caps are **flat px, not `--ucs-card-scale`-derived**, so the narrow layout stays preference-independent
+— which is the whole point of sizing it off the container in the first place. Below the cap the
+expressions are untouched, so phone widths render exactly as they did; the caps bind only in the
+1000–1884px band that the boundary change made reachable, where the rows now centre in the slack
+instead of stretching to fill it.
+
+> **If you add a fluid rule, cap it.** The Draft Pool was capped from the start and was the one zone
+> that survived the boundary change intact; the eight rules that weren't all had to be fixed at once.
+
 ## Tiers
 
 Widths are `window.innerWidth` in CSS px. Reference devices: 320 (iPhone SE), 360–414 (mainstream
@@ -299,6 +327,16 @@ Anything inside a `@media (min-width: …)` block that styles the wide layout ne
 Those blocks carry an extra `html` element selector, so they out-specify the narrow rules and would
 otherwise win inside the overlap band (which now exists for every shape whose floor is above 1000).
 
+**Derive the scale from the preference, never from the `html.ucs-cards-*` class.** That class is a
+`cssPref`, which BGA applies on its own schedule — it was not yet on `<html>` when `setup()` first
+built `narrowMq()`, so a Large session computed the **Medium** floor (1307), cached it for the whole
+session, and ran the wide layout below its real floor with no path to recover. It presented as crowding
+rather than as a boundary failure, because the CSS variable was unaffected: the cards rendered correctly
+Large while the layout decision had been made for Medium. `Game.ts::cardSizeScale()` reads
+`userPreferences.get(101)` instead, which arrives with the page from the server. Any *other* code that
+branches on card size has the same hazard — `handSizeScale()` still does, tracked in
+[`backlog.md`](backlog.md).
+
 *(Superseded: an earlier build switched at 800px and then at a flat 1000px. 1000 was below every shape's
 real floor — the cheapest is 1278 — so the band above it rendered the wide layout squeezed, since
 `#ucs-board-strip` is `flex: 0 0 auto` and `#ucs-center-stack` was what gave.)*
@@ -341,3 +379,9 @@ exactly the width the cards need. At 320px the same arithmetic yields 61px, stil
 - Casual/Avid narrow is arithmetic only: the parameter row is three across and Avid's three landscape
   Secret Santas take a full-width row at `(100cqi - 24px) / 4.7` (~69px cards at 360px, against the 56px
   interactive floor). Avid at 360 has the least slack of any shape in the game.
+- **The unexamined half of the narrow layout is now the WIDE end of it, not the narrow end.** Its whole
+  range used to be phone-to-tablet; it now runs up to each shape's floor, so the band roughly
+  1000px→1884px is where it has had the least scrutiny — that is where the uncapped `100cqi` sizing was
+  found. The caps make it presentable there, but "presentable" is derived, not looked at: a laptop
+  viewport (1366/1440/1536) in each of the five content shapes is the highest-value thing left to
+  eyeball, and it is the band a desktop tester will actually hit.
