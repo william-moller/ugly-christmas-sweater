@@ -127,14 +127,23 @@ not of the code.
     precedent.
   - **Casual, wide (desktop)** — a confirmation sweep. It is the cheapest shape in the game (1278 at
     Small) and unchanged by the folds, so likely fine, but unverified since the layout reworks.
-- **Re-derive `$avid-santa-row-floors` and `$santa-column-floors`.** Both were derived when the board
-  strip still scaled with the Card-size preference; it is pinned now, so their Large figures carry a
-  term that no longer exists. `$santa-column-floors` holds 1450/1840 where the formula gives 1447/1607,
-  and `$avid-santa-row-floors` holds 1415/1430/1590 against a parameter row that no longer shrinks at
-  Small or grows at Large. Neither is *broken* — they select an arrangement upgrade *within* the wide
-  layout, so a stale floor costs a missed upgrade, not a broken layout — but both are now conservative
-  by ~230px at Large. Re-total CARD/FIXED off the formula in [`responsive.md`](responsive.md); don't
-  nudge them until a screenshot looks right.
+- **Re-derive `$santa-column-floors`.** It was derived when the board strip still scaled, so its Large
+  figure carries a term that no longer exists: it holds 1450/1840 where the formula now gives 1447/1607.
+  Not *broken* — it selects an arrangement upgrade *within* the wide layout, so a stale floor costs a
+  missed upgrade rather than a broken layout — but it is conservative by ~230px at Large. Re-total
+  CARD/FIXED off the formula in [`responsive.md`](responsive.md); don't nudge it until a screenshot
+  looks right. (`$avid-santa-row-floors` was checked at the same time and is NOT stale: Avid's Santa row
+  is 656px and always dominated the 270px parameter row, so pinning the strip never moved it.)
+- **Avid at Large stacks its Secret Santas on a laptop.** `$avid-santa-row-floors` puts the three-Santa
+  row at 1590 for Large, while the wide layout itself starts at 1467 — so 1467–1590 is a band where the
+  wide layout runs but the Santas fall back to the stacked column, which costs ~600px of height. A
+  1536px laptop sits squarely in it, and only at Large: Small (1415) and Medium (1430) both clear at
+  that width, which is why the shape reads fine at those sizes and wonky at Large. The 1590 is correctly
+  derived, so this is a design choice rather than an arithmetic fix — the lever is the 125px minimum
+  slot (an 80px card) that the row must clear before it is allowed. Either let the row run below 125px
+  at Large, or accept the stacked column there. *Open question:* is a 108px Santa slot (what 1536 would
+  give) readable enough? They are read-once and never clicked, so the 56px interactive floor does not
+  bind — the 95px reference floor does not either, since a Santa has no Round Tracker numerals.
 - **`handSizeScale()` has the cssPref race that `wideLayoutFloor()` just shed.** It reads
   `html.ucs-cards-*` off `document.documentElement` at setup, and BGA applies that class asynchronously —
   the same ordering hazard that had a Large session caching the Medium narrow/wide floor all game. Here
