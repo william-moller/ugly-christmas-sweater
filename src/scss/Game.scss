@@ -712,25 +712,43 @@ html[data-theme="dark"] {
 
 // The left board strip: a single row of round-parameter cards (Fads + Perfect Fit + Trendy Yarn) over my
 // Secret Santa. One --ucs-card-w/h for the whole strip so every card in the parameter row is the same
-// size (the Fad display, Perfect Fit and Trendy Yarn all read it); it scales with the "Card size"
-// preference. Content-width (flex:none) so the centre stack takes the space it leaves.
+// size (the Fad display, Perfect Fit and Trendy Yarn all read it). Content-width (flex:none) so the
+// centre stack takes the space it leaves.
+//
+// UNSCALED — the strip does NOT read --ucs-card-scale, at any card-size preference.
+//
+// The rule, already applied to Avid's Secret Santa row and now to the whole strip: the preference's job
+// is making the cards you PICK FROM bigger, so it belongs to interactive card art (the Draft Pool, the
+// Trade Area, my knitting area) and not to reference art. Nothing in this strip is ever clicked — the
+// round parameters are read off, the Secret Santas are read-once private objectives.
+//
+// This is also what makes the wide layout reachable on a laptop. Scaled, Large inflated a 90px parameter
+// card to 135px and put Casual's floor at 1602 — above a 1536px screen — so a 1536 laptop at Large got
+// the narrow (phone-shaped) layout: stacked column, Draft Pool below the parameter row, dead green beside
+// it. Unscaled, the strip is a pure FIXED term and every shape costs `320 x scale + FIXED`, dropping
+// Casual's Large floor to 1467. Note what else it buys: the within-shape spread collapses (Casual
+// 324px -> 176px), which is the "narrow the card-size spread" goal in backlog.md — size stops being a
+// layout axis because the only thing left that scales is the centre stack.
 #ucs-board-strip {
     flex: 0 0 auto;
     display: flex;
     flex-direction: column;
     gap: 12px;
-    --ucs-card-w: calc(90px * var(--ucs-card-scale, 1));
-    --ucs-card-h: calc(90px * 1.556 * var(--ucs-card-scale, 1));
+    --ucs-card-w: 90px;
+    --ucs-card-h: 140px; // 90 * 1.556
 }
 #ucs-gameplay {
     // no own card vars — inherits the strip's so its row matches Perfect Fit / Trendy Yarn exactly
     min-width: 0;
 }
 // Casual/Avid Secret Santa (the single revealed objective) — Express hides this and uses #ucs-my-santa.
+// Unscaled, like the rest of the strip above: read-once reference art, never clicked. 128x200 is the
+// same pin Avid's three-Santa row already used, so the two now agree instead of Avid's row being a
+// special case.
 #ucs-secret-santa {
     position: relative; // anchor for the vertical zone label sitting just outside the left edge
-    --ucs-card-w: calc(128px * var(--ucs-card-scale, 1));
-    --ucs-card-h: calc(200px * var(--ucs-card-scale, 1));
+    --ucs-card-w: 128px;
+    --ucs-card-h: 200px;
 }
 
 // The full-width lower row: the Round Tracker on the left, my Knitting Area filling the rest across to
@@ -2271,9 +2289,12 @@ $santa-column-floors: (medium: 1450px, large: 1840px);
 }
 // Express: my Secret Santa card(s) sit in the board strip, directly under the parameter row, side by
 // side (see .ucs-santa-cards) so they fit under the width of that row. Sized to match the tabletop feel.
+// Unscaled, like the rest of the board strip (see #ucs-board-strip). Scaled, this pair was the term that
+// overtook the parameter row as the strip's widest at Large — so which term set the shape's floor flipped
+// on the card-size preference, which is exactly the size-x-layout coupling the unscaling removes.
 .ucs-my-santa {
-    --ucs-card-w: calc(120px * var(--ucs-card-scale, 1));
-    --ucs-card-h: calc(188px * var(--ucs-card-scale, 1));
+    --ucs-card-w: 120px;
+    --ucs-card-h: 188px;
     display: flex;
     flex-direction: column;
     // stretch, not flex-start: the card row below needs the zone's full width before it can centre

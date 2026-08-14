@@ -1115,8 +1115,8 @@ html[data-theme=dark] {
   display: flex;
   flex-direction: column;
   gap: 12px;
-  --ucs-card-w: calc(90px * var(--ucs-card-scale, 1));
-  --ucs-card-h: calc(90px * 1.556 * var(--ucs-card-scale, 1));
+  --ucs-card-w: 90px;
+  --ucs-card-h: 140px;
 }
 
 #ucs-gameplay {
@@ -1125,8 +1125,8 @@ html[data-theme=dark] {
 
 #ucs-secret-santa {
   position: relative;
-  --ucs-card-w: calc(128px * var(--ucs-card-scale, 1));
-  --ucs-card-h: calc(200px * var(--ucs-card-scale, 1));
+  --ucs-card-w: 128px;
+  --ucs-card-h: 200px;
 }
 
 #ucs-lower {
@@ -2465,8 +2465,8 @@ table.ucs-scorepad th, table.ucs-scorepad td {
 }
 
 .ucs-my-santa {
-  --ucs-card-w: calc(120px * var(--ucs-card-scale, 1));
-  --ucs-card-h: calc(188px * var(--ucs-card-scale, 1));
+  --ucs-card-w: 120px;
+  --ucs-card-h: 188px;
   display: flex;
   flex-direction: column;
   align-items: stretch;

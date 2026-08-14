@@ -608,15 +608,38 @@ export class Game {
      * numbers, which are what its wide layout costs when it first becomes viable — the unscaled Santa row
      * is an upgrade applied further up, at $avid-santa-row-floors in Game.scss. Express 3P likewise uses
      * its Santa-row cost, not the Santa-column fold ($santa-column-floors).
+     *
+     * CARD is now 320 (the Draft Pool, 4 x 80) for EVERY shape, because the board strip stopped reading
+     * --ucs-card-scale: the round parameters and both Secret Santa zones are reference art you never
+     * click, so they are pinned and moved wholesale from CARD into FIXED (see the #ucs-board-strip note
+     * in Game.scss). Each shape's strip term, now part of FIXED:
+     *
+     *     Casual / Avid  parameter row 3 x 90                = 270  ->  FIXED 454 + 270 = 724
+     *     Express 2P     parameter row 5 x 90                = 450  ->  FIXED 466 + 450 = 916
+     *     Express 3P     Santa pair 2 x 188 (beats params)   = 376  ->  FIXED 388 + 376 = 764
+     *     Express 4P     Santa pair 2 x 188 (beats params)   = 376  ->  FIXED 442 + 376 = 818
+     *
+     * Only the strip term moved; every other term is untouched, so this inherits whatever accuracy the
+     * original table had rather than being a fresh derivation. Resulting floors, Small / Medium / Large:
+     *
+     *     Casual · Avid  1291 / 1307 / 1467      (was 1278 / 1307 / 1602)
+     *     Express 2P     1483 / 1499 / 1659      (was 1461 / 1499 / 1884)
+     *     Express 3P     1331 / 1347 / 1507      (was 1312 / 1347 / 1695)
+     *     Express 4P     1385 / 1401 / 1561      (was 1366 / 1401 / 1749)
+     *
+     * Medium is unchanged by construction (scale 1 moves nothing), Small rises slightly — the strip no
+     * longer shrinks below 90px — and Large drops 135-225px, which is the point: three of the four shapes
+     * now reach the wide layout on a 1366-1536px laptop at Large, where before none did.
      */
     private wideLayoutFloor(): number {
         const scale = this.cardSizeScale();
         const count = Object.keys(this.gamedatas.players).length;
-        let card = 590, fixed = 454;                          // Casual, and Avid with its Santas stacked
+        const card = 320;                                     // Draft Pool, 4 x 80 — the only scaled term
+        let fixed = 724;                                      // Casual, and Avid with its Santas stacked
         if (this.gamedatas.express) {
-            if (count <= 2)       { card = 770; fixed = 466; } // 3 Fads → a five-card parameter row
-            else if (count === 3) { card = 696; fixed = 388; }
-            else                  { card = 696; fixed = 442; }
+            if (count <= 2)       { fixed = 916; }             // 3 Fads → a five-card parameter row
+            else if (count === 3) { fixed = 764; }
+            else                  { fixed = 818; }
         }
         return Math.round(card * scale + fixed + 263);
     }

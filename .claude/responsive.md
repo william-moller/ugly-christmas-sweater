@@ -77,7 +77,7 @@ to the next tier's structure. Shrinking past a floor is not an option.
 
 Everything above is a *lower* bound. The narrow layout needs upper ones too, for a reason that only
 appeared once the boundary moved to each shape's real floor: **narrow stopped being a phone layout.**
-It is now what renders at every width below that floor — up to 1602px for Casual at Large and 1884 for
+It is now what renders at every width below that floor — up to 1467px for Casual at Large and 1659 for
 Express 2P — so its fluid `100cqi` sizing, which divides the container across the row, gets handed
 containers several times wider than the ~1000px it was tuned against. Uncapped, a Casual parameter card
 resolved to **~376px on a 1536px laptop**: more than twice what the wide layout draws at Large, with the
@@ -95,7 +95,7 @@ ever meant to be drawn anywhere:
 The caps are **flat px, not `--ucs-card-scale`-derived**, so the narrow layout stays preference-independent
 — which is the whole point of sizing it off the container in the first place. Below the cap the
 expressions are untouched, so phone widths render exactly as they did; the caps bind only in the
-1000–1884px band that the boundary change made reachable, where the rows now centre in the slack
+1000–1659px band that the boundary change made reachable, where the rows now centre in the slack
 instead of stretching to fill it.
 
 > **If you add a fluid rule, cap it.** The Draft Pool was capped from the start and was the one zone
@@ -203,24 +203,40 @@ viewport  = CARD × scale + FIXED + 263      # 263 = BGA's own player-panel colu
 
 `--ucs-card-scale` is `0.95 / 1 / 1.5` for Small / Medium / Large (`Game.scss`, near the top).
 
+**What is in CARD is now a short list.** The board strip — the round parameters and both Secret Santa
+zones — no longer reads `--ucs-card-scale`: it is reference art you never click, so it is pinned and
+belongs to FIXED. What is left in CARD is the Draft Pool and the Trade Area, i.e. exactly the cards you
+pick from, plus my knitting area in `#ucs-lower`. So for every Tier A shape:
+
+```
+CARD  = 320                                 # Draft Pool, 4 x 80 — the same for all five shapes
+FIXED = strip + gaps + opponents + padding  # the strip term is now a constant per shape
+```
+
 **Worked instance — Express · 3P · Tier A · with the Secret Santa column:**
 
 | Term | Piece | px |
 |------|-------|---:|
-| CARD | Fads 2×2 (`2 × 90`) | 180 |
-| CARD | Perfect Fit / Trendy Yarn column (`90`) | 90 |
-| CARD | Secret Santa, rotated (`--ucs-card-h` = 188) | 188 |
 | CARD | Draft Pool (`4 × 80`) | 320 |
-| | **CARD total** | **778** |
+| | **CARD total** | **320** |
+| FIXED | Fads 2×2 (`2 × 90`) — pinned | 180 |
+| FIXED | Perfect Fit / Trendy Yarn column (`90`) — pinned | 90 |
+| FIXED | Secret Santa, rotated (`--ucs-card-h` = 188) — pinned | 188 |
 | FIXED | Fad grid gap 6 · strip gaps 24 · `#ucs-upper` gaps 24 | 54 |
 | FIXED | Draft Pool `3 × 12` gaps + 16 zone padding + 24 rotated-label overhang | 76 |
 | FIXED | Right column: opponent panel at the 5-sweater cap (`244 + 12 padding + 4 border`) | 260 |
 | FIXED | `#ucs-table` padding | 16 |
-| | **FIXED total** | **406** |
+| | **FIXED total** | **864** |
 
-→ `viewport = 778 × scale + 669`, which gives **1408 / 1447 / 1836** for Small / Medium / Large.
-`$santa-column-floors` in `Game.scss` rounds the latter two to **1450** and **1840**; Small has no
-floor set, so it keeps the stacked Santa row at every width.
+→ `viewport = 320 × scale + 1127`, which gives **1431 / 1447 / 1607** for Small / Medium / Large
+(was 1408 / 1447 / **1836**). Medium is unchanged by construction — at scale 1 nothing moves — and the
+whole effect of pinning lands on Large.
+
+⚠️ `$santa-column-floors` in `Game.scss` still holds the **old** numbers (1450 / 1840). They are now
+*conservative*, not wrong: the Santa column simply waits until 1840 to appear at Large when 1607 would
+do. Same for `$avid-santa-row-floors` (1415 / 1430 / 1590), whose Large figure carried a scaled
+parameter row that no longer scales. Both are arrangement upgrades *within* the wide layout, so a stale
+floor costs a missed upgrade rather than a broken layout — but both want re-deriving off this formula.
 
 **To floor a new arrangement:** re-total CARD and FIXED for it, then read the answer off the formula
 for each size. That is the whole derivation — no per-size arithmetic.
@@ -235,47 +251,54 @@ wherever the trick is 4 — i.e. everywhere except 3P.
 Rows marked *unfolded* are what the shape cost before its fold, kept because they are the argument for
 the fold existing:
 
+CARD is `320` throughout — the strip is pinned, so the Draft Pool is the only term left that scales. The
+*Strip* column is the shape's pinned strip width, now folded into FIXED. Bracketed figures are what the
+shape cost when the strip still scaled, kept because they are the argument for pinning it:
+
 | Shape | Strip (winner) | CARD | FIXED | Small | Medium | Large |
 |-------|---------------|-----:|------:|------:|-------:|------:|
-| Casual (any count) | params `3 × 90` | 590 | 454 | 1278 | 1307 | 1602 |
-| Express 2P | params `5 × 90` | 770 | 466 | 1461 | 1499 | 1884 |
-| Express 3P — Santa row | Santa `2 × 188` | 696 | 388 | 1312 | 1347 | 1695 |
-| Express 3P — Santa column | params + Santa | 778 | 406 | 1408 | 1447 | 1836 |
-| Express 4P — Fads 3-across | Santa `2 × 188` | 696 | 442 | 1366 | 1401 | 1749 |
-| Express 4P — *unfolded* | params `7 × 90` | 950 | 478 | 1644 | 1691 | *2166* |
+| Casual (any count) | params `3 × 90` = 270 | 320 | 724 | 1291 | 1307 | **1467** *(1602)* |
+| Express 2P | params `5 × 90` = 450 | 320 | 916 | 1483 | 1499 | **1659** *(1884)* |
+| Express 3P — Santa row | Santa `2 × 188` = 376 | 320 | 764 | 1331 | 1347 | **1507** *(1695)* |
+| Express 3P — Santa column | params + Santa = 458 | 320 | 864 | 1431 | 1447 | **1607** *(1836)* |
+| Express 4P — Fads 3-across | Santa `2 × 188` = 376 | 320 | 818 | 1385 | 1401 | **1561** *(1749)* |
+| Express 4P — *unfolded* | params `7 × 90` = 630 | 320 | 1108 | 1675 | 1691 | *1851* |
 | Avid — Santa row, unscaled | Santa row (fixed 656) | 320 | 1070 | 1637 | 1653 | 1813 |
-| Avid — Santas stacked (below floor) | params `3 × 90` | 590 | 454 | 1278 | 1307 | 1602 |
-| Avid — Santa row, *scaled* | Santa `3 × 200` | 920 | 494 | 1631 | 1677 | *2093* |
+| Avid — Santas stacked (below floor) | params `3 × 90` = 270 | 320 | 724 | 1291 | 1307 | **1467** *(1602)* |
 
 What falls out of the table:
 
-1. **Nothing fits at 1000px.** The cheapest shape (Casual at Small) needs **1278**. The Tier A/B
+1. **Nothing fits at 1000px.** The cheapest shape (Casual at Small) needs **1291**. The Tier A/B
    boundary is inherited from an older, narrower layout — see the stale-structure caveat above — and is
    ~300px too low for *every* shape at *every* card size. The band from 1001 to the shape's floor
    renders the wide layout squeezed: `#ucs-board-strip` is `flex: 0 0 auto`, so `#ucs-center-stack` is
    what gives.
 2. **Folding Express 4P and Avid was not cosmetic** — unfolded they needed 2166 and 2093 against a 1920
-   screen, i.e. they fit no common monitor at Large. Both were a single unfolded row.
-3. **Express 2P at Large (1884) clears a 1920 screen by 36px**, and is now the most expensive shape in
-   the game. It is signed off on a 1920 monitor and does not fit a 1600px laptop. Its parameter row is
-   5 cards across (3 Fads + Perfect Fit + Trendy Yarn); the same Fad-grid fold would bring it down, but
-   at 2P the row is not obviously *wrong*, so this is a judgement call rather than a defect.
+   screen when the strip still scaled, i.e. they fit no common monitor at Large. Both were a single
+   unfolded row. Pinning the strip has since taken the unfolded 4P cost to 1851, so the fold is no
+   longer load-bearing for *fit* at 4P — but it is still what keeps the parameter row from pushing the
+   centre column right, which is why it stays.
+3. **Every shape now reaches the wide layout on a laptop at Large**, which was the point of pinning the
+   strip. Against the three common widths — 1366 / 1440 / 1536 — Casual clears at 1467, Express 3P at
+   1507 and 4P at 1561; only **Express 2P (1659)** still misses, and it is now 261px inside a 1920
+   screen rather than 36px. Its parameter row is 5 cards across (3 Fads + Perfect Fit + Trendy Yarn);
+   the Fad-grid fold would bring it down further, but at 2P the row is not obviously *wrong*, so that
+   remains a judgement call rather than a defect.
 4. **Avid's stacked column is now the below-floor fallback, not the target.** Once the Santas stack the
    strip is the parameter row and Avid costs exactly what Casual costs — the sanity check that the fold
    does what it should — but it buys that width with ~600px of height at Large, so above the floors the
    unscaled row wins. Avid is the one shape where the *height* of the strip, not its width, was the
    binding complaint.
+5. **Large is no longer a layout axis, only a size one.** Within-shape spread across the preference
+   collapses from 300–500px to a flat **176px** for every shape — and that 176 is just the Draft Pool
+   (`320 × 0.55`). Medium is unchanged throughout by construction. This is the "narrow the card-size
+   spread" goal in [`backlog.md`](backlog.md), reached by moving zones off the scale rather than by
+   re-pitching it, so no already-tuned layout changes size at Medium.
 
 Worst-case assumptions, so the floors err toward *not* folding: the opponents' column at its five-sweater
 cap (early in a game it is ~115px, and `.ucs-knitting-compact` notes only Express reaches a 6th sweater
 — Casual/Avid end by the 3rd–4th, so ~210 is their realistic cap), a full Draft Pool, and a player-name
 header narrower than the knitting area.
-
-> **Large at Tier A is tight before any of this.** Drop the Santa term (188) and Large still needs
-> ≈1550 viewport; under that the centre column and the opponents crowd each other. Nothing clamps it —
-> `#ucs-board-strip` is `flex: 0 0 auto`, so the centre stack is what gives. The `1.5 ×` Large scale is
-> what makes the size preference a *layout* knob instead of a cosmetic one; narrowing it is tracked in
-> [`backlog.md`](backlog.md).
 
 ## How many arrangements are there, really?
 
@@ -309,19 +332,22 @@ The floors it produces, per shape and size:
 
 | Shape | CARD | FIXED | Small | Medium | Large |
 |-------|-----:|------:|------:|-------:|------:|
-| Casual · Avid | 590 | 454 | 1278 | 1307 | 1602 |
-| Express 2P | 770 | 466 | 1461 | 1499 | 1884 |
-| Express 3P | 696 | 388 | 1312 | 1347 | 1695 |
-| Express 4P | 696 | 442 | 1366 | 1401 | 1749 |
+| Casual · Avid | 320 | 724 | 1291 | 1307 | 1467 |
+| Express 2P | 320 | 916 | 1483 | 1499 | 1659 |
+| Express 3P | 320 | 764 | 1331 | 1347 | 1507 |
+| Express 4P | 320 | 818 | 1385 | 1401 | 1561 |
 
 Avid uses the **stacked**-Santa numbers and Express 3P the **Santa-row** numbers — what each shape costs
 when its wide layout first becomes viable. The unscaled Avid row and the 3P Santa column are upgrades
 applied further up, at `$avid-santa-row-floors` / `$santa-column-floors`, and those two still live in
 `Game.scss` because they select *within* the wide layout rather than deciding which layout runs.
 
-Consequence worth knowing: **Express 2P at Large switches to narrow below 1884px**, so a 1600px laptop
-now gets the narrow layout for that shape. That is the intended reading of item 3 below — 1884 was
-signed off on a 1920 monitor and never fitted a 1600px laptop; it previously rendered squeezed there.
+Consequence worth knowing: **the narrow layout is now genuinely a narrow-screen layout again.** Every
+Large floor sits between 1467 and 1659, so a 1366–1536px laptop gets the *wide* layout for three of the
+four shapes; before pinning the strip it got the narrow one for all four, at every card size, because
+the floors ran 1602–1884. That mattered more than the arithmetic suggests: narrow is a stacked
+single-column arrangement with the Draft Pool below the parameter row, which is right on a phone and
+wrong on a laptop no matter how well its cards are sized.
 
 Anything inside a `@media (min-width: …)` block that styles the wide layout needs `:not(.ucs-narrow)`.
 Those blocks carry an extra `html` element selector, so they out-specify the narrow rules and would
@@ -338,7 +364,7 @@ branches on card size has the same hazard — `handSizeScale()` still does, trac
 [`backlog.md`](backlog.md).
 
 *(Superseded: an earlier build switched at 800px and then at a flat 1000px. 1000 was below every shape's
-real floor — the cheapest is 1278 — so the band above it rendered the wide layout squeezed, since
+real floor — the cheapest is 1291 — so the band above it rendered the wide layout squeezed, since
 `#ucs-board-strip` is `flex: 0 0 auto` and `#ucs-center-stack` was what gave.)*
 
 ### Tier B — rail, 450–1000px
@@ -381,7 +407,7 @@ exactly the width the cards need. At 320px the same arithmetic yields 61px, stil
   interactive floor). Avid at 360 has the least slack of any shape in the game.
 - **The unexamined half of the narrow layout is now the WIDE end of it, not the narrow end.** Its whole
   range used to be phone-to-tablet; it now runs up to each shape's floor, so the band roughly
-  1000px→1884px is where it has had the least scrutiny — that is where the uncapped `100cqi` sizing was
+  1000px→1659px is where it has had the least scrutiny — that is where the uncapped `100cqi` sizing was
   found. The caps make it presentable there, but "presentable" is derived, not looked at: a laptop
   viewport (1366/1440/1536) in each of the five content shapes is the highest-value thing left to
   eyeball, and it is the band a desktop tester will actually hit.

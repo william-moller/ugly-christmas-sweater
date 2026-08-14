@@ -127,6 +127,14 @@ not of the code.
     precedent.
   - **Casual, wide (desktop)** — a confirmation sweep. It is the cheapest shape in the game (1278 at
     Small) and unchanged by the folds, so likely fine, but unverified since the layout reworks.
+- **Re-derive `$avid-santa-row-floors` and `$santa-column-floors`.** Both were derived when the board
+  strip still scaled with the Card-size preference; it is pinned now, so their Large figures carry a
+  term that no longer exists. `$santa-column-floors` holds 1450/1840 where the formula gives 1447/1607,
+  and `$avid-santa-row-floors` holds 1415/1430/1590 against a parameter row that no longer shrinks at
+  Small or grows at Large. Neither is *broken* — they select an arrangement upgrade *within* the wide
+  layout, so a stale floor costs a missed upgrade, not a broken layout — but both are now conservative
+  by ~230px at Large. Re-total CARD/FIXED off the formula in [`responsive.md`](responsive.md); don't
+  nudge them until a screenshot looks right.
 - **`handSizeScale()` has the cssPref race that `wideLayoutFloor()` just shed.** It reads
   `html.ucs-cards-*` off `document.documentElement` at setup, and BGA applies that class asynchronously —
   the same ordering hazard that had a Large session caching the Medium narrow/wide floor all game. Here
