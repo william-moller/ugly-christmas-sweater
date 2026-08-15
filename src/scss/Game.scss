@@ -2181,26 +2181,11 @@ $santa-column-floors: (medium: 1450px, large: 1610px);
 .ucs-fad-card {
     position: relative;
 }
-// The abstracted Fad read-out ("[colour] / [icon]"), rendered into every Fad card by fadChipEl but
-// only shown by the narrow breakpoint, which drops the card art. Hidden here so the wide layout keeps
-// the publisher art untouched.
-.ucs-fad-chip {
-    display: none;
-    align-items: center;
-    justify-content: center;
-    gap: 3px;
-}
-.ucs-fad-chip-sep {
-    font-size: 13px;
-    font-weight: 700;
-    opacity: 0.55;
-}
-.ucs-fad-chip-clash {
-    font-size: 12px;
-    font-weight: 800;
-    letter-spacing: 0.04em;
-    text-transform: uppercase;
-}
+// (Removed: .ucs-fad-chip, an abstracted "[colour] / [icon]" read-out rendered into every Fad card as a
+// stand-in for the art in the 120px reference rail. The rail was retired, no rule ever unset its
+// display: none, and it never rendered. Only Express 2P narrow drives Fad art below the ~72px it was
+// meant to rescue — (100cqi - 24)/5 is ~64px at 360px — and the fix there is to fold the five-card row
+// the way 3-4P already do, per responsive.md's "never below the floors, reflow instead".)
 // A claimed Fad is dimmed and tagged with its owner's colour + name.
 .ucs-fad-claimed {
     opacity: 0.85;

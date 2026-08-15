@@ -838,37 +838,10 @@ export class Game {
         return wrap;
     }
 
-    /**
-     * The narrow-layout stand-in for a Fad's card art: the objectives reduced to the same primitives the
-     * player panel uses — a colour swatch and an icon glyph ("[red] / [tree]"). A Fad is exactly one
-     * colour objective plus one icon objective (Material::fads), except the two "Clash Is In" cards,
-     * which have no colour/icon at all and so read as a word. Always rendered; CSS shows it only in the
-     * narrow rail, where the full art would cost ~125px of height each.
-     */
-    private fadChipEl(card: GameplayCard): HTMLElement {
-        const chip = document.createElement('div');
-        chip.className = 'ucs-fad-chip';
-        const fad = this.material.fads[Number(card.type_arg)];
-        if (fad?.clash) {
-            chip.classList.add('ucs-fad-chip-clash');
-            chip.textContent = _('Clash');
-            return chip;
-        }
-        const objectives: { match: string; value: string }[] = fad?.objectives ?? [];
-        const color = objectives.find((o) => o.match === 'color')?.value;
-        const icon = objectives.find((o) => o.match === 'icon')?.value;
-        chip.innerHTML =
-            (color ? `<span class="ucs-tally-swatch ucs-color-${color}"></span>` : '')
-            + `<span class="ucs-fad-chip-sep">/</span>`
-            + (icon ? `<span class="ucs-tally-icon"><span class="ucs-icon ucs-icon-${icon}"></span></span>` : '');
-        return chip;
-    }
-
     /** One Fad card in the Express display; ownerId set → claimed (dimmed + tagged with the owner). */
     private fadCardEl(card: GameplayCard, ownerId: number | null): HTMLElement {
         const el = this.gameplayCardEl('fad', card);
         el.classList.add('ucs-fad-card');
-        el.appendChild(this.fadChipEl(card));
         if (ownerId != null) {
             el.classList.add('ucs-fad-claimed');
             const owner = this.gamedatas.players[ownerId];

@@ -71,12 +71,12 @@ not of the code.
     the game — check it against the sidebar's height.
   - **Casual and Avid, narrow** — now built (three-across parameter row; Avid's three Secret Santas on a
     full-width row) but derived only, never looked at. Avid at 360px has the least slack in the game.
-  - **`.ucs-fad-chip` is dead code.** `fadChipEl()` renders an abstracted "[colour] / [icon]" read-out
-    into every Fad card for a narrow layout that would drop the card art, but no rule ever unsets its
-    `display: none` — it belongs to the retired narrow rail (see `responsive.md`'s stale-structure
-    caveat). Either wire it up as the genuine fallback for widths where Fad art stops being readable
-    (~<72px card width, which is what stopped 4P mirroring the wide block), or delete it and its
-    renderer. Right now it is a promise the CSS does not keep.
+  - **Express 2P, phone widths — does the Fad art still read?** 2P is the one shape whose narrow Fads
+    go under the ~72px where the art stops being legible: `min(135px, (100cqi - 24px) / 5)` resolves to
+    ~64px at 360px and ~56px at 320px, against ~72–110px for every other shape. If it reads badly, fold
+    the five-card row into a grid the way 3–4P already do — reflow, not shrink. (The `.ucs-fad-chip`
+    abstraction that used to sit here as a maybe-fallback has been deleted; it belonged to the retired
+    120px rail and never rendered.)
   - **Large, narrow** — Large now uses the sidebar like every other size, and my knitting area is capped
     at `min(card × scale, 25vw)` so one sweater can't claim most of a phone. Unverified by eye.
   - **Express, wide (≥1000px desktop)** — confirm the desktop layout is still clean after the

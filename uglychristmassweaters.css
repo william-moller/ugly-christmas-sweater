@@ -2362,26 +2362,6 @@ table.ucs-scorepad th, table.ucs-scorepad td {
   position: relative;
 }
 
-.ucs-fad-chip {
-  display: none;
-  align-items: center;
-  justify-content: center;
-  gap: 3px;
-}
-
-.ucs-fad-chip-sep {
-  font-size: 13px;
-  font-weight: 700;
-  opacity: 0.55;
-}
-
-.ucs-fad-chip-clash {
-  font-size: 12px;
-  font-weight: 800;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-}
-
 .ucs-fad-claimed {
   opacity: 0.85;
   outline: 3px solid var(--player-color, #2ecc71);
