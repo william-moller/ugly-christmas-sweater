@@ -239,12 +239,40 @@ so a **timer** applies it after the shrink plays — `SHEET_ANIM_MS` and `$ucs-s
 step. A timer rather than `animationend`, so a browser that suppresses the animation still lands in the
 right state; and `hideRoundSummary()` clears that timer, or an Okay mid-minimize strands the chip.
 
-### Client animations (FLIP flights)
+### Client animations
 
-Card motion between zones uses a **FLIP** helper (`flipCardFrom` in `Game.ts`): the destination
-element is rendered at its final spot, then transformed back to a captured source rect (`translate` +
-`scale`, deltas divided by the tabletop scale) and transitioned to identity, so it appears to fly in
-from the source. It returns a promise, so a promise `notif_*` can `await` it.
+Five helpers in `Game.ts`, all of which no-op when `bgaAnimationsActive()` is false and all of which
+follow the same shape: **re-render first, animate second.** The destination element is already at its
+final spot, so the animation transforms it back to where it came from and transitions that away. Any
+new one must respect both rules.
+
+| Helper | Used for | Motion |
+|--------|----------|--------|
+| `flipCardFrom(el, rect, secs)` | one card arriving from a known place — play, draft | FLIP from a captured rect (`translate` + `scale`, deltas ÷ tabletop scale) |
+| `flipFromRects(rects, secs)` | a set of cards re-arranging — trick collection (2s, via `animateTradeToPool`), Tina's rearrange (0.6s) | batch FLIP, resolving `ucs-card-<id>` then `ucs-mini-<id>` |
+| `revealFlip(el, secs)` | a round parameter changing | half flip in from edge-on + `.ucs-gp-revealing` glow |
+| `fadeCardOut(el, secs)` | a card leaving to nowhere visible — Billy's discard | shrink + fade, run **before** the model drops it |
+| `handStock.addCards(…, {fromElement})` | cards entering the fan — refill, new-round deal | bga-cards' own slide, 80ms stagger |
+
+**Why `revealFlip` is a HALF flip.** `gameplayFaceEl` draws the revealed parameter alone, with no draw
+pile beside it, and `renderGameplay` rebuilds the row via `innerHTML` — so there is nothing to fly from
+*and* no old face left to turn away. The new face turns in from edge-on instead. Don't "fix" it into a
+full flip without first giving the row a second face to flip from.
+
+**Parameter changes are detected by diffing, not announced.** `gpActiveIds()` snapshots the active card
+id per single-face deck before a re-render; `revealChangedParameters(before)` flips whichever changed.
+One mechanism covers both triggers — Express's mid-round rotations (Trendy Yarn every
+`trendyRotateEvery()` tricks, Perfect Fit when a matching card was played; `EndTrickCleanup`) and the
+fresh reveal at a round boundary, which is the only path Casual and Avid take. It is `await`ed so two
+rotations landing on the same trick play in sequence. Express renders its Fads as a multi-card display,
+so `ucs-gp-face-fad` doesn't exist there and the Fad flip silently no-ops — which is why claiming a Fad
+doesn't flash the row.
+
+`gameplayCardEl`'s optional `domId` pins those `ucs-gp-face-<type>` ids. It **must** be applied before
+`addTip`: `gpId()` only generates an id when the element hasn't got one, and the tooltip binds by the id
+it was handed, so setting the id afterwards breaks parameter-card tooltips.
+
+The origin of a **card played from my hand** (`notif_cardPlayed` → Trade Area) is snapshotted **when
 
 The origin of a **card played from my hand** (`notif_cardPlayed` → Trade Area) is snapshotted **when
 I confirm the play**, not read in the notification handler. By the time the notif fires,

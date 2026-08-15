@@ -527,6 +527,19 @@ html[data-theme="dark"] {
     &.ucs-gp-none { background-color: #777; }
     &.ucs-gp-fad { background-color: #2c3e50; }
 }
+// A round parameter just changed (mid-round rotation in Express, or a new round's reveal). Game.ts's
+// revealFlip turns the face in from edge-on and adds this class for the duration, so the swap reads as an
+// event rather than a different picture between two renders. The glow is a drop-shadow rather than a
+// box-shadow so it follows the card ART's alpha (.ucs-art2 is a sprite with rounded/bled edges) instead of
+// outlining the square element behind it. Duration comes from revealFlip so the two can't drift apart.
+.ucs-gp-revealing {
+    animation: ucs-gp-reveal-glow var(--ucs-gp-reveal, 0.5s) ease;
+}
+@keyframes ucs-gp-reveal-glow {
+    0%   { filter: drop-shadow(0 0 0 rgba(255, 236, 150, 0)); }
+    45%  { filter: drop-shadow(0 0 10px rgba(255, 236, 150, 0.95)); }
+    100% { filter: drop-shadow(0 0 0 rgba(255, 236, 150, 0)); }
+}
 .ucs-gp-deck {
     display: flex;
     flex-direction: column;

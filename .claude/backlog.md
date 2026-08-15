@@ -144,8 +144,16 @@ not of the code.
   at Large, or accept the stacked column there. *Open question:* is a 108px Santa slot (what 1536 would
   give) readable enough? They are read-once and never clicked, so the 56px interactive floor does not
   bind — the 95px reference floor does not either, since a Santa has no Round Tracker numerals.
-- **Animations** — more of them. *Open question:* which moments? Trick resolution and scoring look
-  like the gaps.
+- **Animate the new-round board deal.** Every other point where a card changes location is now marked
+  (play, draft, trick collection, hand refill and new-round deal, Billy's discard, Tina's rearrange, and
+  the parameter reveals). `notif_newRound` is the one left: `renderAll()` replaces the draft pool and
+  wipes every knitting area in a single snap. It was held back because it is a choreography question,
+  not a helper call — stagger order across the pool, whether the knitting wipe animates out or is simply
+  gone, and how long the whole thing may take before it is in the way of the first draft. The pieces to
+  build it with already exist (`flipFromRects`, `fadeCardOut`, `handStock.addCards`'s `fromElement`).
+- **Scoring has no animation.** Round scoring lands as a summary sheet; nothing on the table moves or
+  counts up. Unlike the deals above, this is not a card-movement gap — it wants `displayScoring`-style
+  point call-outs per scoring step, which is a different mechanism. *Open question:* is the sheet enough?
 - **Knitting area: normalise sweater art registration across cards** — the sweater silhouette is
   drawn at a slightly different horizontal position on each card face, so an assembled sweater built
   from mismatched cards (the normal case) doesn't tile cleanly: the L/R/B pieces jog left/right of

@@ -1142,7 +1142,9 @@ class Game {
         wrap.className = 'ucs-gp-pile';
         const cards = document.createElement('div');
         cards.className = 'ucs-gp-cards';
-        cards.appendChild(this.gameplayCardEl(type, card));
+        // Stable per-type id: this row holds exactly one face of each type, so `ucs-gp-face-<type>` is
+        // unique and survives the innerHTML rebuild in renderGameplay.
+        cards.appendChild(this.gameplayCardEl(type, card, `ucs-gp-face-${type}`));
         wrap.appendChild(cards);
         return wrap;
     }
@@ -1214,10 +1216,16 @@ class Game {
         }
         return el;
     }
-    /** A revealed gameplay card, drawn with its real publisher art (sprite via .ucs-art2). */
-    gameplayCardEl(type, card) {
+    /** A revealed gameplay card, drawn with its real publisher art (sprite via .ucs-art2).
+     *  `domId` pins a stable element id (see gameplayFaceEl) so revealChangedParameters can find this
+     *  face again after a re-render. It must be set BEFORE addTip: gpId() only generates an id when the
+     *  element hasn't got one, and the tooltip binds by the id it was handed. Omitted for the Express Fad
+     *  display, where several cards of one type share the row and no id would be unique. */
+    gameplayCardEl(type, card, domId) {
         const el = document.createElement('div');
         el.className = 'ucs-card ucs-gp-card';
+        if (domId)
+            el.id = domId;
         if (!card) {
             el.classList.add('ucs-gp-none');
             el.innerHTML = `<div class="ucs-gp-face">—</div>`;
@@ -1505,6 +1513,90 @@ class Game {
                 el.style.zIndex = '';
                 resolve();
             }, durationSec * 1000 + 60);
+        });
+    }
+    /**
+     * "This card just changed" — an in-place reveal for a round parameter (Perfect Fit / Trendy Yarn, and
+     * the single Fad face in Casual/Avid).
+     *
+     * A HALF flip, not a full one, and deliberately so: gameplayFaceEl draws the revealed card on its own
+     * with no draw pile beside it, so there is nothing on screen to fly from and no old face left to turn
+     * away — renderGameplay has already replaced the row wholesale by the time we run. The new face turns
+     * in from edge-on and carries a brief glow (.ucs-gp-revealing in Game.scss), which is enough to stop a
+     * mid-round rotation reading as a silent swap between two renders.
+     *
+     * Resolves when the motion ends so a promise notification can await it — Trendy Yarn and Perfect Fit
+     * can both rotate on the same trick, and their two gameplayRevealed notifications must play in
+     * sequence rather than on top of each other.
+     */
+    revealFlip(el, durationSec = 0.5) {
+        if (!el || !this.bga.gameui.bgaAnimationsActive?.())
+            return Promise.resolve();
+        el.style.setProperty('--ucs-gp-reveal', `${durationSec}s`);
+        el.classList.add('ucs-gp-revealing');
+        el.style.transition = 'none';
+        el.style.transform = 'perspective(600px) rotateY(90deg)';
+        void el.offsetWidth; // force reflow so the edge-on start takes effect before the transition
+        return new Promise((resolve) => {
+            requestAnimationFrame(() => {
+                el.style.transition = `transform ${durationSec}s ease`;
+                el.style.transform = '';
+            });
+            setTimeout(() => {
+                el.style.transition = '';
+                el.style.transform = '';
+                el.style.removeProperty('--ucs-gp-reveal');
+                el.classList.remove('ucs-gp-revealing');
+                resolve();
+            }, durationSec * 1000 + 60);
+        });
+    }
+    /** The active card id per single-face parameter deck, as the model currently holds it. Snapshot this
+     *  BEFORE a re-render and hand it to revealChangedParameters afterwards. */
+    gpActiveIds() {
+        const gp = this.gamedatas.gameplay;
+        const out = {};
+        ['perfectfit', 'trendyyarn', 'fad'].forEach((t) => {
+            const active = gp?.[t]?.active;
+            out[t] = active ? String(active.id) : null;
+        });
+        return out;
+    }
+    /**
+     * Flip whichever parameter faces changed identity since `before`. Diffing the active card id covers
+     * every path that can swap one — the mid-round Trendy Yarn / Perfect Fit rotations in Express and the
+     * fresh reveal at a round boundary — without each notification having to know which decks it touched.
+     *
+     * In Express the Fads render as a multi-card display rather than a single face, so `ucs-gp-face-fad`
+     * doesn't exist there; the lookup returns null and revealFlip no-ops, which is why claiming a Fad
+     * doesn't flash the row.
+     */
+    async revealChangedParameters(before) {
+        const after = this.gpActiveIds();
+        const changed = Object.keys(after).filter((t) => after[t] && before[t] !== after[t]);
+        if (!changed.length)
+            return;
+        await Promise.all(changed.map((t) => this.revealFlip(document.getElementById(`ucs-gp-face-${t}`))));
+    }
+    /**
+     * Shrink-and-fade a card out of existence, for a card that leaves the table without arriving anywhere
+     * the player can see (Billy's a Brute discards a drafted card straight to LOC_DISCARD, and no discard
+     * pile is drawn). Run this BEFORE dropping the card from the model — it animates the element that is
+     * still on screen, so there is no clone to position.
+     */
+    fadeCardOut(el, durationSec = 0.4) {
+        if (!el || !this.bga.gameui.bgaAnimationsActive?.())
+            return Promise.resolve();
+        el.style.transformOrigin = 'center';
+        el.style.zIndex = '300'; // ride above its neighbours on the way out
+        void el.offsetWidth;
+        return new Promise((resolve) => {
+            requestAnimationFrame(() => {
+                el.style.transition = `transform ${durationSec}s ease, opacity ${durationSec}s ease`;
+                el.style.transform = 'scale(0.55) rotate(-8deg)';
+                el.style.opacity = '0';
+            });
+            setTimeout(resolve, durationSec * 1000 + 60); // element is removed by the caller's re-render
         });
     }
     /**
@@ -2010,15 +2102,19 @@ class Game {
      * Resyncs are chained rather than merely awaited, so two overlapping calls can't interleave into
      * the same corruption. The selectable marking is re-applied once the stock has settled.
      */
-    renderHand() {
+    renderHand(dealFrom) {
         if (this.bga.gameui.isSpectator || !this.handStock)
             return;
         const hand = this.cardArray(this.gamedatas.hand).sort(this.handSort.bind(this));
         this.handSync = this.handSync
             .then(async () => {
             await this.handStock.removeAll();
-            if (hand.length)
-                await this.handStock.addCards(hand);
+            // `dealFrom` set → deal the fan in from that element (the draw pile at a new round), the
+            // same slide notif_handUpdate gives a mid-round refill. Left undefined by every other
+            // caller, which are resyncs (setup, F5, stock repair) where cards should just be there.
+            if (hand.length) {
+                await this.handStock.addCards(hand, dealFrom ? { fromElement: dealFrom } : undefined, dealFrom ? 80 : undefined);
+            }
             this.refreshSelectable();
         })
             .catch(() => { });
@@ -3239,15 +3335,29 @@ class Game {
      * overlay) so it's correct under any transform BGA applies.
      */
     animateTradeToPool(oldRects) {
+        this.flipFromRects(oldRects, 2);
+    }
+    /**
+     * Batch FLIP: given where a set of cards sat BEFORE a re-render, slide each from there to wherever it
+     * has just been drawn. The caller re-renders first, so every element is already at its final spot; we
+     * offset it back by the delta and transition that away. Deltas are divided by the tabletop scale so
+     * they stay correct under any transform BGA applies.
+     *
+     * Cards are looked up as `ucs-card-<id>` and then `ucs-mini-<id>`, the same pair notif_cardDrafted
+     * uses — my own zones draw full-size cards, an opponent's inline knitting draws compact chips. A card
+     * that isn't on screen after the re-render is skipped, which is what makes this safe for the Tina
+     * rearrange, where a piece can be covered rather than moved.
+     */
+    flipFromRects(oldRects, durationSec) {
         if (!this.bga.gameui.bgaAnimationsActive?.())
             return;
         const table = document.getElementById('ucs-table');
         const scale = (table && table.offsetWidth)
             ? table.getBoundingClientRect().width / table.offsetWidth : 1;
         Object.keys(oldRects).forEach((key) => {
-            const el = document.getElementById(`ucs-card-${key}`);
+            const el = document.getElementById(`ucs-card-${key}`) ?? document.getElementById(`ucs-mini-${key}`);
             if (!el)
-                return; // card isn't in the new pool (shouldn't happen) — skip
+                return; // card isn't on the table after the re-render (covered / discarded) — skip
             const now = el.getBoundingClientRect();
             const old = oldRects[Number(key)];
             const dx = (old.left - now.left) / scale, dy = (old.top - now.top) / scale;
@@ -3257,11 +3367,28 @@ class Game {
             el.style.transform = `translate(${dx}px, ${dy}px)`;
             void el.offsetWidth; // force reflow so the starting transform takes effect
             requestAnimationFrame(() => {
-                el.style.transition = 'transform 2s ease';
+                el.style.transition = `transform ${durationSec}s ease`;
                 el.style.transform = '';
             });
-            setTimeout(() => { el.style.transition = ''; el.style.transform = ''; }, 2100);
+            setTimeout(() => {
+                el.style.transition = '';
+                el.style.transform = '';
+            }, durationSec * 1000 + 100);
         });
+    }
+    /** Where every card of `playerId`'s knitting area sits right now, keyed by card id — the "before" half
+     *  of a flipFromRects pass across a rearrangement. */
+    knittingRects(playerId) {
+        const rects = {};
+        Object.values(this.gamedatas.knitting)
+            .filter((c) => Number(c.location_arg) === Number(playerId))
+            .forEach((c) => {
+            const el = document.getElementById(`ucs-card-${c.id}`)
+                ?? document.getElementById(`ucs-mini-${c.id}`);
+            if (el)
+                rects[Number(c.id)] = el.getBoundingClientRect();
+        });
+        return rects;
     }
     /**
      * Private: my hand was refilled. Rather than re-deal the whole fan, slide in only the newly-drawn
@@ -3294,10 +3421,17 @@ class Game {
             .catch(() => { });
         await this.handSync;
     }
-    /** A new round revealed fresh gameplay cards — refresh the round-parameter decks. */
+    /**
+     * A round parameter was revealed — either a fresh round's deal, or a mid-round rotation in Express:
+     * Trendy Yarn every trendyRotateEvery() tricks, Perfect Fit whenever a matching card was played
+     * (EndTrickCleanup). Flip whichever face actually changed, so the swap isn't silent. Awaited, so two
+     * rotations landing on the same trick play one after the other.
+     */
     async notif_gameplayRevealed(args) {
+        const before = this.gpActiveIds();
         this.gamedatas.gameplay = args.gameplay;
         this.renderGameplay();
+        await this.revealChangedParameters(before);
     }
     /**
      * Public: a new round (2-3) was dealt. Replace the public board wholesale from the fresh deal — new
@@ -3305,6 +3439,7 @@ class Game {
      * receiving player's own hand + Secret Santa arrive privately in notif_newRoundPrivate.
      */
     async notif_newRound(args) {
+        const beforeParams = this.gpActiveIds();
         const pool = {};
         args.pool.forEach((c) => (pool[Number(c.id)] = c));
         this.gamedatas.draftpool = pool;
@@ -3321,6 +3456,9 @@ class Game {
         this.showHandEndBanner(false);
         this.hideDraftOrder();
         this.renderAll();
+        // The round's fresh parameters are the one part of this board-wide replacement that gets marked;
+        // the pool/knitting deal is still instant (deferred — see backlog.md).
+        await this.revealChangedParameters(beforeParams);
     }
     /** Private: my new hand + freshly dealt Secret Santa(s) for the new round. */
     async notif_newRoundPrivate(args) {
@@ -3330,7 +3468,11 @@ class Game {
         const ss = {};
         args.secretSanta.forEach((c) => (ss[Number(c.id)] = c));
         this.gamedatas.secretSanta = ss;
-        this.renderHand();
+        // Deal the new hand in from the draw pile rather than having it appear — the same slide a
+        // mid-round refill gets (notif_handUpdate). The public newRound notify runs first (NewRound.php
+        // sends it before the per-player privates), so renderAll has already drawn the pile; if it
+        // somehow hasn't, renderHand falls back to its instant path.
+        this.renderHand(document.querySelector('#ucs-my-pile .ucs-pile-card'));
         this.renderSecretSanta();
     }
     /** Re-render every player's Bonus card chip from gamedatas.bonus. */
@@ -3347,13 +3489,18 @@ class Game {
         this.gamedatas.bonus = args.bonus ?? this.gamedatas.bonus;
         this.refreshBonusChips();
     }
-    /** Billy's a Brute: a drafted card was discarded — drop it from the pool. */
+    /** Billy's a Brute: a drafted card was discarded — fade it out of the pool, then drop it. The server
+     *  moved it to LOC_DISCARD, which isn't drawn anywhere, so there's no destination to fly to. The
+     *  fade runs before the model changes, while the card is still on screen. */
     async notif_cardDiscarded(args) {
+        await this.fadeCardOut(document.getElementById(`ucs-card-${Number(args.card_id)}`));
         delete this.gamedatas.draftpool[Number(args.card_id)];
         this.renderDraftPool();
     }
-    /** Tina Can Tink: a player re-arranged their knitting — replace their pieces and re-render. */
+    /** Tina Can Tink: a player re-arranged their knitting — replace their pieces and re-render, sliding
+     *  each piece from where it was so the rearrangement is visible rather than a jump. */
     async notif_tinaResolved(args) {
+        const before = this.knittingRects(Number(args.player_id));
         // Drop this player's existing knitting entries, then load the fresh ones.
         Object.values(this.gamedatas.knitting)
             .filter((c) => Number(c.location_arg) === Number(args.player_id))
@@ -3362,11 +3509,13 @@ class Game {
         this.gamedatas.bonus = args.bonus ?? this.gamedatas.bonus;
         this.renderKnitting(Number(args.player_id));
         this.renderBonus(Number(args.player_id));
+        this.flipFromRects(before, 0.6);
     }
     /**
-     * Express: a player claimed a Fad. The Fad moves from the display onto their (now locked) sweater;
-     * re-render the Fad display and that player's knitting. Their score updates via the framework's
-     * score counter (server playerScore->inc), so no manual score bump is needed here.
+     * Express: a player claimed a Fad. Nothing travels — the Fad card STAYS in the display and is
+     * re-styled as claimed (.ucs-fad-claimed: dimmed, tagged with the owner), while their sweater picks
+     * up its locked treatment; both come out of the re-renders below. Their score updates via the
+     * framework's score counter (server playerScore->inc), so no manual score bump is needed here.
      */
     async notif_fadClaimed(args) {
         this.gamedatas.gameplay = args.gameplay;
