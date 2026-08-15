@@ -358,10 +358,12 @@ otherwise win inside the overlap band (which now exists for every shape whose fl
 built `narrowMq()`, so a Large session computed the **Medium** floor (1307), cached it for the whole
 session, and ran the wide layout below its real floor with no path to recover. It presented as crowding
 rather than as a boundary failure, because the CSS variable was unaffected: the cards rendered correctly
-Large while the layout decision had been made for Medium. `Game.ts::cardSizeScale()` reads
-`userPreferences.get(101)` instead, which arrives with the page from the server. Any *other* code that
-branches on card size has the same hazard — `handSizeScale()` still does, tracked in
-[`backlog.md`](backlog.md).
+Large while the layout decision had been made for Medium. `Game.ts::cardSizePref()` reads
+`userPreferences.get(101)` instead, which arrives with the page from the server, and keeps the class
+only as a fallback for paths where preferences aren't readable. **Every** card-size branch goes through
+it — `cardSizeScale()` (tabletop, Large = 1.5) and `handSizeScale()` (fanned hand, Large = 1.4, capped
+lower because the hand floats at the viewport bottom) both map its result to their own multipliers. Add
+new branches the same way; reading the class directly reintroduces the hazard.
 
 *(Superseded: an earlier build switched at 800px and then at a flat 1000px. 1000 was below every shape's
 real floor — the cheapest is 1291 — so the band above it rendered the wide layout squeezed, since

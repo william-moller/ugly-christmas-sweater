@@ -144,12 +144,6 @@ not of the code.
   at Large, or accept the stacked column there. *Open question:* is a 108px Santa slot (what 1536 would
   give) readable enough? They are read-once and never clicked, so the 56px interactive floor does not
   bind — the 95px reference floor does not either, since a Santa has no Round Tracker numerals.
-- **`handSizeScale()` has the cssPref race that `wideLayoutFloor()` just shed.** It reads
-  `html.ucs-cards-*` off `document.documentElement` at setup, and BGA applies that class asynchronously —
-  the same ordering hazard that had a Large session caching the Medium narrow/wide floor all game. Here
-  the consequence is the fanned hand's card frame sized for Medium (1.0) instead of Large (1.4) whenever
-  the class lands after `setupHandStock()`. Fix is to reuse `cardSizeScale()`, which reads the preference
-  value. Worth checking whether any other DOM-class read shares the pattern before closing it out.
 - **Animations** — more of them. *Open question:* which moments? Trick resolution and scoring look
   like the gaps.
 - **Knitting area: normalise sweater art registration across cards** — the sweater silhouette is

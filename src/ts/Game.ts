@@ -301,16 +301,15 @@ export class Game {
      * matches the custom-DOM cards in the other zones. Selection is wired to the existing play flow via
      * `onSelectionChange` (see handSelectionChanged / enablePlayable).
      */
-    /** Multiplier for the HAND's card frame, keyed off the "Card size" preference (gamepreferences 101,
-     *  applied as html.ucs-cards-* on reload). It tracks the preference but is capped well below the
-     *  tabletop's Large (1.5): the fanned hand floats at the BOTTOM of the viewport, so cards much taller
-     *  than ~190px run off the bottom edge and look cropped. At 1.25 the hand cards are the same width as
-     *  the Large tabletop cards (80×1.5 = 96×1.25 = 120) and still clear the fold. */
+    /** Multiplier for the HAND's card frame, keyed off the "Card size" preference (gamepreferences 101).
+     *  It tracks the preference but is capped BELOW the tabletop's Large (1.4 against cardSizeScale's
+     *  1.5): the fanned hand floats at the BOTTOM of the viewport, so the taller the frame the closer it
+     *  runs to the bottom edge, where it looks cropped. That gap is the cap, not a copy that drifted —
+     *  do NOT collapse this into cardSizeScale(). Both read cardSizePref(), so neither can be caught by
+     *  a not-yet-applied html.ucs-cards-* class. */
     private handSizeScale(): number {
-        const c = document.documentElement.classList;
-        if (c.contains('ucs-cards-large')) return 1.4;
-        if (c.contains('ucs-cards-small')) return 0.95;
-        return 1;
+        const size = this.cardSizePref();
+        return size === 'large' ? 1.4 : size === 'small' ? 0.95 : 1;
     }
 
     private setupHandStock() {
@@ -645,7 +644,8 @@ export class Game {
     }
 
     /**
-     * The Card-size preference (gamepreferences 101) as its --ucs-card-scale multiplier.
+     * The Card-size preference (gamepreferences 101) as a size name. EVERY read of the card size goes
+     * through here; callers map the name to their own multiplier.
      *
      * Read from the PREFERENCE, never from the html.ucs-cards-* class. That class is a `cssPref`, which
      * BGA applies on its own schedule, and it was NOT yet on <html> when setup() first called
@@ -656,16 +656,27 @@ export class Game {
      * need). The CSS variable was unaffected — the cards were correctly Large — which is what made it
      * look like crowding rather than a boundary that never fired.
      *
+     * handSizeScale() read the class directly and had the same hazard for the same reason: a Large
+     * session whose class landed after setupHandStock() sized the fanned hand's frame for Medium (1.0)
+     * and kept it all game, because the frame px are handed to bga-cards once at construction.
+     *
      * The preference value arrives with the page from the server, so it has no such ordering hazard.
      * The class check stays as a fallback for any path where userPreferences isn't readable.
      */
-    private cardSizeScale(): number {
+    private cardSizePref(): 'small' | 'medium' | 'large' {
         const pref = Number(this.bga.userPreferences?.get?.(101));
-        if (pref === 3) return 1.5;  // Large
-        if (pref === 2) return 1;    // Medium
-        if (pref === 1) return 0.95; // Small
+        if (pref === 3) return 'large';
+        if (pref === 2) return 'medium';
+        if (pref === 1) return 'small';
         const c = document.documentElement.classList;
-        return c.contains('ucs-cards-large') ? 1.5 : c.contains('ucs-cards-small') ? 0.95 : 1;
+        return c.contains('ucs-cards-large') ? 'large' : c.contains('ucs-cards-small') ? 'small' : 'medium';
+    }
+
+    /** The TABLETOP card scale — the preference as its --ucs-card-scale multiplier. The hand runs on its
+     *  own capped scale; see handSizeScale(). */
+    private cardSizeScale(): number {
+        const size = this.cardSizePref();
+        return size === 'large' ? 1.5 : size === 'small' ? 0.95 : 1;
     }
 
     /** The narrow/wide boundary as a media query, built once from wideLayoutFloor(). */
