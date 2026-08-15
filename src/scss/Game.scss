@@ -2154,14 +2154,19 @@ $avid-santa-row-floors: (small: 1415px, medium: 1430px, large: 1590px);
 // in .claude/responsive.md — do not derive them per size, and do not nudge them until a screenshot looks
 // right:
 //
-//   viewport = CARD × scale + FIXED + 263      CARD = 778, FIXED = 406 for this arrangement
+//   viewport = CARD × scale + FIXED + 263      CARD = 320, FIXED = 864 for this arrangement
 //                                              (263 = BGA's own player-panel column and margins)
 //
-// → 1408 / 1447 / 1836 at Small / Medium / Large, rounded to the floors below. Below its floor a size
+// → 1431 / 1447 / 1607 at Small / Medium / Large, rounded up to the floors below. Below its floor a size
 // keeps the stacked Santa row — the strip would otherwise push the centre column into the opponents,
 // since #ucs-board-strip is flex: 0 0 auto and the centre stack is what gives. Small has no floor: it
 // still uses the Santa row at every width.
-$santa-column-floors: (medium: 1450px, large: 1840px);
+//
+// Large was 1840 while the board strip still scaled (CARD 778 / FIXED 406 → 1836). Pinning the strip
+// moved the whole parameter + Santa block out of CARD, so only the 320px Draft Pool scales now and Large
+// costs 1607, not 1836 — the old floor was withholding the Santa column for 230px it no longer needs.
+// Medium is unchanged by construction: at scale 1 nothing moves.
+$santa-column-floors: (medium: 1450px, large: 1610px);
 @each $size, $floor in $santa-column-floors {
     @media (min-width: $floor) {
         html.ucs-cards-#{$size} #ucs-table.ucs-express.ucs-players-3:not(.ucs-narrow) {

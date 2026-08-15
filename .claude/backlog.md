@@ -127,13 +127,13 @@ not of the code.
     precedent.
   - **Casual, wide (desktop)** — a confirmation sweep. It is the cheapest shape in the game (1278 at
     Small) and unchanged by the folds, so likely fine, but unverified since the layout reworks.
-- **Re-derive `$santa-column-floors`.** It was derived when the board strip still scaled, so its Large
-  figure carries a term that no longer exists: it holds 1450/1840 where the formula now gives 1447/1607.
-  Not *broken* — it selects an arrangement upgrade *within* the wide layout, so a stale floor costs a
-  missed upgrade rather than a broken layout — but it is conservative by ~230px at Large. Re-total
-  CARD/FIXED off the formula in [`responsive.md`](responsive.md); don't nudge it until a screenshot
-  looks right. (`$avid-santa-row-floors` was checked at the same time and is NOT stale: Avid's Santa row
-  is 656px and always dominated the 270px parameter row, so pinning the strip never moved it.)
+- **Eyes on the Express 3P Santa column at Large, 1610–1840px.** `$santa-column-floors` was re-derived
+  off the pinned formula (Large 1840 → 1610), so that 230px band now runs an arrangement it has never
+  run before: my two Secret Santas as a third strip column rather than a stacked row under the
+  parameter cards. The arithmetic says the strip fits, but that is the one direction where being wrong
+  is *visible* — too low a floor lets `#ucs-board-strip` (`flex: 0 0 auto`) push `#ucs-center-stack`
+  into the opponents. Wants a 3P Express table at Large, sized across the band. Revert to 1840 if it
+  crowds; the column is an upgrade within the wide layout, so the old floor is a safe fallback.
 - **Avid at Large stacks its Secret Santas on a laptop.** `$avid-santa-row-floors` puts the three-Santa
   row at 1590 for Large, while the wide layout itself starts at 1467 — so 1467–1590 is a band where the
   wide layout runs but the Santas fall back to the stacked column, which costs ~600px of height. A

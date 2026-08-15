@@ -2349,7 +2349,7 @@ table.ucs-scorepad th, table.ucs-scorepad td {
     flex-direction: column;
   }
 }
-@media (min-width: 1840px) {
+@media (min-width: 1610px) {
   html.ucs-cards-large #ucs-table.ucs-express.ucs-players-3:not(.ucs-narrow) #ucs-board-strip {
     flex-direction: row;
     align-items: flex-start;

@@ -232,11 +232,16 @@ FIXED = strip + gaps + opponents + padding  # the strip term is now a constant p
 (was 1408 / 1447 / **1836**). Medium is unchanged by construction — at scale 1 nothing moves — and the
 whole effect of pinning lands on Large.
 
-⚠️ `$santa-column-floors` in `Game.scss` still holds the **old** numbers (1450 / 1840). They are now
-*conservative*, not wrong: the Santa column simply waits until 1840 to appear at Large when 1607 would
-do. Same for `$avid-santa-row-floors` (1415 / 1430 / 1590), whose Large figure carried a scaled
-parameter row that no longer scales. Both are arrangement upgrades *within* the wide layout, so a stale
-floor costs a missed upgrade rather than a broken layout — but both want re-deriving off this formula.
+`$santa-column-floors` in `Game.scss` is derived off these numbers: **1450 / 1610** for Medium / Large,
+which is 1447 / 1607 rounded up. Small has no floor — it keeps the Santa row at every width. Large held
+**1840** for as long as the strip still scaled (the old CARD 778 / FIXED 406 gave 1836); pinning the
+strip is what took it to 1607, so the column now appears 230px earlier than it used to.
+
+`$avid-santa-row-floors` (1415 / 1430 / 1590) is **not** derived from this formula and is not stale — it
+is the width at which one of three Santa slots would fall below 125px under that shape's own
+`min(200px, (100vw - (320 × scale + 733)) / 3)` sizing, i.e. `1108 + 320 × scale`, which already carries
+the pinned strip. Avid's Santa row is a fixed 656px and always dominated the 270px parameter row, so
+pinning never moved it.
 
 **To floor a new arrangement:** re-total CARD and FIXED for it, then read the answer off the formula
 for each size. That is the whole derivation — no per-size arithmetic.
