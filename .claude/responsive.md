@@ -112,6 +112,12 @@ phones), 768 (iPad portrait), 1024+ (tablet landscape / desktop).
 > desktop `@media` block), and the narrow view is now a sidebar layout
 > (`.ucs-narrow`, toggled in `Game.ts::layoutNarrowSidebar` at the width `wideLayoutFloor()` returns, for every variant and card size). Treat the tier structures as
 > historical rationale; the **size floors above are the durable part**.
+>
+> The **"Fad chips"** those tiers put in the rail no longer exist in any form: `.ucs-fad-chip` and its
+> `fadChipEl()` renderer were deleted once it was clear the rail they belonged to was gone and no rule
+> ever unset their `display: none`, so they had never rendered. Fads draw their real card art at every
+> width. Don't go looking for them — and if Fad art ever does get too small to read (only Express 2P
+> approaches it; see `backlog.md`), the answer is to reflow the row, not to reinstate an abstraction.
 
 ### Tier A — wide (at or above the shape's floor; see "The narrow/wide boundary")
 The full four-column grid: `params | santa | center | oppo`, knitting under the centre.

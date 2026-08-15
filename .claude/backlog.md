@@ -13,8 +13,11 @@ not of the code.
 ## Release-blocking (BGA pre-release checklist)
 
 - **Centering audit** — checklist: if elements don't occupy all available horizontal space, they should
-  be centered. Only two places do it today (`.ucs-gameplay-row` under 450px, Avid's Secret Santa row);
-  every other zone needs checking at narrow widths, where a shrink-to-fit row leaves the slack.
+  be centered. `Game.scss` centres in ~22 places, so this is a *verification* pass, not a build: find
+  the zones that still stretch or left-pin when their row is shrink-to-fit. Two bands are worth the
+  attention — narrow widths generally, and the 1000px-to-shape-floor band that the boundary change made
+  reachable, where fluid rows now centre in the slack rather than filling it (see the caps section in
+  [`responsive.md`](responsive.md)).
 - **Special testing sweep** — the checklist's own *Special testing* block. None of it can be done from
   the repo; every item needs a live table, and the whole block sits *before* the alpha request.
   - **Minified JS + minified CSS** — toggle both on the manage-game page, then play. This is the only
@@ -83,50 +86,31 @@ not of the code.
     Round-Tracker sidebar relocate/restore (2P/4P: tracker bottom-left, opponents in the right column;
     3P: tracker stacked over the opponents in the right column, Fads 2×2 — see `responsive.md`).
   - **Express 4P and Avid, wide** — both now folded (4P: Fads 3-across + Perfect Fit under Trendy Yarn +
-    tracker top-right; Avid: Secret Santas stacked). Verified by arithmetic only — 1749 and 1602 at
-    Large, per [`responsive.md`](responsive.md) — never seen in a real table. Wants eyes on a 4P Express
-    and a 3P Avid game at each card size, particularly the strip *height*: 4P now runs two Fad rows and
-    Avid three stacked landscape Santas, and neither was checked against the centre column's height.
-  - **Express 2P at Large is now the widest shape in the game** (1884 vs a 1920 screen). The Fad-grid
-    fold would bring it down, but its five-card parameter row is not obviously wrong to look at — decide
-    whether to fold it for the 1600px-laptop case or leave it.
-- **Narrow the card-size spread so size and layout stop being one axis.** The layout work keeps needing
-  *per-card-size* width floors (`$santa-column-floors` in `Game.scss` is two numbers for one layout
-  idea, and Large at Tier A already wants ≈1690px before 3P Express crowds — the centre stack is what
-  gives, since `#ucs-board-strip` is `flex: 0 0 auto`). Root cause is **the spread, not the number of
-  sizes**: our Large is `1.5 ×` base, which moves the 3P board strip from 488px to 717px — enough to
-  change what fits in a row, which is what forces a size × width rule every time. Evidence from
-  `../_reference/`: **soothsayers** ships two sizes at ~`1.15–1.25 ×` (100→120px cards, all hardcoded
-  px, 11 size-scoped rules) and crosses size × width exactly **once**, as a `max-width` cap — never a
-  reflow. None of the six reference games (soothsayers, castlecombo, collect, crybaby, insidejob,
-  trickykids) uses `clamp()` or a container query at all; fluid card sizing is not the idiom here.
-  Options, cheapest first:
-  - **Re-pitch the scale.** Our base 80px is *below* soothsayers' small (100px) while our Large (120px)
-    matches their large — so Large is doing the work of "normal". Raise base to ~96 and Large to `1.2 ×`.
-    **Correcting an earlier claim here: this does not lower the floors, it raises them.** The base
-    multiplies every size, so Small and Medium get ~20% bigger cards and need ~20% more width. Re-derived
-    at base 96 / Large 1.2, against today in brackets:
-
-    | Shape | Small | Medium | Large |
-    |-------|------:|-------:|------:|
-    | Casual · Avid | 1390 (1278) | 1425 (1307) | 1567 (1602) |
-    | Express 2P | 1607 (1461) | 1653 (1499) | 1838 (1884) |
-    | Express 3P | 1556 (1408) | 1603 (1447) | 1789 (1836) |
-    | Express 4P | 1498 (1366) | 1540 (1401) | 1707 (1749) |
-
-    Within-shape spread does collapse as intended (Casual 324 → 177), but the cheapest floor rises 112px
-    and the dearest barely moves. So what the re-pitch actually buys is **a bigger Medium** — the
-    felt-filling that Large was raised to `1.5 ×` for in the first place — and it should be judged as
-    that, a desktop aesthetics change, not as a layout fix. It is **not** a prerequisite for anything
-    responsive: the narrow layout sizes off container queries, never off `--ucs-card-scale`. Costs a
-    re-check of every tuned layout (2P Express is signed off — don't regress it).
-  - **Leave the scale, cap the strip.** Keep 1.5 × but stop it overflowing: `max-width` on the board
-    strip, or let it wrap. Smallest change; leaves the floors in place.
-  - **Fluid sizing off the container.** Only if the first two prove insufficient — it would be novel
-    for this codebase *and* for every reference game, so it carries the most risk for the least
-    precedent.
-  - **Casual, wide (desktop)** — a confirmation sweep. It is the cheapest shape in the game (1278 at
+    tracker top-right; Avid: Secret Santas stacked below its row floor). Verified by arithmetic only —
+    1561 and 1467 at Large, per [`responsive.md`](responsive.md) — never seen in a real table. Wants eyes
+    on a 4P Express and a 3P Avid game at each card size, particularly the strip *height*: 4P runs two
+    Fad rows and Avid three stacked landscape Santas, and neither was checked against the centre
+    column's height.
+  - **Casual, wide (desktop)** — a confirmation sweep. It is the cheapest shape in the game (1291 at
     Small) and unchanged by the folds, so likely fine, but unverified since the layout reworks.
+  - **Express 2P at Large (1659) is the one shape that still misses a 1536px laptop.** Every other shape
+    now reaches the wide layout there — Casual 1467, Express 3P 1507, 4P 1561. The Fad-grid fold would
+    bring 2P down too, but its five-card parameter row is not obviously wrong to look at, and at 1659 it
+    now sits 261px inside a 1920 screen rather than 36px. Decide whether to fold it for the laptop case
+    or leave it. (Widest *shipped* arrangement is no longer this one but Avid's unscaled Santa row at
+    1813 — which is exactly what the item below is about.)
+- **Decide whether Medium should draw bigger cards.** This is what is *left* of the old "narrow the
+  card-size spread" item, which asked for size and layout to stop being one axis. That goal has been
+  met — pinning the board strip took every zone except the Draft Pool off `--ucs-card-scale`, so
+  within-shape spread across the preference is now a flat **176px** (`320 × 0.55`) instead of 300–500px,
+  and Large is a size axis rather than a layout one (see finding 5 in [`responsive.md`](responsive.md)).
+  What remains is purely aesthetic: our base 80px is *below* soothsayers' small (100px) while our Large
+  (120px) matches their large, so Large is doing the work of "normal" and Medium can look thin on a big
+  monitor. Raising base to ~96 with Large at `1.2 ×` would fill it out. Note it **raises** every floor
+  by ~20% rather than lowering them, so judge it as a desktop aesthetics change and nothing more; it is
+  not a prerequisite for anything responsive, since the narrow layout sizes off container queries and
+  never off `--ucs-card-scale`. Costs a re-check of every tuned layout (2P Express is signed off — don't
+  regress it).
 - **Eyes on the Express 3P Santa column at Large, 1610–1840px.** `$santa-column-floors` was re-derived
   off the pinned formula (Large 1840 → 1610), so that 230px band now runs an arrangement it has never
   run before: my two Secret Santas as a third strip column rather than a stacked row under the

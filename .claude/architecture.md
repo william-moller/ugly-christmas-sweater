@@ -293,8 +293,10 @@ TypeScript + SCSS are enabled (`package.json`):
 - `npm run watch` — rebuild both on save during development.
 - `node_modules/` is gitignored; `package-lock.json` is committed.
 
-After a build, the two generated artifacts must be SFTP-synced manually — see
-[`../../.claude/deploy.md`](../../.claude/deploy.md) (`uploadOnSave` does not cover build output).
+`npm run ship` = build + deploy in one step, which is the normal way to get a change onto BGA. The two
+generated artifacts are **not** covered by `uploadOnSave`, so a plain build leaves the server stale —
+see [`../../.claude/deploy.md`](../../.claude/deploy.md), and never use the VS Code
+`SFTP: Sync Local → Remote` (its ignore is broken on Windows and uploads `node_modules/`).
 
 ### Card-face sprites (`scripts/build-sprites.mjs`, `npm run build:sprites`)
 
