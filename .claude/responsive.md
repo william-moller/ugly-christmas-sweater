@@ -125,6 +125,24 @@ Recorded because the symptom points away from the cause each time:
 The tell in every case: **a `vw`-sized element and a `cqi`-sized element disagreeing about how wide the
 page is.** That is the zoom, and the `vw` one is the wrong one. There is no page-stretching bug to hunt.
 
+### `window.innerWidth` is the LAYOUT viewport, not the screen
+
+A Pixel 8 reports **~750**, not 412: BGA hands the page a layout viewport far wider than the device and
+scales it down (see the table above). Width **media queries evaluate against the same 750**. So a px
+breakpoint written for "a phone" is not one:
+
+- `Game.ts::handCardWidth` gated its narrow branch on `window.innerWidth > 700`, so on every phone that
+  test was **true** and the hand shipped at the desktop `96 × preference` — 91px, *smaller than a Draft
+  Pool card*, which is what "the hand is too small" turned out to be. It now gates on
+  `narrowMq().matches`, the same matchMedia `.ucs-narrow` is toggled from, so the hand cannot disagree
+  with the layout it is in. **Gate on the layout's own boundary, never on a fresh px constant.**
+- `--ucs-corner-btn`'s `@media (max-width: 700px)` never fires either. Left in place deliberately —
+  40px would render at ~22 device px once scaled, worse than the un-shrunk 52 — with the reasoning
+  recorded at the rule.
+
+The calibration that caught it: the "?" button measured 38 image px against a 52px + border rule, which
+only works if that media query did **not** match.
+
 ### JS has the same trap, in a sharper form
 
 Under `zoom`, `getBoundingClientRect()` is **post**-zoom (device px) and `offsetWidth` is **pre**-zoom
@@ -598,6 +616,16 @@ the stock **is** the fixed element.
   cards flat. That is free vertically: the strip sits beside a sidebar already ~226px tall (tracker +
   an opponent chip), so the second card-row costs no height that was in use, and buys ~2× the width.
   This settles the "reflow, not shrink" question the backlog left open for 2P.
+
+  **2P's Secret Santa pair is stacked in the sidebar** under the opponents, not on a full-width row.
+  That row was the shape's most expensive band — two landscape cards at ~38% of the table each — sitting
+  under a sidebar that had already run out of content, so it bought nothing the column above it did not
+  have room for. Stacked at the sidebar's width it lands in that slack and the row disappears: the upper
+  region drops from ~645 to ~464 layout px. 3–4P keep their pair on a row (two side by side do not stack
+  into one column) and Avid keeps its three.
+
+  Note both Santa layouts are sized off `--ucs-rt-w` rather than a container query. The sidebar's width
+  is already a known quantity in this block, and adding a container would only hide it.
 
   > **Watch the captions, not just the cards.** The Fad label is ~250px set on one line, wider than the
   > grid beneath it, and a flex item's wrap decision is made on **max-content** — not on what the item

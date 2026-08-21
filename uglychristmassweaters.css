@@ -2317,6 +2317,20 @@ table.ucs-scorepad th, table.ucs-scorepad td {
   --ucs-card-w: min(192px, calc((var(--ucs-strip-w) - 12px) / 3.14));
   --ucs-card-h: calc(var(--ucs-card-w) * 1.567);
 }
+#ucs-table.ucs-narrow.ucs-express.ucs-players-2 #ucs-my-santa {
+  --ucs-card-w: calc(var(--ucs-rt-w) / 1.567);
+  --ucs-card-h: var(--ucs-rt-w);
+  width: 100%;
+  margin-bottom: 0;
+}
+#ucs-table.ucs-narrow.ucs-express.ucs-players-2 #ucs-my-santa .ucs-santa-cards {
+  flex-direction: column;
+  gap: 6px;
+}
+#ucs-table.ucs-narrow.ucs-express.ucs-players-2 #ucs-my-santa .ucs-zone-label {
+  max-width: var(--ucs-rt-w);
+  white-space: normal;
+}
 #ucs-table.ucs-narrow.ucs-players-3 #ucs-my-santa, #ucs-table.ucs-narrow.ucs-players-4 #ucs-my-santa {
   grid-area: santa;
   container-type: inline-size;

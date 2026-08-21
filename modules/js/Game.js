@@ -716,7 +716,13 @@ class Game {
      * buys clearance. The buttons are cleared vertically instead — see fanLift.
      */
     handCardWidth() {
-        if (window.innerWidth > 700)
+        // Gated on the LAYOUT's own narrow/wide boundary, not a px of its own. A bare
+        // `window.innerWidth > 700` looks equivalent and is not: BGA hands a phone a layout viewport of
+        // ~750 CSS px and scales it down, so innerWidth is ~750 on a Pixel 8 and that test was always
+        // true — the narrow branch below had never run on a phone, and the hand shipped at the desktop
+        // 96 * preference, i.e. SMALLER than a Draft Pool card. narrowMq() is the same matchMedia the
+        // .ucs-narrow class is toggled from, so the hand can no longer disagree with the layout it is in.
+        if (!this.narrowMq().matches)
             return Math.round(96 * this.handSizeScale());
         // The holder is in flow and full-width, so its offsetWidth is the table's content width in
         // layout px. Guard against a not-yet-laid-out box (it would collapse the hand to nothing) by
@@ -1143,13 +1149,17 @@ class Game {
             }
             sidebar.appendChild(rt); // Round Tracker on top (empty in Casual/Avid — they have none)
             sidebar.appendChild(oppo); // opponents directly beneath it
-            // Casual's single landscape Secret Santa goes in the sidebar too, under the opponents. Its
-            // own row in the strip was a row for one card, and the sidebar column — derived in Game.scss
-            // as whatever the parameter row leaves — is otherwise just a short opponent chip above a lot
-            // of nothing. Express parks its pair differently (below) and Avid's three take a full-width
-            // row of their own, so this is Casual only.
-            if (!this.gamedatas.express && !this.gamedatas.avid && santaOne)
-                sidebar.appendChild(santaOne);
+            // Secret Santas go in the sidebar under the opponents wherever they fit in a column there:
+            // Casual's single landscape card, and Express 2P's pair (stacked — see Game.scss). Both were
+            // taking a full-width row of their own beneath a sidebar that had already run out of content,
+            // so the row was pure cost. Avid's three are too many to stack and keep their own row below.
+            //
+            // The sidebar is derived as whatever the parameter row leaves, so this is free horizontally;
+            // vertically it lands in slack the tracker + opponents were not using.
+            const stackSanta = this.gamedatas.avid ? null
+                : (this.gamedatas.express ? (count <= 2 ? santa : null) : santaOne);
+            if (stackSanta)
+                sidebar.appendChild(stackSanta);
             // Lift the wide Secret Santa zone out of the board strip so it can take a full-width grid row
             // of its own (grid-area: santa). The sidebar ends above this row, so left in the strip those
             // landscape cards wasted a sidebar's width of space. Express 2P and Casual keep theirs in the

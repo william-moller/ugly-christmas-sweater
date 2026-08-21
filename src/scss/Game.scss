@@ -88,6 +88,13 @@ html {
     // than re-deriving its width — so this stays a plain size, not a shared constant.
     --ucs-corner-btn: 52px;
 }
+// ⚠️ This never fires on a phone, and leaving it is the deliberate choice. `window.innerWidth` — and a
+// width media query with it — reports the LAYOUT viewport, which BGA hands a phone as ~750 CSS px and
+// then scales down; a Pixel 8 evaluates this at 750, not 412. Were it to fire, 40px would render at
+// ~22 device px once the scale is applied, well under the 44px tap-target guidance, so the un-shrunk
+// 52px is the better of the two. Kept as the record of a px breakpoint that does not mean what it says.
+// (The same assumption in Game.ts::handCardWidth silently gave the hand its DESKTOP size on every
+// phone — see the note there.)
 @media (max-width: 700px) {
     html { --ucs-corner-btn: 40px; }
 }
@@ -2163,16 +2170,40 @@ $narrow-santa-cap: 192px; // 128 x 1.5 — Secret Santa cards
         --ucs-card-h: calc(var(--ucs-card-w) * 1.567);
     }
 
-    // Secret Santa: the two landscape (rotated) cards fill their row side by side. This is the 2P case —
-    // 3–4P lift the zone out to a full-width row and override it below.
-    //
-    // Sized off --ucs-strip-w (the parameter column) rather than a raw 100cqi. #ucs-board-strip is no
-    // longer a query container in Express, so a bare cqi here would resolve against #ucs-upper — the
-    // whole table — and draw a pair that is ~1.45x its own column. The zone is not a .ucs-zone, so no
-    // padding comes off; only the 12px gap between the two slots.
+    // Secret Santa, 3–4P: the pair sits side by side, sized off --ucs-strip-w (the parameter column)
+    // rather than a raw 100cqi — #ucs-board-strip is no longer a query container in Express, so a bare
+    // cqi would resolve against #ucs-upper, the whole table, and draw a pair ~1.45x its own column.
+    // (Both counts then override this again below, where the zone is lifted to a full-width row.)
     #ucs-my-santa {
         --ucs-card-w: min(#{$narrow-santa-cap}, calc((var(--ucs-strip-w) - 12px) / 3.14)); // 2 rotated slots (h ≈ 1.567w)
         --ucs-card-h: calc(var(--ucs-card-w) * 1.567);
+    }
+
+    // Express 2P: the pair goes in the SIDEBAR, stacked under the opponents (layoutNarrowSidebar puts it
+    // there), instead of taking a full-width row below the strip. That row was the single most expensive
+    // band in the shape — two landscape cards at ~38% of the table each — sitting beneath a sidebar that
+    // had already run out of content, so it cost a row's height to display something the column above it
+    // had room for. Stacked at the sidebar's width it lands in that slack and the row disappears.
+    //
+    // The sidebar is the tracker's width (--ucs-rt-w), and a rotated slot is card-h wide, so the card is
+    // that width over the 1.567 ratio. Sized on the zone rather than a container query: the sidebar's
+    // width is already a known quantity here, and adding another container would only hide it.
+    &.ucs-express.ucs-players-2 #ucs-my-santa {
+        --ucs-card-w: calc(var(--ucs-rt-w) / 1.567);
+        --ucs-card-h: var(--ucs-rt-w);
+        width: 100%;
+        margin-bottom: 0;
+    }
+    &.ucs-express.ucs-players-2 #ucs-my-santa .ucs-santa-cards {
+        flex-direction: column;   // stacked, not side by side — the column is one card wide
+        gap: 6px;
+    }
+    // "Your Secret Santa" sets to ~137px on one line, wider than the tracker that defines this column,
+    // so the caption rather than any card was setting the sidebar's width — and every px it took came
+    // straight off the parameter row. Same trap as the Fad label above; cap it and let it wrap.
+    &.ucs-express.ucs-players-2 #ucs-my-santa .ucs-zone-label {
+        max-width: var(--ucs-rt-w);
+        white-space: normal;
     }
 
     // 3–4P: the Santa pair gets the FULL table width rather than just the parameter column. The sidebar
