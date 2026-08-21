@@ -575,6 +575,36 @@ the stock **is** the fixed element.
   | 768 | 128 (cap) | 128 (cap) | 328 | 300.9 × 192 (cap) |
 
   Parity is exact at every width, and `scrollWidth == innerWidth` at all four in both variants.
+
+- **Express narrow** works the same way, with the Round Tracker taking the sidebar's place as the term
+  the parameter column is derived against. `--ucs-rt-w: clamp(95px, 28cqi, 130px)` — floored at the
+  95px reference floor, which is derived from this very card's wreath numerals — and **not** off
+  `--ucs-card-scale`, which is the whole point:
+
+  | | 2P S/M/L | 3P S/M/L | 4P S/M/L | Draft Pool | Tracker |
+  |---:|---:|---:|---:|---:|---:|
+  | 320 | 49.5 | 49.5 | 40.8 | 49.5 | 95 |
+  | 360 | 59.5 | 59.5 | 50.4 | 59.5 | 96.3 |
+  | 411 | 72.3 | 72.3 | 59.6 | 72.3 | 110.6 |
+  | 768 | 128 | 128 | 128 | 128 | 130 |
+
+  Identical across the card-size preference at every count and width, 2P/3P at exact pool parity, 4P
+  below it because five Fads run four across. **Before this, the tracker was `$card-w * 2 * scale` =
+  152/160/240px** — 38–61% of a 395px table, taken from the parameter row — so the preference ran
+  *backwards*: Large shrank the 2P parameter cards to **24px**. It was the last zone in the narrow
+  layout still coupling size to layout.
+
+  2P also folds into the same Fad grid as 3P now (3 across, two rows) rather than running its five
+  cards flat. That is free vertically: the strip sits beside a sidebar already ~226px tall (tracker +
+  an opponent chip), so the second card-row costs no height that was in use, and buys ~2× the width.
+  This settles the "reflow, not shrink" question the backlog left open for 2P.
+
+  > **Watch the captions, not just the cards.** The Fad label is ~250px set on one line, wider than the
+  > grid beneath it, and a flex item's wrap decision is made on **max-content** — not on what the item
+  > would happily shrink to. That one label had been pushing the Trendy Yarn / Perfect Fit column onto a
+  > row of its own at *every* Express count, for as long as the 3–4P block has existed, while the code
+  > and its comment both said "a third column beside them". Arithmetic on card widths will never catch
+  > this; only rendering it does.
 - **The unexamined half of the narrow layout is now the WIDE end of it, not the narrow end.** Its whole
   range used to be phone-to-tablet; it now runs up to each shape's floor, so the band roughly
   1000px→1659px is where it has had the least scrutiny — that is where the uncapped `100cqi` sizing was

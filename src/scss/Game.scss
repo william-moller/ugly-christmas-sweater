@@ -1990,48 +1990,94 @@ $narrow-santa-cap: 192px; // 128 x 1.5 — Secret Santa cards
     // silently hands Casual/Avid the Express block — which is what it did, giving Casual 4P a
     // two-column Fad-grid + column-reverse Trendy/Perfect-Fit stack instead of its three-across row.
 
-    // 2 players (3 Fads): Fads + Perfect Fit + Trendy Yarn all on ONE row — five cards across, filling it.
-    &.ucs-express.ucs-players-2 #ucs-gameplay {
-        --ucs-card-w: min(#{$narrow-ref-cap}, (100cqi - 24px) / 5);   // 5 cards + four 6px gaps
-    }
-    &.ucs-express.ucs-players-2 .ucs-gameplay-row { flex-wrap: nowrap; gap: 6px; }
-    &.ucs-express.ucs-players-2 .ucs-fad-cards,
-    &.ucs-express.ucs-players-2 .ucs-gp-pftr { gap: 6px; }
-
-    // 3–4 players (4–5 Fads): the wide layout's block, at this column's card size — Fads in a 2-wide
-    // grid with Trendy Yarn over Perfect Fit in a third column beside them. Both counts come out exactly
-    // 3 cards across (4 Fads → 2 rows, 5 Fads → 3), which is what --ucs-card-w below is derived from, so
-    // the cards keep their size and only the height changes. It replaces a stacked arrangement that ran
-    // four card-rows tall and left two cards' width of dead space beside the Perfect Fit / Trendy pair.
+    // ---- Express: the Round Tracker stops being a Card-size-preference term ------------------------
     //
-    // Each count keeps the wide layout's own Fad column count — 2 across at 3P, 3 at 4P — so the block is
-    // 3 cards wide at 3P and 4 at 4P, and BOTH are two rows tall. 4P pays for that in card width
-    // ((100cqi - 18px) / 4, ~25% narrower than 3P's cards): with 5 Fads the only way to stay at 3P's card
-    // size is a third row, and a third row pushes the Draft Pool off a phone screen. Height is the scarce
-    // axis here, so it wins.
+    // .ucs-rt-card is `$card-w * 2 * --ucs-card-scale` — 152 / 160 / 240px — and it is the sidebar's
+    // whole width, so it was the LAST zone in the narrow layout still driven by the preference. Beside
+    // a 395px table that is 38-61% of the width, taken from the parameter row, and it made the
+    // preference run BACKWARDS: choosing Large shrank the parameter cards ~40%, to 24px at 2P. That is
+    // exactly the size-x-layout coupling responsive.md says was removed everywhere else.
+    //
+    // So the tracker is sized off the table here instead, floored at the 95px reference floor (which is
+    // derived from this very card's wreath numerals — see responsive.md) and capped so it cannot eat a
+    // wide narrow-layout window. Preference-independent, like every other narrow zone.
+    //
+    // #ucs-upper becomes the query container so both columns can read the table's content width, and
+    // #ucs-board-strip stops shadowing it — the same arrangement Casual/Avid use above, and for the same
+    // reason: the strip column is DERIVED from these numbers, so reading it back would be circular.
+    &.ucs-express #ucs-upper {
+        container-type: inline-size;
+        --ucs-rt-w: clamp(95px, 28cqi, 130px);
+        // The Draft Pool's own expression, so reference art is never wider than the cards you pick from.
+        --ucs-param-w: min(#{$card-w * 1.6}, (100cqi - 58px) / 4 - 12px);
+        // The grid column left of the sidebar: what the tracker and the 12px grid gap leave. Zone
+        // padding is subtracted at each use site, since not every zone in the strip carries any.
+        --ucs-strip-w: calc(100cqi - 12px - var(--ucs-rt-w));
+    }
+    &.ucs-express #ucs-board-strip { container-type: normal; }
+    &.ucs-express .ucs-rt-card {
+        --ucs-card-w: var(--ucs-rt-w);
+        --ucs-card-h: calc(var(--ucs-rt-w) * 1.556);
+    }
+
+    // All counts (3–5 Fads): the wide layout's block, at this column's card size — Fads in a grid with
+    // Trendy Yarn over Perfect Fit in a column beside them. 2P and 3P come out 3 cards across (3 Fads →
+    // 2 rows, 4 Fads → 2 rows), 4P comes out 4. Card width is derived from that count, so the cards keep
+    // their size across 2P/3P and only the height changes.
+    //
+    // 2P used to run its five cards FLAT in one row, `(100cqi - 24px) / 5`. That is what produced the
+    // worst cards in the game once the tracker was taking 38-61% of the table: 40px at Medium, 24px at
+    // Large. Folding it into the same grid is free vertically — the strip sits beside a sidebar that is
+    // already ~226px tall (tracker 172 + an opponent chip), so the second card-row costs no height that
+    // was being used for anything, and buys back nearly 2x the card width. This is the "reflow, not
+    // shrink" call the backlog left open for 2P, decided.
+    //
+    // 4P keeps its 4-across grid: with 5 Fads the only way to reach 3P's card size is a third row, and
+    // that pushes the Draft Pool off a phone screen. Height is the scarce axis there, so it wins.
+    //
+    // Both terms of the min() matter. --ucs-param-w keeps reference art from outgrowing a Draft Pool
+    // card (it binds at 2P/3P); the --ucs-strip-w term is what actually fits the column (it binds at 4P).
+    &.ucs-express.ucs-players-2 #ucs-gameplay,
     &.ucs-express.ucs-players-3 #ucs-gameplay {
-        --ucs-card-w: min(#{$narrow-ref-cap}, (100cqi - 12px) / 3);   // 3 cards + two 6px gaps
+        // 3 cards + two 6px gaps, inside #ucs-gameplay's own 16px of zone padding
+        --ucs-card-w: min(var(--ucs-param-w), calc((var(--ucs-strip-w) - 28px) / 3));
     }
     &.ucs-express.ucs-players-4 #ucs-gameplay {
-        --ucs-card-w: min(#{$narrow-ref-cap}, (100cqi - 18px) / 4);   // 4 cards + three 6px gaps
+        // 4 cards + three 6px gaps, inside #ucs-gameplay's own 16px of zone padding
+        --ucs-card-w: min(var(--ucs-param-w), calc((var(--ucs-strip-w) - 34px) / 4));
     }
-    &.ucs-express.ucs-players-3 .ucs-gameplay-row,
-    &.ucs-express.ucs-players-4 .ucs-gameplay-row {
+    &.ucs-express .ucs-gameplay-row {
         flex-direction: row;
         align-items: flex-end;
+        // nowrap, so a sub-pixel rounding error in the exact-fit 4P arithmetic below shrinks by a
+        // fraction rather than dropping a whole column onto a new row.
+        flex-wrap: nowrap;
         width: 100%;
         gap: 6px;                                          // + the Fad grid's own 6px = the 12px assumed above
     }
+    &.ucs-express .ucs-gp-pftr { flex: 0 0 auto; }
+    // The Fad caption ("Fads (claim to lock a sweater)") is ~250px set on one line — wider than the grid
+    // of cards beneath it — and a flex item's wrap decision is made on MAX-CONTENT, not on what the item
+    // would happily shrink to. So that single label was what pushed the Trendy Yarn / Perfect Fit column
+    // onto a row of its own, at every player count, despite the block above being written to put it
+    // beside the Fads. Cap it to the grid's own width and it wraps to two lines instead.
+    &.ucs-express.ucs-players-2 .ucs-fad-display .ucs-gp-label,
+    &.ucs-express.ucs-players-3 .ucs-fad-display .ucs-gp-label {
+        max-width: calc(2 * var(--ucs-card-w) + 6px);      // the 2-wide Fad grid
+    }
+    &.ucs-express.ucs-players-4 .ucs-fad-display .ucs-gp-label {
+        max-width: calc(3 * var(--ucs-card-w) + 12px);     // the 3-wide Fad grid
+    }
+    &.ucs-express.ucs-players-2 .ucs-fad-cards,
     &.ucs-express.ucs-players-3 .ucs-fad-cards {
         display: grid;
-        grid-template-columns: repeat(2, var(--ucs-card-w));   // 4 Fads → 2 rows
+        grid-template-columns: repeat(2, var(--ucs-card-w));   // 3 Fads → 2 rows · 4 Fads → 2 rows
     }
     &.ucs-express.ucs-players-4 .ucs-fad-cards {
         display: grid;
         grid-template-columns: repeat(3, var(--ucs-card-w));   // 5 Fads → 2 rows (3 then 2)
     }
-    &.ucs-express.ucs-players-3 .ucs-gp-pftr,
-    &.ucs-express.ucs-players-4 .ucs-gp-pftr {
+    &.ucs-express .ucs-gp-pftr {
         flex-direction: column-reverse;                    // Trendy Yarn on top, Perfect Fit under it
         align-items: flex-start;
         gap: 6px;
@@ -2117,9 +2163,15 @@ $narrow-santa-cap: 192px; // 128 x 1.5 — Secret Santa cards
         --ucs-card-h: calc(var(--ucs-card-w) * 1.567);
     }
 
-    // Secret Santa: the two landscape (rotated) cards fill their row side by side (all player counts).
+    // Secret Santa: the two landscape (rotated) cards fill their row side by side. This is the 2P case —
+    // 3–4P lift the zone out to a full-width row and override it below.
+    //
+    // Sized off --ucs-strip-w (the parameter column) rather than a raw 100cqi. #ucs-board-strip is no
+    // longer a query container in Express, so a bare cqi here would resolve against #ucs-upper — the
+    // whole table — and draw a pair that is ~1.45x its own column. The zone is not a .ucs-zone, so no
+    // padding comes off; only the 12px gap between the two slots.
     #ucs-my-santa {
-        --ucs-card-w: min(#{$narrow-santa-cap}, (100cqi - 12px) / 3.14); // 2 rotated slots (h ≈ 1.567w) + a 12px gap
+        --ucs-card-w: min(#{$narrow-santa-cap}, calc((var(--ucs-strip-w) - 12px) / 3.14)); // 2 rotated slots (h ≈ 1.567w)
         --ucs-card-h: calc(var(--ucs-card-w) * 1.567);
     }
 

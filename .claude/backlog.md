@@ -68,10 +68,13 @@ not of the code.
   counts; parameter + Secret Santa cards filled to the column beside the Round-Tracker sidebar). Every
   other combination still wants an eyes-on pass — down to true-phone widths (<450px) — so all read as
   clean as the 2P Express view now does:
-  - **Express, 3–4 players, narrow** — checked at 412px (Pixel 7) at Small only. Confirm the 2-wide Fad
-    grid, the Trendy-Yarn-over-Perfect-Fit column and the Secret Santa fill at Medium too, and from
-    ~360px up to 1000px. At 4P the grid runs 3 rows (5 Fads), which is the tallest parameter block in
-    the game — check it against the sidebar's height.
+  - **Express 4P at 320px** — the one narrow case still well under the Draft Pool's card width (40.8
+    against 49.5; every other count and width is at parity or close). Five Fads across a 3-wide grid is
+    simply more than 320px carries. The lever, if it reads badly on hardware, is the "reflow, not
+    shrink" one: drop 4P to the 2-wide Fad grid below ~360px, which makes it 3 cards across like every
+    other count and takes the card back to ~56px, at the cost of a third Fad row. That was rejected at
+    411px because the extra row pushes the Draft Pool off the screen — at 320 the trade may go the
+    other way.
   - **The fanned hand on real hardware.** The narrow hand is now sized from the viewport rather than the
     Card-size preference, and clears the bottom-corner buttons by *rising* rather than by reserving
     width (`handCardWidth` / `fanLift`; the derivations are in
@@ -82,14 +85,11 @@ not of the code.
     still floating rather than locked in flow, and the lift relaxing to 0 once the hand scrolls above
     the fold. The right-hand clearance carries a measured 120px constant for BGA's replay + chat pair —
     if they still clip, that is the number to raise.
-  - **Express 2P, phone widths — does the Fad art still read?** 2P is the one shape whose narrow Fads
-    go under the ~72px where the art stops being legible: `min(135px, (100cqi - 24px) / 5)` resolves to
-    ~64px at 360px and ~56px at 320px, against ~72–110px for every other shape. If it reads badly, fold
-    the five-card row into a grid the way 3–4P already do — reflow, not shrink. (The `.ucs-fad-chip`
-    abstraction that used to sit here as a maybe-fallback has been deleted; it belonged to the retired
-    120px rail and never rendered.)
-  - **Large, narrow** — Large now uses the sidebar like every other size, and my knitting area is capped
-    at `min(card × scale, 25vw)` so one sweater can't claim most of a phone. Unverified by eye.
+  - **My knitting area is the last preference-dependent zone in the narrow layout.** Everything else now
+    sizes off container queries, so small/medium/large render identically; `#ucs-my-area` still reads
+    `min(card × scale, 25cqi)`. That is deliberate — it is my own workspace, not a shared reference —
+    but it means Large is the only size where a sweater can still crowd the column, and it has never
+    been looked at on a phone with three or four builds down.
   - **Express, wide (≥1000px desktop)** — confirm the desktop layout is still clean after the
     Round-Tracker sidebar relocate/restore (2P/4P: tracker bottom-left, opponents in the right column;
     3P: tracker stacked over the opponents in the right column, Fads 2×2 — see `responsive.md`).
