@@ -60,6 +60,31 @@ not of the code.
   the `sweaters_unbuilt` stat carries the same information and does not depend on it. The comment
   above the line in `gameinfos.jsonc` says the same, so this can be settled from either end.
 
+- **UI/UX guidelines conformance — three located deviations.** Checklist: *User Interface → Review BGA
+  UI design Guidelines*. Each is a specific gap against
+  [`BGA_Studio_Guidelines`](https://en.doc.boardgamearena.com/BGA_Studio_Guidelines); the rest of that
+  page the client already follows, so this is three fixes, not a sweep.
+  - **The bonus-card action bars overflow.** Guideline A.2 caps the bar at *max 4 buttons + context* so
+    it cannot wrap on mobile. `renderMariaPanel` and `renderTinaPanel` each emit `+ New sweater` + one
+    button **per existing sweater** + `L`/`R`/`B` + `Submit` + `Cancel` — nine at three builds, and it
+    grows with the board. The lever is to make these two do what the draft flow already does:
+    `renderPlacementPanel` picks the sweater and slot from clicks on the knitting area and tops out at
+    three buttons, which is also A.2's *"do not replace board-component actions with Action Bar
+    buttons"*. Only reachable at Casual + Expert + Bonus cards **On** while holding that bonus card, so
+    it will not turn up in ordinary testing — reproduce it deliberately.
+  - **Button colour is being used to mean "selected".** Guideline C.3 makes the palette a shared
+    language across BGA — blue advances, red cancels, grey is unavailable — and forbids reassigning it
+    per game. The placement panels toggle `primary`/`secondary` to show which option is currently
+    chosen, so grey reads as "disabled" where it means "not picked". The instance that matters is
+    `Patch L/R/B`, reachable in a *normal* game when drafting onto a sweater that already holds a
+    floating patch; the Maria/Tina panels do the same. Selection wants a channel that is not colour — a
+    checkmark in the label, or the chosen slot highlighted on the board instead. Separately `Reset turn`
+    is grey while `Cancel` is red, though both go backwards; C.3 puts both in red.
+  - **The patch keypad's number buttons are 30px tall.** Checklist item: every tap target ≥ 32px (E.3,
+    which recommends 40–44). `.ucs-assign-opt` is `34 × 30`; the icon row below it is `34 × 34` and
+    already fine. Hit at round end whenever a patch needs its value assigned. Two pixels, but it is the
+    one checklist *number* the client currently misses, so it is cheap to close and awkward to argue.
+
 ## Polish / UX
 
 - **Visual polish sweep — the layouts not yet hand-tuned.** The narrow/mobile pass so far covers
