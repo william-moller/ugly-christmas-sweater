@@ -72,8 +72,16 @@ not of the code.
     grid, the Trendy-Yarn-over-Perfect-Fit column and the Secret Santa fill at Medium too, and from
     ~360px up to 1000px. At 4P the grid runs 3 rows (5 Fads), which is the tallest parameter block in
     the game — check it against the sidebar's height.
-  - **Casual and Avid, narrow** — now built (three-across parameter row; Avid's three Secret Santas on a
-    full-width row) but derived only, never looked at. Avid at 360px has the least slack in the game.
+  - **The fanned hand on real hardware.** The narrow hand is now sized from the viewport rather than the
+    Card-size preference, and clears the bottom-corner buttons by *rising* rather than by reserving
+    width (`handCardWidth` / `fanLift`; the derivations are in
+    [`responsive.md`](responsive.md#the-floating-hand-on-a-phone)). None of it can be checked off a
+    static harness — it needs `bga-cards` running, a real 9-card hand, and BGA's own corner controls.
+    Confirm on a phone: every card's value + orientation bulbs readable and *tappable* (the buttons are
+    z-index 949 against the fan's 900, so anything of theirs over a card swallows its clicks), the fan
+    still floating rather than locked in flow, and the lift relaxing to 0 once the hand scrolls above
+    the fold. The right-hand clearance carries a measured 120px constant for BGA's replay + chat pair —
+    if they still clip, that is the number to raise.
   - **Express 2P, phone widths — does the Fad art still read?** 2P is the one shape whose narrow Fads
     go under the ~72px where the art stops being legible: `min(135px, (100cqi - 24px) / 5)` resolves to
     ~64px at 360px and ~56px at 320px, against ~72–110px for every other shape. If it reads badly, fold

@@ -58,6 +58,71 @@ both comfortable. A 56px card is 87px tall, which clears WCAG 2.2 AA target size
 SC 2.5.8) and Apple's 44×44 HIG guidance with room to spare — so tap targets are never the binding
 constraint here; legibility is.
 
+**Reference art may never be drawn larger than interactive art.** A ceiling, not a floor, and the one
+rule here that is about hierarchy rather than legibility. The round parameters are cards you read once
+and never touch; the Draft Pool holds the cards you pick from. When the narrow parameter row was told
+to *fill* its column (`(100cqi - 12px) / 3`) it came out at **110px against the pool's 71px** on a
+Pixel 8 — reading, correctly, as the most important thing on the table.
+
+`--ucs-param-w` on `#ucs-upper` is the Draft Pool's own expression **verbatim**, and the reason it can
+be verbatim is that `#ucs-upper` is made the query container for the narrow Casual/Avid grid: the
+centre row spans both columns, so `100cqi` there and `100cqi` inside `#ucs-center-stack` are the same
+number. Parity holds by construction, not by a restated approximation. Measured exactly equal at
+320 / 360 / 411 / 768.
+
+> An earlier version restated it against the **viewport** (`min(128px, 25vw - 30px)`) because a zone
+> outside `#ucs-center-stack` cannot read that container's `cqi`. Arithmetically it was fine — 72.75
+> against the pool's 72.25 at 411px. Don't reintroduce it. Making one zone viewport-relative in a
+> layout where everything else is container-relative means the two can silently *disagree*, and the
+> next section is what that cost.
+
+Note what the ceiling does **not** cost. The Fad's printed objectives ("All Yellow · +3 VP") render
+~10px at 110px — already under the 11px text floor below — so the larger card was not buying
+legibility, and `fadTooltip` is what carries that text at every phone width. This is the "cut the
+caption rather than size for it" rule applied to a whole card.
+
+## Overflow is not cosmetic here — it is a feedback loop
+
+Almost every zone in the narrow layout sizes off a **container query**, which makes the whole layout
+only as correct as `#ucs-table`'s own width — and that is a percentage chain down from `<body>`. So
+anything that overflows horizontally drags the table wider, the `cqi` zones read the bigger container
+and grow to their caps, and *they hold it wide*. It does not settle back. The library measuring the
+fan and the container queries alike now see a box with room in it.
+
+Observed on a Pixel 8 (412px viewport): the page settled at **722px**, the Draft Pool pinned at its
+128px cap and the Secret Santa near its 192px. Two `box-sizing` slips were feeding it — `#ucs-my-area`
+(8px padding + 2px border on a `width: 100%` content-box element, so `100% + 20px`) and
+`#ucs-sidebar .ucs-oppo` (`100% + 16px`) — neither of which is a 20px problem once the loop has hold
+of it.
+
+Three defences, all of them now in `Game.scss`:
+
+1. **`#ucs-table.ucs-narrow` is pinned to `max-width: 100vw`** (with `box-sizing: border-box`, since
+   the table carries 8px of padding). `100vw` is the one width nothing inside the document can
+   influence, so this breaks the loop at the top and re-pins every zone underneath. It is the anchor
+   the rest of this file's arithmetic assumes; do not remove it.
+2. **`box-sizing: border-box` on every `width: 100%` zone that has padding or a border.** The three
+   that bit are commented in place.
+3. **Check `scrollWidth`, not just the screenshot.** The harness under "Verifying a change" asserts
+   `document.documentElement.scrollWidth === innerWidth` at 320 / 360 / 411 / 768 in both variants.
+
+### The diagnostic: viewport units and container units disagreeing
+
+Worth recognising, because the symptom points at the wrong thing. With the parameter row capped in
+`vw` and everything else in `cqi`, the stretched page rendered the **parameters correctly at 72px** —
+`vw` is immune to the loop — while the pool ballooned to 124px. It read as *"the parameters are too
+small"*, and the obvious next move (grow the parameters) would have been exactly wrong.
+
+**If a `vw`-sized and a `cqi`-sized element disagree about how wide the page is, the page has been
+stretched.** That asymmetry is the tell, and it only exists because of the mistake above — which is
+the one good argument for keeping a single viewport-relative canary somewhere.
+
+Second-order lesson, since it cost a deploy: **a screenshot has no scale bar.** What settled this was
+measuring `.ucs-my-pile .ucs-pile-card`, a hard-coded `52 × 73px`, in the screenshot — it came out
+31 × 45, so the image was at 0.60× and therefore a *full-page* capture of a 722px-wide page, not a
+412px one. Every px I had read off that image was wrong by the same factor. When measuring a
+screenshot, find a fixed-px element first and calibrate against it.
+
 **Reference card (Perfect Fit / Trendy Yarn / Round Tracker in the rail): floor 95px wide.**
 Driven entirely by the Round Tracker: each wreath is `0.265 × W`, and the printed 1–12 numeral inside
 it is roughly 45% of the wreath, so the numeral is ≈`0.119 × W`. For a ~10px numeral, `W ≥ 84px`;
@@ -397,6 +462,55 @@ Yarn, Round Tracker, Fad chips side by side), with everything else full width be
 `(344 − 16 − 36 − 24) / 4` = **67px** each — above the 56px floor. Giving up the rail buys back
 exactly the width the cards need. At 320px the same arithmetic yields 61px, still above the floor.
 
+## The floating hand on a phone
+
+The fanned `HandStock` is the one zone none of the arithmetic above reaches: it is `position: fixed` to
+the viewport bottom, so it obeys neither the narrow/wide class nor any container query. Two numbers
+govern it, and both are derived rather than chosen.
+
+**Card width — `Game.ts::handCardWidth`.** Nine cards (`HAND_SIZE`) share whatever band the stock is
+given, so the step between them is `(band - W) / 8`. All the identity on the printed face — the value
+numeral (8–22% of the face) with the two orientation bulbs under it (13–22%) — ends at **~22.4%**, so
+requiring `step >= 0.224 W + 2` (that strip plus the card's own border) gives
+
+```
+W <= (band - 24) / 2.8
+```
+
+Capped at 144px (`$card-w * 1.8`). The hand gets its own ceiling rather than the Draft Pool's 128
+because it is the one zone you choose from under time pressure and the only one handed the full width
+— it is *meant* to be the biggest card on a phone. **Preference-independent below 700px**, like every
+other narrow zone: at Large the old `96 x 1.4 = 134px` puts the step at 19% of the card, clipping the
+numeral off every card but the last, so the preference would make the hand less readable rather than
+more.
+
+`band` is **measured off the holder**, not `window.innerWidth`. The attached (in-flow) fan gets the
+holder — the table's content width — while the floating one gets the viewport, so the holder is the
+narrower of the two states and sizing off it keeps the strip uncovered in both. Measuring also means
+the number cannot disagree with the layout the way a viewport-relative length can when the page has
+been stretched; see "Overflow is not cosmetic here".
+
+**The band is the whole viewport, on purpose.** Reserving width for the bottom-corner buttons — our
+"?" strip and BGA's replay/chat pair, ~176px between them — is the arithmetic above run backwards: it
+drops the card from 120px to 69px to protect the two end cards. Worse, the reserve that used to be
+written in CSS never worked at all. `--bga-cards_hand-stock-floating-*-margin` moves the stock **box**;
+the library sizes the **fan** from the `floatLeftMargin` / `floatRightMargin` *options*, which are 0.
+Measured on a Pixel 8: a 40px step across the full 411px — exactly the un-reserved spread — with the
+"?" covering the leftmost card outright and BGA's pair covering the two rightmost.
+
+**Lift — `Game.ts::fanLift`.** The buttons are cleared *vertically* instead: the fan rises by exactly
+enough that every card's top ~42% (that same numeral-and-bulbs strip) sits above the button band, and
+their lower halves stay covered, which is what the art can afford to lose. Only cards that actually
+reach a corner constrain it, so a fan narrower than the viewport computes 0 and nothing moves — no
+breakpoint needed, because the buttons are fixed at every width. The left edge is measured off
+`#bga-help_buttons` (it holds the round-summary restore chip too, so it is not a constant); BGA's right
+pair has no reliable id and carries a measured **120px** constant, which is the one number to raise if
+they ever clip again.
+
+The lift rides on the same `transform` `placeFan` already uses for horizontal centring. That is allowed
+here and nowhere else: the no-transform rule is about *ancestors* of a `position: fixed` element, and
+the stock **is** the fixed element.
+
 ## Deliberate non-goals
 
 - **No `bga-zoom` scale-to-fit as the primary mechanism.** Our design width is ~1000px, so fitting a
@@ -415,9 +529,24 @@ exactly the width the cards need. At 320px the same arithmetic yields 61px, stil
 - The narrow layout now covers **every variant at every card size** down to ~360px, but only Express at
   Small/Medium has had an eyes-on pass. Everything else is derived-and-built, not looked at. Tracked in
   [`backlog.md`](backlog.md) under "Visual polish sweep."
-- Casual/Avid narrow is arithmetic only: the parameter row is three across and Avid's three landscape
-  Secret Santas take a full-width row at `(100cqi - 24px) / 4.7` (~69px cards at 360px, against the 56px
-  interactive floor). Avid at 360 has the least slack of any shape in the game.
+- Casual/Avid narrow: the parameter row is three across at exactly the Draft Pool's card width, and the
+  **sidebar is derived rather than `auto`** — it takes precisely what that row leaves
+  (`100cqi - 40px - 3 × --ucs-param-w`), which is what lets the parameters be drawn at pool size
+  instead of being squeezed by whatever the column happened to contain. Casual's landscape Secret Santa
+  lives in that column under the opponents (`layoutNarrowSidebar` puts it there); Avid keeps its three
+  on a full-width row at `(100cqi - 24px) / 4.7` (~69px cards at 360px, against the 56px interactive
+  floor). Avid at 360 has the least slack of any shape in the game.
+
+  Measured (headless Chrome, real viewport widths):
+
+  | Viewport | Parameter | Draft Pool | Sidebar | Casual Santa slot |
+  |---------:|----------:|-----------:|--------:|------------------:|
+  | 320 | 49.5 | 49.5 | 115.5 | 111.5 × 71.1 |
+  | 360 | 59.5 | 59.5 | 125.5 | 121.5 × 77.5 |
+  | 411 | 72.3 | 72.3 | 138.3 | 134.3 × 85.7 |
+  | 768 | 128 (cap) | 128 (cap) | 328 | 300.9 × 192 (cap) |
+
+  Parity is exact at every width, and `scrollWidth == innerWidth` at all four in both variants.
 - **The unexamined half of the narrow layout is now the WIDE end of it, not the narrow end.** Its whole
   range used to be phone-to-tablet; it now runs up to each shape's floor, so the band roughly
   1000px→1659px is where it has had the least scrutiny — that is where the uncapped `100cqi` sizing was

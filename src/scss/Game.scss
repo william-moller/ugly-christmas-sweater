@@ -82,13 +82,11 @@ html {
     background-attachment: fixed;
 
     // Diameter of the fixed lower-left circles (the bga-help "?" and the round-summary restore chip).
-    // A variable rather than a literal because the floating hand's side reserve is DERIVED from it
-    // below — bga-cards pins the fan to the viewport bottom once it scrolls past the fold, into the
-    // same band these buttons occupy, so the two numbers have to move together or the fan slides back
-    // under the buttons. Shrunk on small screens, where the reserve is the expensive part.
+    // Shrunk on small screens: bga-cards pins the fan to the viewport bottom once it scrolls past the
+    // fold, into the same band these buttons occupy, so the smaller they are the less of the hand ends
+    // up behind them. The fan clears them by rising (Game.ts::fanLift), which MEASURES this strip rather
+    // than re-deriving its width — so this stays a plain size, not a shared constant.
     --ucs-corner-btn: 52px;
-    // Clearance each side of the floating fan: the button, its 8px offset from the edge, and 8px of air.
-    --ucs-corner-reserve: calc(var(--ucs-corner-btn) + 16px);
 }
 @media (max-width: 700px) {
     html { --ucs-corner-btn: 40px; }
@@ -1788,11 +1786,41 @@ $narrow-ref-cap: 135px;   // 90 x 1.5  — Fads / Perfect Fit / Trendy Yarn
 $narrow-santa-cap: 192px; // 128 x 1.5 — Secret Santa cards
 
 #ucs-table.ucs-narrow {
+    // ---- The anchor. Do not remove: every card size below is measured against it. ------------------
+    //
+    // Nearly every zone here sizes off a CONTAINER query, which makes the whole layout only as correct
+    // as the table's own width — and the table is a percentage chain down from <body>, so anything that
+    // overflows horizontally drags it wider. That is not hypothetical: it happened, and it is a
+    // FEEDBACK LOOP rather than a one-off error. Something overflows -> the page grows -> the cqi zones
+    // read the bigger container and grow to their caps -> they hold it wide. Once running it never
+    // recovers, because the library and the container queries alike now measure the widened box and
+    // conclude there is room.
+    //
+    // Measured on a Pixel 8 (412px viewport): the page settled at 722px, the Draft Pool pinned at its
+    // 128px cap and the Secret Santa near its 192px, while the round parameters — capped in `vw` at the
+    // time, the one unit the loop cannot move — stayed correctly at 72px and so read as far too small
+    // NEXT to everything else. That asymmetry is the diagnostic: if viewport-relative and
+    // container-relative lengths disagree on this layout, the page has been stretched.
+    //
+    // 100vw is the one width nothing inside the document can influence, so pinning the table to it
+    // breaks the loop at the top and re-pins every zone underneath. border-box because #ucs-table
+    // carries 8px of padding that must come out of the viewport, not be added to it.
+    box-sizing: border-box;
+    max-width: 100vw;
+
     #ucs-upper { flex-direction: column; }
     #ucs-lower { flex-direction: column; }
     // Full width for the stacked play zones and knitting area.
+    //
+    // border-box is load-bearing, not tidiness: #ucs-my-area carries 8px of padding and a 2px border, so
+    // content-box made it `100% + 20px` and it overflowed its row by 20px at every width. In this layout
+    // an overflow does not stay a 20px cosmetic problem — it widens the page, and every zone here sizes
+    // off a container query, so they all read the wider box and grow (see the max-width note above).
     #ucs-center-stack,
-    #ucs-my-area { width: 100%; }
+    #ucs-my-area {
+        width: 100%;
+        box-sizing: border-box;
+    }
 
     // My knitting area is the last zone still sized straight off the Card-size preference, and a sweater
     // is two cards wide (L+R over B) — so at Large on a phone one sweater claimed 240px of a 344px screen.
@@ -1822,20 +1850,19 @@ $narrow-santa-cap: 192px; // 128 x 1.5 — Secret Santa cards
     // The floating hand's asymmetry fix stays at every narrow width (see the desktop note on
     // #ucs-my-hand-wrap / the library's hardcoded 240px right reserve).
     //
-    // Both margins clear the fixed furniture in the bottom corners rather than the 12px they used to
-    // carry: our "?" / restore-chip strip on the left, BGA's chat bubble on the right. This is the only
-    // lever that works — the fan is position:fixed to the viewport bottom while floating, so no amount
-    // of padding under the knitting area moves it out from under them. The fan responds by overlapping
-    // its cards rather than shrinking them, so they stay above the 56px interactive floor; the cost is
-    // seeing less of each card, which is why --ucs-corner-btn shrinks below 700px.
+    // The floating fan deliberately keeps the FULL viewport width here, and clears the fixed
+    // bottom-corner furniture — our "?" / restore-chip strip on the left, BGA's replay + chat pair on
+    // the right — vertically instead, via Game.ts::fanLift. Reserving that width was tried and is the
+    // wrong lever twice over:
     //
-    // Right uses the same derivation as left on the assumption BGA's bubble is about our button's size.
-    // If it still clips the fan on a real phone, this is the one number to raise.
+    //   * It costs more than it buys. Nine cards share the band, so the card width the printed numeral
+    //     needs to stay uncovered is `band / 3.4` (Game.ts::handCardWidth) — taking ~176px out of a
+    //     411px band drops the card from 120px to 69px to save the two end cards.
+    //   * The CSS half of it never worked anyway. These two custom properties move the stock BOX, but
+    //     the library sizes the FAN from the floatLeftMargin / floatRightMargin options in JS, which are
+    //     0. Measured on a Pixel 8: a 40px step across the whole 411px viewport, exactly the un-reserved
+    //     spread, with the "?" covering the leftmost card and BGA's pair the two rightmost.
     #ucs-my-hand-wrap { z-index: auto; }
-    #ucs-my-hand .hand-stock.floating {
-        --bga-cards_hand-stock-floating-left-margin: var(--ucs-corner-reserve) !important;
-        --bga-cards_hand-stock-floating-right-margin: var(--ucs-corner-reserve) !important;
-    }
 
     // Opponents run across as a wrapping row of chips (mini sweaters hidden, pip summary shown) rather
     // than a tall side column.
@@ -1888,7 +1915,54 @@ $narrow-santa-cap: 192px; // 128 x 1.5 — Secret Santa cards
     #ucs-sidebar .ucs-oppo {
         flex: 0 0 auto;
         width: 100%;
+        // .ucs-player-table adds 6px of padding and a 2px border, so content-box made this `100% + 16px`
+        // and every opponent chip overflowed the sidebar. Same class of bug, and the same stakes, as the
+        // knitting area above — an overflow here widens the page and the container queries follow it.
+        box-sizing: border-box;
     }
+
+    // ---- Casual / Avid: a MEASURED sidebar, holding the opponents and (Casual) my Secret Santa -------
+    //
+    // The generic sidebar above is `auto`, i.e. sized by whatever it happens to contain — the Round
+    // Tracker in Express. Casual and Avid have no tracker, so `auto` gave them a ~58px opponent chip
+    // and left the parameter row 333px of a 411px screen. Here the column is DERIVED instead: it takes
+    // exactly what the parameter row does not need, so the parameters can be drawn at Draft Pool size
+    // and the leftover is a real column rather than an accident.
+    //
+    // #ucs-upper is made the query container for BOTH columns so they can be sized off the same width
+    // the Draft Pool is — the table's content width. The centre row spans both columns, so
+    // `100cqi` here and `100cqi` inside #ucs-center-stack are the same number: parameter/pool parity
+    // holds by construction rather than by a re-derived approximation that can drift.
+    &:not(.ucs-express) #ucs-upper {
+        container-type: inline-size;
+        // The Draft Pool's own expression, verbatim, against #ucs-upper.
+        --ucs-param-w: min(#{$card-w * 1.6}, (100cqi - 58px) / 4 - 12px);
+        grid-template-columns: minmax(0, 1fr) auto;
+        grid-template-areas:
+            "strip  side"
+            "center center";
+    }
+    // Avid keeps a full-width row for its three lifted Secret Santas (see below). Written with the same
+    // :not(.ucs-express) so it out-specifies the rule above rather than tying on specificity and
+    // depending on source order.
+    &:not(.ucs-express).ucs-avid #ucs-upper {
+        grid-template-areas:
+            "strip  side"
+            "santa  santa"
+            "center center";
+    }
+    // Stop the strip shadowing #ucs-upper as the nearest container, so #ucs-gameplay below reads the
+    // table's content width rather than its own column's — the column is what we are deriving FROM the
+    // card size, so reading it back would be circular.
+    &:not(.ucs-express) #ucs-board-strip { container-type: normal; }
+    // What the parameter row leaves: the table width, less the 12px grid gap, less the row's own
+    // footprint (three cards + two 6px gaps + the zone's 16px padding = 3W + 28).
+    &:not(.ucs-express) #ucs-sidebar {
+        width: calc(100cqi - 40px - 3 * var(--ucs-param-w));
+    }
+    // The column is definite now, so a long player name must wrap or ellipsis inside it rather than
+    // pushing it wider (.ucs-player-name already clips; this is what lets it).
+    &:not(.ucs-express) #ucs-sidebar .ucs-oppo { min-width: 0; }
 
     // Fill the parameter column left of the sidebar: cards size off the COLUMN width (container query)
     // instead of a fixed px. The board strip is the query container; cqi is read on its children
@@ -1957,11 +2031,14 @@ $narrow-santa-cap: 192px; // 128 x 1.5 — Secret Santa cards
 
     // ---- Casual / Avid, narrow ------------------------------------------------------------------
     // Neither has a Round Tracker and both render a single Fad, so the parameter row is three cards
-    // (Fad · Perfect Fit · Trendy Yarn) — the same three-across derivation Express 3P uses. The sidebar
-    // beside it carries the opponents alone. Player count doesn't subdivide these: fadsOnDisplay() is
+    // (Fad · Perfect Fit · Trendy Yarn). Player count doesn't subdivide these: fadsOnDisplay() is
     // players + 1 in Express ONLY (see responsive.md, "How many arrangements are there, really?").
+    //
+    // The row is drawn at exactly the Draft Pool's card width (--ucs-param-w above), so reference art is
+    // never larger than the cards you pick from — and, since the sidebar is derived as the remainder,
+    // the parameter row's own footprint is what defines the column it sits in.
     &:not(.ucs-express) #ucs-gameplay {
-        --ucs-card-w: min(#{$narrow-ref-cap}, (100cqi - 12px) / 3);   // 3 cards + two 6px gaps
+        --ucs-card-w: var(--ucs-param-w);
     }
     &:not(.ucs-express) .ucs-gameplay-row {
         flex-wrap: nowrap;
@@ -1970,12 +2047,46 @@ $narrow-santa-cap: 192px; // 128 x 1.5 — Secret Santa cards
     &:not(.ucs-express) .ucs-fad-cards,
     &:not(.ucs-express) .ucs-gp-pftr { gap: 6px; }
 
-    // Casual's one landscape Secret Santa stays in the parameter column, sized like one of the Express
-    // pair so it doesn't tower over the row above it. (Its cqi resolves against #ucs-board-strip, which
-    // is why this can only apply while the card is still inside the strip — Avid's is lifted out below.)
+    // Casual's single landscape Secret Santa lives in the sidebar under the opponents
+    // (layoutNarrowSidebar puts it there), filling that derived column. It used to sit under the
+    // parameter row inside the strip, centred with ~85px of bare table each side, in a band the
+    // opponents had already finished above — a row belonging to one card.
+    //
+    // Sizing goes on .ucs-santa-cards because the zone is its own query container, and cqi always
+    // resolves against an ANCESTOR container, never the element carrying container-type. The zone's
+    // side padding is dropped: it has `background: none`, so those 16px bought nothing visually and
+    // cost the card ~10px of width in a column this tight.
     &:not(.ucs-express):not(.ucs-avid) #ucs-secret-santa {
-        --ucs-card-w: min(#{$narrow-santa-cap}, (100cqi - 12px) / 3.14);
+        width: 100%;
+        padding-left: 0;
+        padding-right: 0;
+        container-type: inline-size;
+    }
+    &:not(.ucs-express):not(.ucs-avid) #ucs-secret-santa .ucs-santa-cards {
+        --ucs-card-w: min(#{$narrow-santa-cap}, (100cqi - 4px) / 1.567); // one rotated slot (h ≈ 1.567w)
         --ucs-card-h: calc(var(--ucs-card-w) * 1.567);
+    }
+    // The zone label is rotated vertical and pinned at `right: 100%`, i.e. OUTSIDE the zone's left edge.
+    // That overhang has nowhere to sit in this layout: the zone starts at the table's own left padding,
+    // so the label was clipped to a 2px sliver against the edge of a 411px screen — in Avid too, whose
+    // lifted full-width Santa row has the same geometry, which is why this covers both and not just the
+    // Casual row. In the parameter row above it would additionally collide with the Fad card. Lay it
+    // flat over the cards instead, the way .ucs-my-santa's already is.
+    &:not(.ucs-express) #ucs-secret-santa .ucs-zone-label {
+        position: static;
+        writing-mode: horizontal-tb;
+        transform: none;
+        margin: 0 0 2px;
+        // display + text-align, not the rotated rule's flex centring, so the declaration says where the
+        // caption sits rather than leaving it to a leftover justify-content. Centred to agree with
+        // .ucs-santa-cards, which centres the card(s) under it.
+        display: block;
+        text-align: center;
+        // The rotated rule carries nowrap, which a vertical label needs and this one must not: laid flat
+        // the caption is ~141px against a ~138px sidebar at 411px, so without this it overflows the
+        // column on every phone — and in this layout an overflow is not cosmetic, see the note on
+        // max-width at the top of this block.
+        white-space: normal;
     }
 
     // Avid's three landscape Secret Santas are the most expensive term in the game — the wide layout only
@@ -1991,6 +2102,7 @@ $narrow-santa-cap: 192px; // 128 x 1.5 — Secret Santa cards
         grid-area: santa;
         container-type: inline-size;
         width: 100%;
+        box-sizing: border-box; // .ucs-zone's 8px padding, or this row is `100% + 16px` — see above
     }
     &.ucs-avid #ucs-secret-santa .ucs-santa-cards {
         --ucs-card-w: min(#{$narrow-santa-cap}, (100cqi - 24px) / 4.7); // 3 rotated slots (h ≈ 1.567w) + two 12px gaps

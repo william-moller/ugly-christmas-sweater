@@ -306,19 +306,66 @@ export class Game {
      *  1.5): the fanned hand floats at the BOTTOM of the viewport, so the taller the frame the closer it
      *  runs to the bottom edge, where it looks cropped. That gap is the cap, not a copy that drifted —
      *  do NOT collapse this into cardSizeScale(). Both read cardSizePref(), so neither can be caught by
-     *  a not-yet-applied html.ucs-cards-* class. */
+     *  a not-yet-applied html.ucs-cards-* class.
+     *
+     *  Only consulted above 700px. Below that handCardWidth derives the frame from the viewport instead,
+     *  for the same reason every other narrow zone is preference-independent — see there. */
     private handSizeScale(): number {
         const size = this.cardSizePref();
         return size === 'large' ? 1.4 : size === 'small' ? 0.95 : 1;
     }
 
+    /**
+     * The fanned hand's card width.
+     *
+     * Wide viewports keep the tuned 96px base times the Card-size preference (handSizeScale). At phone
+     * widths the fan spans the WHOLE viewport — the floating stock is pinned left and right, and the
+     * library packs all HAND_SIZE cards into whatever box that leaves — so the width stops being a
+     * preference and becomes a derivation from how much of each card must stay uncovered:
+     *
+     *     step = (band - W) / (HAND_SIZE - 1)
+     *
+     * The identifying strip on the printed art — the value numeral with the two orientation bulbs under
+     * it — ends at ~22.4% of the card face (measured off the sprite: the numeral spans 8-22% and the
+     * bulbs 13-22%). Requiring `step >= 0.224 W + 2` (that strip plus the card's own border) and
+     * solving with HAND_SIZE = 9 gives
+     *
+     *     W <= (band - 24) / 2.8
+     *
+     * Capped at 144px ($card-w * 1.8). The hand gets its own ceiling rather than the Draft Pool's 128,
+     * because it is the one zone you choose from under time pressure and the only one handed the full
+     * width — it is *meant* to be the biggest card on a phone.
+     *
+     * `band` is MEASURED off the holder, not taken from window.innerWidth, and deliberately so. The
+     * attached (in-flow) fan gets the holder — the table's content width — while the floating one gets
+     * the viewport, so the holder is the narrower of the two states and sizing off it keeps the strip
+     * uncovered in both. Measuring also means the number cannot disagree with the layout the way a
+     * viewport-relative length can when the page has been stretched (see the max-width note at the top
+     * of the .ucs-narrow block in Game.scss).
+     *
+     * Deliberately PREFERENCE-INDEPENDENT below 700px, like every other narrow zone (responsive.md,
+     * "Upper caps"): at Large the old 96 * 1.4 = 134px puts the step at 19% of the card, which clips the
+     * numeral off every card but the last — the preference would make the hand *less* readable, not more.
+     *
+     * The band is the full viewport on purpose. Reserving width for the bottom-corner buttons instead is
+     * the wrong lever: taking ~176px out of a 411px band costs card width faster (W <= band/3.4) than it
+     * buys clearance. The buttons are cleared vertically instead — see fanLift.
+     */
+    private handCardWidth(): number {
+        if (window.innerWidth > 700) return Math.round(96 * this.handSizeScale());
+        // The holder is in flow and full-width, so it measures the table's content width. Guard against
+        // a not-yet-laid-out box (it would collapse the hand to nothing) by falling back to the viewport.
+        const holder = document.getElementById('ucs-my-hand')?.getBoundingClientRect().width ?? 0;
+        const band = Math.min(window.innerWidth, holder > 200 ? holder : Infinity);
+        return Math.min(144, Math.floor((band - 24) / 2.8));
+    }
+
     private setupHandStock() {
-        const handScale = this.handSizeScale();
         // One integer size for BOTH the library's card frame (cardWidth/cardHeight below) and the CSS face
         // sprite (#ucs-my-hand-wrap's --ucs-card-w/h, set here). Driving them from the same rounded value
         // guarantees they match exactly — any px mismatch places the sprite in a differently-sized frame.
-        const handW = Math.round(96 * handScale);
-        const handH = Math.round(149 * handScale);
+        const handW = this.handCardWidth();
+        const handH = Math.round(handW * 149 / 96); // the tuned base frame's ratio
         const handWrap = document.getElementById('ucs-my-hand-wrap');
         if (handWrap) {
             handWrap.style.setProperty('--ucs-card-w', `${handW}px`);
@@ -331,8 +378,8 @@ export class Game {
             animationManager: this.animationManager,
             type: 'ucs-sweater',
             // The hand is the primary interaction on a desktop table, so its cards run larger than the
-            // 64/90 used elsewhere. Base 96/149, grown by the "Card size" preference via handSizeScale
-            // (capped so the floating hand clears the viewport bottom — see there). handW/handH also drive
+            // 64/90 used elsewhere. Base 96/149, grown by the "Card size" preference on a wide viewport
+            // and derived from the viewport itself on a phone — see handCardWidth. handW/handH also drive
             // #ucs-my-hand-wrap's --ucs-card-w/h so the sprite face and this frame stay the same size; a
             // mismatch places the sprite in a differently-sized frame and clips it. A CSS transform on the
             // holder is still forbidden — it breaks the floating (position:fixed) hand (see #ucs-my-hand).
@@ -368,10 +415,12 @@ export class Game {
             // sit in that strip on a narrow window, and anything of theirs stacking above the fan
             // swallows the clicks on it — the cards look fine and simply don't respond.
             floatZIndex: 900,
-            // Zero on purpose. These do not pad a centred fan — the library left-pins the stock at
-            // floatLeftMargin, so a non-zero value simply shoves the whole hand right (measured: a 40px
-            // margin put the stock's left edge at x=39). Clearing the bottom-corner buttons is handled
-            // by centreFan keeping the fan on the viewport centre instead.
+            // Zero on purpose, twice over. These do not pad a centred fan — the library left-pins the
+            // stock at floatLeftMargin, so a non-zero value simply shoves the whole hand right (measured:
+            // a 40px margin put the stock's left edge at x=39); placeFan re-centres it instead. And the
+            // fan WANTS the whole viewport on a phone: these two options are what its width math reads,
+            // so reserving the bottom-corner buttons here would shrink every card to protect the two end
+            // ones (see handCardWidth). The buttons are cleared vertically, by fanLift.
             floatLeftMargin: 0,
             floatRightMargin: 0,
             // Keep the fan sorted (colour then value) so a card drawn on refill slides into its correct
@@ -723,6 +772,12 @@ export class Game {
             }
             sidebar.appendChild(rt);   // Round Tracker on top (empty in Casual/Avid — they have none)
             sidebar.appendChild(oppo); // opponents directly beneath it
+            // Casual's single landscape Secret Santa goes in the sidebar too, under the opponents. Its
+            // own row in the strip was a row for one card, and the sidebar column — derived in Game.scss
+            // as whatever the parameter row leaves — is otherwise just a short opponent chip above a lot
+            // of nothing. Express parks its pair differently (below) and Avid's three take a full-width
+            // row of their own, so this is Casual only.
+            if (!this.gamedatas.express && !this.gamedatas.avid && santaOne) sidebar.appendChild(santaOne);
             // Lift the wide Secret Santa zone out of the board strip so it can take a full-width grid row
             // of its own (grid-area: santa). The sidebar ends above this row, so left in the strip those
             // landscape cards wasted a sidebar's width of space. Express 2P and Casual keep theirs in the
@@ -1780,12 +1835,14 @@ export class Game {
             el.style.setProperty('--bga-cards_hand-stock-card-y', `${y}px`);
             el.style.setProperty('--bga-cards_hand-stock-card-a', `${a}deg`);
         });
-        this.centreFan(fan, cards);
+        this.placeFan(fan, cards);
     }
 
     /**
-     * Keep the fan centred on the viewport.
+     * Position the fan: centred horizontally on the viewport, and raised just clear of the bottom-corner
+     * buttons vertically. Both corrections ride on ONE transform on the stock element.
      *
+     * ---- Horizontal ----
      * The library centres the cards within its stock element, but that element is shrink-to-fit and gets
      * left-pinned (measured: a 276px stock at x=39 inside a full-width 462px holder, so the fan sat at
      * 177 against a viewport centre of 250). Rather than model where it decides to put that box — which
@@ -1798,8 +1855,12 @@ export class Game {
      * and *shrinks* it at once, the cards re-centre in the narrower box, and each pass only halves the
      * error. Transforming THIS element is safe — the "no transform" rule is about *ancestors* of a
      * position:fixed element, and the stock is the fixed element itself, not an ancestor of one.
+     *
+     * ---- Vertical ----
+     * See fanLift. Unlike the horizontal shift that one is exact in a single pass rather than iterative,
+     * because a card's measured top moves 1:1 with the lift already applied.
      */
-    private centreFan(fan: HTMLElement, cards: HTMLElement[]) {
+    private placeFan(fan: HTMLElement, cards: HTMLElement[]) {
         let left = Infinity;
         let right = -Infinity;
         cards.forEach((el) => {
@@ -1809,12 +1870,65 @@ export class Game {
             right = Math.max(right, b.right);
         });
         if (!isFinite(left) || !isFinite(right)) return;
+        const previousShift = parseFloat(fan.dataset.ucsShift ?? '') || 0;
         const delta = window.innerWidth / 2 - (left + right) / 2;
-        if (Math.abs(delta) < 2) return; // already centred; don't churn on animation jitter
-        const previous = parseFloat(fan.dataset.ucsShift ?? '') || 0;
-        const shift = previous + delta;
+        // Under 2px the horizontal pass has converged; keep the shift rather than churning on jitter.
+        const shift = Math.abs(delta) < 2 ? previousShift : previousShift + delta;
+        const lift = this.fanLift(cards, parseFloat(fan.dataset.ucsLift ?? '') || 0);
         fan.dataset.ucsShift = String(shift);
-        fan.style.transform = `translateX(${shift}px)`;
+        fan.dataset.ucsLift = String(lift);
+        fan.style.transform = `translate(${shift}px, ${-lift}px)`;
+    }
+
+    /**
+     * How far to raise the fan so the bottom-corner buttons stop hiding the cards under them.
+     *
+     * The floating fan hangs off the viewport bottom, and the arc pushes each outer card a further
+     * `2 * mid^2` px down — straight into the band our "?" strip (plus the round-summary restore chip
+     * beside it) and BGA's own replay / chat controls occupy. Those controls are z-index 949 against the
+     * fan's 900, so they both paint over the cards AND swallow the taps on them: on a 411px phone the
+     * leftmost card sat entirely behind the "?" and the two rightmost behind BGA's pair.
+     *
+     * Reserving that width horizontally is the wrong lever — see handCardWidth: with HAND_SIZE cards
+     * sharing the band, the ~176px those buttons want costs card width faster than it buys clearance. So
+     * the fan keeps the full width and moves UP instead, by exactly enough that every card's identifying
+     * strip — the value numeral and the orientation bulbs under it, the top ~42% of the printed face —
+     * clears the buttons. The lower halves stay covered, which is what the art can afford to lose: the
+     * sweater illustration repeats what the numeral and bulbs already say.
+     *
+     * 0.55 of the MEASURED box rather than 0.42 of the card, because these cards are rotated: an outer
+     * card sits in a bounding box ~15% taller than itself, with its own top-left corner well below the
+     * box's top. Running the worst case (the ±17° outermost card of a 9-card fan) through the rotation
+     * puts its info strip at 0.515 of the box height; 0.55 is that rounded up, and over-lifting is the
+     * cheap direction to be wrong in.
+     *
+     * Only cards that actually reach into a corner constrain the lift, so a fan narrower than the
+     * viewport — every desktop width, and the attached (non-floating) state — computes 0 and nothing
+     * moves. Deliberately not gated on `.ucs-narrow`: the buttons are position:fixed at every width, so
+     * the question is always geometric rather than a breakpoint's to answer.
+     */
+    private fanLift(cards: HTMLElement[], currentLift: number): number {
+        // Our own lower-left strip, measured rather than assumed: it holds the "?" and, once a round has
+        // been scored, the round-summary restore chip beside it, so its width is not a constant.
+        const strip = document.getElementById('bga-help_buttons')?.getBoundingClientRect();
+        const haveStrip = !!strip && strip.width > 0 && strip.height > 0;
+        // BGA's lower-RIGHT controls (replay + chat) carry no id we can rely on across skins. 120px is
+        // what that pair measured on a Pixel 8 at 411px, and their top matched our own strip's. If they
+        // ever clip the cards again this is the one number to raise — the previous 56px guess (a mirror
+        // of our own button's width) was 64px short, which is how they came to cover two cards.
+        const rightEdge = window.innerWidth - 120;
+        const leftEdge = (haveStrip ? strip!.right : 56) + 6;
+        const bandTop = (haveStrip ? strip!.top : window.innerHeight - 56) - 6;
+
+        let lowest = -Infinity;
+        cards.forEach((el) => {
+            const b = el.getBoundingClientRect();
+            if (!b.width) return; // hidden / mid-teardown: contributes no geometry
+            if (b.left >= leftEdge && b.right <= rightEdge) return; // clear of both corners
+            lowest = Math.max(lowest, b.top + b.height * 0.55);
+        });
+        if (!isFinite(lowest)) return 0; // nothing reaches a corner — sit where the library put us
+        return Math.max(0, currentLift + (lowest - bandTop));
     }
 
     /** Hand fan order, from the "Hand sort order" game preference (gamepreferences 102). */
