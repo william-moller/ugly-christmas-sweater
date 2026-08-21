@@ -195,6 +195,9 @@ export function cardLogChip(card: SweaterCard, material: UcsMaterial): string {
  * Plain-text description of a card for a log chip's native `title` tooltip (colour + value · icon ·
  * orientation; a patch reads as its wild identity). Kept plain — unlike the BGA HTML tooltips elsewhere —
  * because the framework injects log HTML with no node we can bind gameui.addTooltipHtml to.
+ *
+ * Doubles as the card's accessible name — see the `cardAriaLabel` alias below. The card faces are
+ * sprite-painted divs with no intrinsic text, so without this a screen reader announces nothing at all.
  */
 export function cardLogTitle(card: SweaterCard, material: UcsMaterial): string {
     const face = faceOf(card, material);
@@ -209,6 +212,13 @@ export function cardLogTitle(card: SweaterCard, material: UcsMaterial): string {
     if (face?.slot) parts.push(orientationName(face.slot));
     return parts.join(' · ');
 }
+
+/**
+ * The accessible name (`aria-label`) for a card element. Same string as the log chip's title — a card
+ * reads the same way whether a screen reader meets it in the log or on the table — so this is a
+ * deliberate alias, not a copy that could drift.
+ */
+export const cardAriaLabel = cardLogTitle;
 
 /** A face-down placeholder (e.g. opponents' hand backs). */
 export function createCardBack(): HTMLElement {

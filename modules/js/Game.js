@@ -347,6 +347,9 @@ function cardLogChip(card, material) {
  * Plain-text description of a card for a log chip's native `title` tooltip (colour + value · icon ·
  * orientation; a patch reads as its wild identity). Kept plain — unlike the BGA HTML tooltips elsewhere —
  * because the framework injects log HTML with no node we can bind gameui.addTooltipHtml to.
+ *
+ * Doubles as the card's accessible name — see the `cardAriaLabel` alias below. The card faces are
+ * sprite-painted divs with no intrinsic text, so without this a screen reader announces nothing at all.
  */
 function cardLogTitle(card, material) {
     const face = faceOf(card, material);
@@ -363,6 +366,12 @@ function cardLogTitle(card, material) {
         parts.push(orientationName(face.slot));
     return parts.join(' · ');
 }
+/**
+ * The accessible name (`aria-label`) for a card element. Same string as the log chip's title — a card
+ * reads the same way whether a screen reader meets it in the log or on the table — so this is a
+ * deliberate alias, not a copy that could drift.
+ */
+const cardAriaLabel = cardLogTitle;
 /** A face-down placeholder (e.g. opponents' hand backs). */
 function createCardBack() {
     const el = document.createElement('div');
@@ -562,10 +571,17 @@ class Game {
         });
         // Clicking an opponent's table enlarges their Knitting Area in the popin.
         document.querySelectorAll('#ucs-opponents .ucs-oppo').forEach((el) => {
-            el.addEventListener('click', () => this.openPopin(Number(el.dataset.playerId)));
+            const pid = Number(el.dataset.playerId);
+            el.addEventListener('click', () => this.openPopin(pid));
+            el.setAttribute('role', 'button');
+            el.setAttribute('aria-label', this.bga.gameui.format_string(_('Enlarge ${player_name}\'s Knitting Area'), { player_name: this.gamedatas.players[pid]?.name ?? '' }));
         });
-        document.getElementById('ucs-popin-close').addEventListener('click', (e) => { e.preventDefault(); this.closePopin(); });
-        document.querySelector('#ucs-popin .ucs-popin-backdrop').addEventListener('click', () => this.closePopin());
+        const popinClose = document.getElementById('ucs-popin-close');
+        popinClose.setAttribute('aria-label', _('Close'));
+        popinClose.addEventListener('click', (e) => { e.preventDefault(); this.closePopin(); });
+        const popinBackdrop = document.querySelector('#ucs-popin .ucs-popin-backdrop');
+        popinBackdrop.setAttribute('aria-hidden', 'true'); // duplicates the Close button — see the summary backdrop
+        popinBackdrop.addEventListener('click', () => this.closePopin());
         // Build the CardManager + fanned HandStock for my hand (spectators have no hand).
         if (this.bga.gameui.isSpectator) {
             document.getElementById('ucs-hand-label').textContent = _('Spectating');
@@ -771,6 +787,10 @@ class Game {
                 if (!div.id)
                     div.id = `ucs-hand-${c.id}-front`;
                 this.bga.gameui.addTooltipHtml?.(div.id, cardTooltip(c, this.material));
+                // The hand is built by bga-cards, so it never reaches attachTooltip — label it here or
+                // the player's own hand is the one zone a screen reader cannot read at all.
+                div.setAttribute('role', 'img');
+                div.setAttribute('aria-label', cardAriaLabel(c, this.material));
             },
         });
         this.handStock = new BgaCards.HandStock(this.cardsManager, document.getElementById('ucs-my-hand'), {
@@ -1367,6 +1387,7 @@ class Game {
                         el.classList.add('ucs-chosen');
                     }
                     el.addEventListener('click', () => this.chooseCopySource(Number(card.id)));
+                    this.markActionable(el, _('Copy'));
                 }
             }
             else if (this.draftableIds.includes(Number(card.id))) {
@@ -1375,6 +1396,7 @@ class Game {
                     el.classList.add('ucs-chosen');
                 }
                 el.addEventListener('click', () => this.selectDraft(Number(card.id)));
+                this.markActionable(el, _('Draft'));
             }
             row.appendChild(el);
         });
@@ -1477,15 +1499,17 @@ class Game {
             const n = colorCounts[col] ?? 0;
             const hasPatch = patchColors.has(col);
             const title = hasPatch ? `${colourName(col)}: ${n} (${_('includes Patch')})` : `${colourName(col)}: ${n}`;
-            return `<span class="ucs-tally-chip" title="${title}">`
-                + `<span class="ucs-tally-swatch ucs-color-${col}">${hasPatch ? '<span class="ucs-tally-patch">P</span>' : ''}</span>`
-                + `<span class="ucs-tally-count">${n}</span></span>`;
+            // The swatch is a bare colour block and the count sits beside it — as separate nodes a reader
+            // announces "4" with no idea what of. Name the whole chip and hide its parts.
+            return `<span class="ucs-tally-chip" title="${title}" role="img" aria-label="${title}">`
+                + `<span class="ucs-tally-swatch ucs-color-${col}" aria-hidden="true">${hasPatch ? '<span class="ucs-tally-patch">P</span>' : ''}</span>`
+                + `<span class="ucs-tally-count" aria-hidden="true">${n}</span></span>`;
         }).join('');
         const iconRow = this.material.icons.map((ic) => {
             const n = iconCounts[ic] ?? 0;
-            return `<span class="ucs-tally-chip" title="${iconName(ic)}: ${n}">`
-                + `<span class="ucs-tally-icon"><span class="ucs-icon ucs-icon-${ic}"></span></span>`
-                + `<span class="ucs-tally-count">${n}</span></span>`;
+            return `<span class="ucs-tally-chip" title="${iconName(ic)}: ${n}" role="img" aria-label="${iconName(ic)}: ${n}">`
+                + `<span class="ucs-tally-icon" aria-hidden="true"><span class="ucs-icon ucs-icon-${ic}"></span></span>`
+                + `<span class="ucs-tally-count" aria-hidden="true">${n}</span></span>`;
         }).join('');
         box.innerHTML = `<div class="ucs-tally-row">${colorRow}</div><div class="ucs-tally-row">${iconRow}</div>`;
     }
@@ -2097,15 +2121,22 @@ class Game {
     /** Style an existing piece as a placement target/destination; `onClick` (if given) makes it clickable. */
     applyTarget(el, mode, onClick) {
         el.classList.add('ucs-target', mode === 'selected' ? 'ucs-target-selected' : 'ucs-target-option');
-        if (onClick)
+        if (onClick) {
             el.addEventListener('click', onClick);
+            // The card's own name is already on the element (attachTooltip) — prefix it so the target
+            // reads as an action, and say when it is the currently chosen one.
+            this.markActionable(el, mode === 'selected' ? _('Chosen — cover') : _('Cover'));
+        }
     }
     /** A non-interactive dotted placeholder for a still-empty orientation in a started sweater. */
     makeEmptySlot(slot) {
         const cell = document.createElement('div');
         cell.className = `ucs-card ucs-ghost ucs-slot-empty ucs-slot-${slot}`;
         cell.style.gridArea = slot;
-        cell.innerHTML = `<div class="ucs-ghost-label">${slot}</div>`;
+        // The visible label is the bare letter (L/R/B); a screen reader needs the word.
+        cell.innerHTML = `<div class="ucs-ghost-label" aria-hidden="true">${slot}</div>`;
+        cell.setAttribute('role', 'img');
+        cell.setAttribute('aria-label', `${orientationName(slot)} — ${_('empty')}`);
         return cell;
     }
     /** A ghost cell at `slot`; `onClick` (if given) makes it clickable. */
@@ -2113,18 +2144,30 @@ class Game {
         const ghost = document.createElement('div');
         ghost.className = `ucs-card ucs-ghost ucs-target ${mode === 'selected' ? 'ucs-target-selected' : 'ucs-target-option'} ucs-slot-${slot}`;
         ghost.style.gridArea = slot;
-        ghost.innerHTML = `<div class="ucs-ghost-label">${slot}</div>`;
-        if (onClick)
+        ghost.innerHTML = `<div class="ucs-ghost-label" aria-hidden="true">${slot}</div>`;
+        ghost.setAttribute('aria-label', orientationName(slot));
+        if (onClick) {
             ghost.addEventListener('click', onClick);
+            this.markActionable(ghost, mode === 'selected' ? _('Chosen — place at') : _('Place at'));
+        }
+        else {
+            ghost.setAttribute('role', 'img');
+        }
         return ghost;
     }
     /** A slot-less ghost for starting a NEW sweater with a floating patch; `onClick` makes it clickable. */
     makeFloatGhost(mode, onClick) {
         const ghost = document.createElement('div');
         ghost.className = `ucs-card ucs-ghost ucs-floating ucs-target ${mode === 'selected' ? 'ucs-target-selected' : 'ucs-target-option'}`;
-        ghost.innerHTML = `<div class="ucs-ghost-label">${_('float')}</div>`;
-        if (onClick)
+        ghost.innerHTML = `<div class="ucs-ghost-label" aria-hidden="true">${_('float')}</div>`;
+        ghost.setAttribute('aria-label', _('New sweater (patch floats)'));
+        if (onClick) {
             ghost.addEventListener('click', onClick);
+            this.markActionable(ghost, mode === 'selected' ? _('Chosen —') : _('Start'));
+        }
+        else {
+            ghost.setAttribute('role', 'img');
+        }
         return ghost;
     }
     /**
@@ -2383,6 +2426,26 @@ class Game {
         // gameui.addTooltipHtml works on an element id; ours are unique (ucs-card-<id>). Deferred via
         // addTip because callers build the card detached and append it after this call (see addTip).
         this.addTip(el.id, cardTooltip(card, this.material));
+        // Every card on the table funnels through here, so this is the one place that has to give a
+        // sprite-painted div an accessible name. Clickable cards are upgraded to role="button" by
+        // markActionable, which runs after this and keeps the name it finds here.
+        el.setAttribute('role', 'img');
+        el.setAttribute('aria-label', cardAriaLabel(card, this.material));
+    }
+    /**
+     * Promote an already-labelled element to an activatable control: role="button", and the name gains
+     * a verb so a screen reader announces "Draft Red 7 · Bell · Left", not just the card. Names-only by
+     * design — these are click targets, not keyboard-focusable widgets (no tabindex here on purpose).
+     *
+     * Idempotent: the un-prefixed name is stashed on the element, so re-running this over a live node
+     * (attachTinaClickHandlers re-marks the same pieces on every panel re-render, and the verb changes
+     * as selection changes) re-prefixes the base rather than stacking "Select Select Select Red 7".
+     */
+    markActionable(el, verb) {
+        el.setAttribute('role', 'button');
+        const base = el.dataset.ucsAriaBase ?? el.getAttribute('aria-label') ?? '';
+        el.dataset.ucsAriaBase = base;
+        el.setAttribute('aria-label', base ? `${verb} ${base}` : verb);
     }
     // ===================================================================================
     //  Selection API — called by the PlayCard / DraftCard state handlers
@@ -2956,9 +3019,12 @@ class Game {
             if (!el)
                 return;
             el.classList.add('ucs-tina-selectable');
-            if (Number(c.id) === this.tinaSelA || Number(c.id) === this.tinaSelB)
+            const chosen = Number(c.id) === this.tinaSelA || Number(c.id) === this.tinaSelB;
+            if (chosen)
                 el.classList.add('ucs-tina-chosen');
             el.onclick = (e) => { e.preventDefault(); e.stopPropagation(); this.tinaClickPiece(Number(c.id)); };
+            // Selection is shown by a glow alone; the name has to carry it too.
+            this.markActionable(el, chosen ? _('Chosen — select') : _('Select'));
         });
     }
     tinaClickPiece(id) {
@@ -3031,6 +3097,9 @@ class Game {
             const b = document.createElement('button');
             b.className = 'ucs-assign-opt' + (sel.value === v ? ' ucs-assign-chosen' : '');
             b.textContent = String(v);
+            // The digit alone is ambiguous read aloud next to the icon row — say what it sets.
+            b.setAttribute('aria-label', `${_('Value')} ${v}`);
+            b.setAttribute('aria-pressed', String(sel.value === v));
             b.onclick = () => { sel.value = v; this.renderKnitting(this.myId); };
             valGrid.appendChild(b);
         }
@@ -3039,8 +3108,13 @@ class Game {
         this.material.icons.forEach((ic) => {
             const b = document.createElement('button');
             b.className = 'ucs-assign-opt ucs-assign-icon' + (sel.icon === ic ? ' ucs-assign-chosen' : '');
-            b.innerHTML = `<span class="ucs-icon ucs-icon-${ic}"></span>`;
-            b.title = ic;
+            // The glyph is pure art; the button carries the name, so hide the span from the a11y tree.
+            b.innerHTML = `<span class="ucs-icon ucs-icon-${ic}" aria-hidden="true"></span>`;
+            // iconName, not the raw key — `ic` is the untranslated material id ("snowman"), which was
+            // leaking into the visible hover tooltip in every language.
+            b.title = iconName(ic);
+            b.setAttribute('aria-label', iconName(ic));
+            b.setAttribute('aria-pressed', String(sel.icon === ic));
             b.onclick = () => { sel.icon = ic; this.renderKnitting(this.myId); };
             iconGrid.appendChild(b);
         });
@@ -3190,6 +3264,9 @@ class Game {
             backdrop.className = 'ucs-popin-backdrop';
             // Clicking away from the sheet minimizes rather than dismisses — it's the natural gesture for
             // "let me see the board", and unlike Okay it costs nothing (the sheet is one click away).
+            // Hidden from the a11y tree: it duplicates the Minimize button, so announcing it would only
+            // add a nameless control between the reader and the sheet.
+            backdrop.setAttribute('aria-hidden', 'true');
             backdrop.onclick = () => this.setRoundSummaryMinimized(true);
             overlay.appendChild(backdrop);
         }
