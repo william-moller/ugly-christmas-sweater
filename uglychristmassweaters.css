@@ -2122,15 +2122,12 @@ table.ucs-scorepad th, table.ucs-scorepad td {
   z-index: 949;
 }
 
-#ucs-table.ucs-narrow {
-  box-sizing: border-box;
-  max-width: 100vw;
-}
 #ucs-table.ucs-narrow #ucs-upper {
   flex-direction: column;
 }
 #ucs-table.ucs-narrow #ucs-lower {
   flex-direction: column;
+  container-type: inline-size;
 }
 #ucs-table.ucs-narrow #ucs-center-stack,
 #ucs-table.ucs-narrow #ucs-my-area {
@@ -2138,7 +2135,7 @@ table.ucs-scorepad th, table.ucs-scorepad td {
   box-sizing: border-box;
 }
 #ucs-table.ucs-narrow #ucs-my-area {
-  --ucs-card-w: min(calc(80px * var(--ucs-card-scale, 1)), 25vw);
+  --ucs-card-w: min(calc(80px * var(--ucs-card-scale, 1)), 25cqi);
   --ucs-card-h: calc(var(--ucs-card-w) * 1.556);
 }
 #ucs-table.ucs-narrow #ucs-center-stack {

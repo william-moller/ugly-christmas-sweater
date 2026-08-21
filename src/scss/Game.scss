@@ -1786,30 +1786,34 @@ $narrow-ref-cap: 135px;   // 90 x 1.5  — Fads / Perfect Fit / Trendy Yarn
 $narrow-santa-cap: 192px; // 128 x 1.5 — Secret Santa cards
 
 #ucs-table.ucs-narrow {
-    // ---- The anchor. Do not remove: every card size below is measured against it. ------------------
+    // ⚠️ NO VIEWPORT UNITS IN THIS BLOCK. Not vw, not vh, not svw/dvw. Container query units only.
     //
-    // Nearly every zone here sizes off a CONTAINER query, which makes the whole layout only as correct
-    // as the table's own width — and the table is a percentage chain down from <body>, so anything that
-    // overflows horizontally drags it wider. That is not hypothetical: it happened, and it is a
-    // FEEDBACK LOOP rather than a one-off error. Something overflows -> the page grows -> the cqi zones
-    // read the bigger container and grow to their caps -> they hold it wide. Once running it never
-    // recovers, because the library and the container queries alike now measure the widened box and
-    // conclude there is room.
+    // BGA applies a CSS `zoom` to the game area on a narrow screen: measured on a Pixel 8, the game is
+    // laid out at ~703 CSS px and zoomed by ~0.586 to fit the 412px device viewport. Viewport units do
+    // NOT follow that zoom — `100vw` resolves against the device viewport (412), which is 59% of the
+    // width the layout actually has, and then gets scaled by the zoom on the way out. Container query
+    // units resolve against a real element in the same space as everything else, so they are correct
+    // by construction whatever BGA decides to do.
     //
-    // Measured on a Pixel 8 (412px viewport): the page settled at 722px, the Draft Pool pinned at its
-    // 128px cap and the Secret Santa near its 192px, while the round parameters — capped in `vw` at the
-    // time, the one unit the loop cannot move — stayed correctly at 72px and so read as far too small
-    // NEXT to everything else. That asymmetry is the diagnostic: if viewport-relative and
-    // container-relative lengths disagree on this layout, the page has been stretched.
+    // This has now cost two deploys, in both directions:
+    //   * `--ucs-interactive-w: min(128px, 25vw - 30px)` capped the round parameters at 59% of what
+    //     the pool beside them was drawn at, which reads as "the parameters are too small" and invites
+    //     exactly the wrong fix.
+    //   * `max-width: 100vw` on this element — added to "anchor" the layout — pinned a 703px-wide
+    //     table to 412 layout px, i.e. 241 device px, and squeezed the whole game into 58% of the
+    //     screen with a band of bare table beside it.
     //
-    // 100vw is the one width nothing inside the document can influence, so pinning the table to it
-    // breaks the loop at the top and re-pins every zone underneath. border-box because #ucs-table
-    // carries 8px of padding that must come out of the viewport, not be added to it.
-    box-sizing: border-box;
-    max-width: 100vw;
+    // The give-away in both cases: a vw-sized element and a cqi-sized element DISAGREE about how wide
+    // the page is. That is not a stretched page, it is the zoom, and the vw one is the wrong one.
+    // The calibration trick that settles it is in responsive.md.
 
     #ucs-upper { flex-direction: column; }
-    #ucs-lower { flex-direction: column; }
+    // A query container so #ucs-my-area below can size off the table's real width. Without it, cqi
+    // there would fall back to the small viewport — i.e. straight back to the vw bug above.
+    #ucs-lower {
+        flex-direction: column;
+        container-type: inline-size;
+    }
     // Full width for the stacked play zones and knitting area.
     //
     // border-box is load-bearing, not tidiness: #ucs-my-area carries 8px of padding and a 2px border, so
@@ -1824,11 +1828,15 @@ $narrow-santa-cap: 192px; // 128 x 1.5 — Secret Santa cards
 
     // My knitting area is the last zone still sized straight off the Card-size preference, and a sweater
     // is two cards wide (L+R over B) — so at Large on a phone one sweater claimed 240px of a 344px screen.
-    // Cap it at a share of the viewport: the preference still orders the sizes, but it can no longer set
-    // how many sweaters fit per row. 25vw keeps two builds across at 360px and stops biting entirely by
-    // ~960px, where the uncapped size is smaller than the cap anyway.
+    // Cap it at a share of the TABLE (25cqi against #ucs-lower): the preference still orders the sizes,
+    // but it can no longer set how many sweaters fit per row. Two builds across at 360px, and it stops
+    // biting entirely by ~960px where the uncapped size is smaller than the cap anyway.
+    //
+    // 25cqi, not the 25vw this used to carry — under BGA's zoom that was 25% of the device viewport
+    // rather than of the table, i.e. ~15% of the real width, so the cap bit far harder than intended.
+    // See the no-viewport-units note at the top of this block.
     #ucs-my-area {
-        --ucs-card-w: min(calc(#{$card-w} * var(--ucs-card-scale, 1)), 25vw);
+        --ucs-card-w: min(calc(#{$card-w} * var(--ucs-card-scale, 1)), 25cqi);
         --ucs-card-h: calc(var(--ucs-card-w) * 1.556);
     }
 

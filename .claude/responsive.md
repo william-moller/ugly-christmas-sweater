@@ -81,47 +81,75 @@ Note what the ceiling does **not** cost. The Fad's printed objectives ("All Yell
 legibility, and `fadTooltip` is what carries that text at every phone width. This is the "cut the
 caption rather than size for it" rule applied to a whole card.
 
-## Overflow is not cosmetic here — it is a feedback loop
+## BGA scale-to-fits the game area. Never use viewport units.
 
-Almost every zone in the narrow layout sizes off a **container query**, which makes the whole layout
-only as correct as `#ucs-table`'s own width — and that is a percentage chain down from `<body>`. So
-anything that overflows horizontally drags the table wider, the `cqi` zones read the bigger container
-and grow to their caps, and *they hold it wide*. It does not settle back. The library measuring the
-fan and the container queries alike now see a box with room in it.
+**On a narrow screen BGA lays the game area out much wider than the device and applies a CSS `zoom` to
+fit.** Measured on a Pixel 8 (412px viewport), by calibrating against `.ucs-my-pile .ucs-pile-card` —
+a hard-coded `52 × 73px`, so it can only change size if the whole area is being scaled:
 
-Observed on a Pixel 8 (412px viewport): the page settled at **722px**, the Draft Pool pinned at its
-128px cap and the Secret Santa near its 192px. Two `box-sizing` slips were feeding it — `#ucs-my-area`
-(8px padding + 2px border on a `width: 100%` content-box element, so `100% + 20px`) and
-`#ucs-sidebar .ucs-oppo` (`100% + 16px`) — neither of which is a 20px problem once the loop has hold
-of it.
+| BGA UI mode | rendered pile | zoom | layout width the game gets |
+|-------------|--------------:|-----:|---------------------------:|
+| Fullscreen  | ~30px | **0.586** | ~703 CSS px |
+| Windowed    | ~23px | **0.458** | ~900 CSS px |
 
-Three defences, all of them now in `Game.scss`:
+Three consequences, and the third is the one that cost real time:
 
-1. **`#ucs-table.ucs-narrow` is pinned to `max-width: 100vw`** (with `box-sizing: border-box`, since
-   the table carries 8px of padding). `100vw` is the one width nothing inside the document can
-   influence, so this breaks the loop at the top and re-pins every zone underneath. It is the anchor
-   the rest of this file's arithmetic assumes; do not remove it.
-2. **`box-sizing: border-box` on every `width: 100%` zone that has padding or a border.** The three
-   that bit are commented in place.
-3. **Check `scrollWidth`, not just the screenshot.** The harness under "Verifying a change" asserts
-   `document.documentElement.scrollWidth === innerWidth` at 320 / 360 / 411 / 768 in both variants.
+1. **The narrow layout is not laying out for 412px.** It lays out for 700–900, and BGA shrinks the
+   result. Everything here is relative, so that is fine — but do not reason about phone layouts in
+   device pixels, and do not "fix" something because it looks small in a screenshot.
+2. **The zoom is not a constant.** It moves with BGA's UI mode, so nothing may hard-code it. Where JS
+   genuinely needs it, `Game.ts::visualScale` recovers it by measuring one element in both spaces.
+3. **Viewport units do not follow the zoom.** `100vw` resolves against the *device* viewport (412),
+   which is 45–59% of the width the layout actually has, and is then scaled again on the way out.
+   In a layout otherwise built on container queries, that makes any `vw` length wrong by the zoom
+   factor — and wrong by a factor that changes when the player toggles fullscreen.
 
-### The diagnostic: viewport units and container units disagreeing
+**So: no `vw`/`vh` inside `#ucs-table.ucs-narrow`. Container query units only.** The exceptions are
+BGA's own dialogs (`#popin_bgaHelpDialog_contents` and friends), which are appended outside the zoomed
+area, and the wide-layout Avid Santa row, whose `calc` shares a frame with the `@media (min-width:)`
+that gates it.
 
-Worth recognising, because the symptom points at the wrong thing. With the parameter row capped in
-`vw` and everything else in `cqi`, the stretched page rendered the **parameters correctly at 72px** —
-`vw` is immune to the loop — while the pool ballooned to 124px. It read as *"the parameters are too
-small"*, and the obvious next move (grow the parameters) would have been exactly wrong.
+### What this cost, twice, in both directions
 
-**If a `vw`-sized and a `cqi`-sized element disagree about how wide the page is, the page has been
-stretched.** That asymmetry is the tell, and it only exists because of the mistake above — which is
-the one good argument for keeping a single viewport-relative canary somewhere.
+Recorded because the symptom points away from the cause each time:
 
-Second-order lesson, since it cost a deploy: **a screenshot has no scale bar.** What settled this was
-measuring `.ucs-my-pile .ucs-pile-card`, a hard-coded `52 × 73px`, in the screenshot — it came out
-31 × 45, so the image was at 0.60× and therefore a *full-page* capture of a 722px-wide page, not a
-412px one. Every px I had read off that image was wrong by the same factor. When measuring a
-screenshot, find a fixed-px element first and calibrate against it.
+- `--ucs-interactive-w: min(128px, 25vw - 30px)` capped the round parameters at ~59% of what the Draft
+  Pool beside them was drawn at. It read as *"the parameters are too small"* — inviting the exact wrong
+  fix — when the parameters were the only correctly-sized thing on the row.
+- `max-width: 100vw` on `#ucs-table.ucs-narrow`, added to "anchor" the layout against a page-widening
+  loop that **does not exist**, pinned a 703px-wide table to 412 layout px = 241 device px and squeezed
+  the whole game into 58% of the screen.
+- `#ucs-my-area`'s `25vw` knitting cap (pre-existing) was really ~15% of the table, so it bit far
+  harder than the 25% it was written for. Now `25cqi` against `#ucs-lower`.
+
+The tell in every case: **a `vw`-sized element and a `cqi`-sized element disagreeing about how wide the
+page is.** That is the zoom, and the `vw` one is the wrong one. There is no page-stretching bug to hunt.
+
+### JS has the same trap, in a sharper form
+
+Under `zoom`, `getBoundingClientRect()` is **post**-zoom (device px) and `offsetWidth` is **pre**-zoom
+(layout px). Mixing them silently scales a result by the zoom factor:
+
+- `handCardWidth` measures with `offsetWidth`, because the number goes to bga-cards as `cardWidth`,
+  which is a layout px.
+- `placeFan` measures card positions with rects (device px) but writes a `transform`, which applies in
+  the element's own layout px — so the correction is divided by `visualScale` first. Without that the
+  fan settled visibly left of centre and the lift under-applied by ~40%.
+
+### Calibrating a screenshot
+
+A screenshot has no scale bar, and under scale-to-fit you cannot assume one. **Find a hard-coded-px
+element and measure it first.** `.ucs-my-pile .ucs-pile-card` (52 × 73) is the reliable one here: it
+is fixed in the stylesheet, always on screen next to the hand, and takes no part in any card-size
+preference or container query. Every px read off an uncalibrated screenshot in this session was wrong,
+in one case by 40%.
+
+### Box-sizing (unrelated to the zoom, but real)
+
+Three `width: 100%` zones carried padding or a border on a content-box, so they overflowed their row by
+16–20px: `#ucs-my-area`, `#ucs-sidebar .ucs-oppo`, and Avid's lifted `#ucs-secret-santa`. All now
+`border-box`, and the harness asserts `scrollWidth === innerWidth` at 320 / 360 / 411 / 768 in both
+variants. This was **not** what caused any of the sizing complaints above — do not conflate them.
 
 **Reference card (Perfect Fit / Trendy Yarn / Round Tracker in the rail): floor 95px wide.**
 Driven entirely by the Round Tracker: each wreath is `0.265 × W`, and the printed 1–12 numeral inside

@@ -332,16 +332,24 @@ export class Game {
      *
      *     W <= (band - 24) / 2.8
      *
-     * Capped at 144px ($card-w * 1.8). The hand gets its own ceiling rather than the Draft Pool's 128,
-     * because it is the one zone you choose from under time pressure and the only one handed the full
-     * width — it is *meant* to be the biggest card on a phone.
+     * Capped at 200px. The hand gets its own ceiling rather than the Draft Pool's 128, because it is the
+     * one zone you choose from under time pressure and the only one handed the full width — it is
+     * *meant* to be the biggest card on a phone. The cap is in LAYOUT px like everything else here, so
+     * what reaches the screen is 200 x zoom; at the measured 0.586 that is ~117 device px against the
+     * ~79 the previous 144 cap gave. This is the number to nudge if the hand still reads small.
      *
-     * `band` is MEASURED off the holder, not taken from window.innerWidth, and deliberately so. The
-     * attached (in-flow) fan gets the holder — the table's content width — while the floating one gets
-     * the viewport, so the holder is the narrower of the two states and sizing off it keeps the strip
-     * uncovered in both. Measuring also means the number cannot disagree with the layout the way a
-     * viewport-relative length can when the page has been stretched (see the max-width note at the top
-     * of the .ucs-narrow block in Game.scss).
+     * `band` is MEASURED off the holder via **offsetWidth**, and both halves of that matter.
+     *
+     * Measured, because window.innerWidth is the wrong quantity: BGA scale-to-fits the game area with a
+     * CSS zoom on a narrow screen (~0.586 fullscreen, ~0.458 windowed, measured on a Pixel 8), so the
+     * viewport is 412 while the layout the cards actually live in is 700-900 CSS px wide. Sizing a card
+     * off the viewport in a zoomed layout is the same unit error as `vw` in the stylesheet — see the
+     * no-viewport-units note at the top of the .ucs-narrow block in Game.scss.
+     *
+     * offsetWidth rather than getBoundingClientRect().width, because under `zoom` those two are in
+     * DIFFERENT SPACES: the rect is post-zoom (device px), offsetWidth is pre-zoom (layout px). The
+     * number here is handed to bga-cards as `cardWidth`, which it uses as a layout px, so it has to be
+     * measured in layout px or the hand comes out wrong by exactly the zoom factor.
      *
      * Deliberately PREFERENCE-INDEPENDENT below 700px, like every other narrow zone (responsive.md,
      * "Upper caps"): at Large the old 96 * 1.4 = 134px puts the step at 19% of the card, which clips the
@@ -353,11 +361,12 @@ export class Game {
      */
     private handCardWidth(): number {
         if (window.innerWidth > 700) return Math.round(96 * this.handSizeScale());
-        // The holder is in flow and full-width, so it measures the table's content width. Guard against
-        // a not-yet-laid-out box (it would collapse the hand to nothing) by falling back to the viewport.
-        const holder = document.getElementById('ucs-my-hand')?.getBoundingClientRect().width ?? 0;
-        const band = Math.min(window.innerWidth, holder > 200 ? holder : Infinity);
-        return Math.min(144, Math.floor((band - 24) / 2.8));
+        // The holder is in flow and full-width, so its offsetWidth is the table's content width in
+        // layout px. Guard against a not-yet-laid-out box (it would collapse the hand to nothing) by
+        // falling back to the viewport — wrong space under zoom, but a usable size beats none.
+        const holder = document.getElementById('ucs-my-hand')?.offsetWidth ?? 0;
+        const band = holder > 200 ? holder : window.innerWidth;
+        return Math.min(200, Math.floor((band - 24) / 2.8));
     }
 
     private setupHandStock() {
@@ -1870,13 +1879,20 @@ export class Game {
             right = Math.max(right, b.right);
         });
         if (!isFinite(left) || !isFinite(right)) return;
+        // getBoundingClientRect is post-zoom (device px); a transform on this element is applied in its
+        // own pre-zoom space (layout px). Under BGA's scale-to-fit those differ by the zoom factor, so a
+        // correction measured from rects and written straight into translate() lands short by exactly
+        // that factor — the fan stayed visibly left of centre. Recover the factor by measuring the same
+        // element both ways rather than assuming a value, since it changes with BGA's UI mode
+        // (~0.586 fullscreen, ~0.458 windowed on a Pixel 8).
+        const zoom = this.visualScale(fan);
         const previousShift = parseFloat(fan.dataset.ucsShift ?? '') || 0;
-        const delta = window.innerWidth / 2 - (left + right) / 2;
+        const delta = (window.innerWidth / 2 - (left + right) / 2) / zoom;
         // Under 2px the horizontal pass has converged; keep the shift rather than churning on jitter.
         const shift = Math.abs(delta) < 2 ? previousShift : previousShift + delta;
-        const lift = this.fanLift(cards, parseFloat(fan.dataset.ucsLift ?? '') || 0);
+        const lift = this.fanLift(cards, parseFloat(fan.dataset.ucsLift ?? '') || 0) / zoom;
         fan.dataset.ucsShift = String(shift);
-        fan.dataset.ucsLift = String(lift);
+        fan.dataset.ucsLift = String(lift * zoom); // stored in device px, the space fanLift measures in
         fan.style.transform = `translate(${shift}px, ${-lift}px)`;
     }
 
@@ -1907,6 +1923,20 @@ export class Game {
      * moves. Deliberately not gated on `.ucs-narrow`: the buttons are position:fixed at every width, so
      * the question is always geometric rather than a breakpoint's to answer.
      */
+    /**
+     * How much smaller the page is painted than it is laid out — BGA's scale-to-fit zoom on the game
+     * area, recovered by measuring one element in both spaces (getBoundingClientRect is post-zoom,
+     * offsetWidth is pre-zoom). Measured rather than read from a variable because it is not ours to
+     * know: it changes with BGA's UI mode, and `--bga-game-zoom` is not always the whole story.
+     * Returns 1 when there is nothing to measure, which is also the un-zoomed answer.
+     */
+    private visualScale(el: HTMLElement): number {
+        const layout = el.offsetWidth;
+        if (!layout) return 1;
+        const ratio = el.getBoundingClientRect().width / layout;
+        return ratio > 0.05 && ratio < 20 ? ratio : 1; // ignore nonsense from a mid-teardown box
+    }
+
     private fanLift(cards: HTMLElement[], currentLift: number): number {
         // Our own lower-left strip, measured rather than assumed: it holds the "?" and, once a round has
         // been scored, the round-summary restore chip beside it, so its width is not a constant.
