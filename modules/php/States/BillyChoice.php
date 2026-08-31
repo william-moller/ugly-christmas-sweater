@@ -33,13 +33,18 @@ class BillyChoice extends GameState
     function onEnteringState()
     {
         $this->game->globals->set('billyDiscardIndex', -1); // reset every trick
-        $order = array_values(array_map('intval', (array) $this->game->globals->get('draftOrder')));
 
         if ($this->willPrompt()) {
             $this->game->gamestate->changeActivePlayer((int) $this->game->bonusOwner(Material::BONUS_BILLY));
             return null; // wait for actBillyActivate / actBillySkip
         }
-        return $this->beginDrafting($order);
+        return $this->beginDrafting($this->draftOrder());
+    }
+
+    /** This trick's draft order (player_ids, best-first) as ints. */
+    private function draftOrder(): array
+    {
+        return array_values(array_map('intval', (array) $this->game->globals->get('draftOrder')));
     }
 
     public function getArgs(): array
@@ -54,7 +59,7 @@ class BillyChoice extends GameState
         if (!$this->game->bonusEnabled()) {
             return false;
         }
-        $order = array_values(array_map('intval', (array) $this->game->globals->get('draftOrder')));
+        $order = $this->draftOrder();
         $owner = $this->game->bonusOwner(Material::BONUS_BILLY);
         return $owner !== null && !empty($order) && $order[0] !== $owner && in_array($owner, $order, true);
     }
@@ -71,7 +76,7 @@ class BillyChoice extends GameState
     public function actBillyActivate()
     {
         $owner = (int) $this->game->getActivePlayerId();
-        $order = array_values(array_map('intval', (array) $this->game->globals->get('draftOrder')));
+        $order = $this->draftOrder();
 
         // Move ONE of the owner's draft-order entries to the front; that first draft becomes the discard.
         $idx = array_search($owner, $order, true);
@@ -95,15 +100,11 @@ class BillyChoice extends GameState
     public function actBillySkip()
     {
         // Not consumed — the owner keeps Billy for a later trick.
-        return $this->beginDrafting(
-            array_values(array_map('intval', (array) $this->game->globals->get('draftOrder')))
-        );
+        return $this->beginDrafting($this->draftOrder());
     }
 
     function zombie(int $playerId)
     {
-        return $this->beginDrafting(
-            array_values(array_map('intval', (array) $this->game->globals->get('draftOrder')))
-        );
+        return $this->beginDrafting($this->draftOrder());
     }
 }

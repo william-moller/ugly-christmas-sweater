@@ -92,6 +92,12 @@ a hard-coded `52 × 73px`, so it can only change size if the whole area is being
 | Fullscreen  | ~30px | **0.586** | ~703 CSS px |
 | Windowed    | ~23px | **0.458** | ~900 CSS px |
 
+⚠️ **These numbers were measured while `gameinfos.jsonc` declared `game_interface_width.min: 740`,
+which is the upstream cause of the zoom** — BGA lays the area out at the declared minimum and scales
+it to the device. That declaration is now 490, so the whole table above is due for re-measurement;
+see the backlog item. Everything below still holds regardless of the factor's value: the zoom does not
+go away, it only shrinks, and mixing the two coordinate spaces is wrong at any factor.
+
 Three consequences, and the third is the one that cost real time:
 
 1. **The narrow layout is not laying out for 412px.** It lays out for 700–900, and BGA shrinks the

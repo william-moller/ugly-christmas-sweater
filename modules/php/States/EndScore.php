@@ -9,9 +9,12 @@ use Bga\Games\UglyChristmasSweaters\Game;
 
 const ST_END_GAME = 99;
 
+/**
+ * Final scoring, entered from ScoreRound after the last round. Applies the Avid all-Secret-Santas gate,
+ * folds the two tie-breakers into player_score_aux, then ends the game (or stops on Studio).
+ */
 class EndScore extends \Bga\GameFramework\States\GameState
 {
-
     function __construct(
         protected Game $game,
     ) {
@@ -21,11 +24,6 @@ class EndScore extends \Bga\GameFramework\States\GameState
         );
     }
 
-    /**
-     * Game state action, example content.
-     *
-     * The onEnteringState method of state `EndScore` is called just before the end of the game.
-     */
     public function onEnteringState() {
         // Avid mode: a player who did not complete ALL 3 of their Secret Santas by game end does not
         // qualify — their FINAL score is set to 0 (the round scorepad already flagged them with an

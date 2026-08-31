@@ -9,10 +9,10 @@
 
 -- Database schema for Ugly Christmas Sweaters.
 -- The standard tables ("global", "stats", "gamelog", "player") already exist and must not be re-created.
--- Note: the schema is (re)built from this file only when a new game starts.
+-- The schema is (re)built from this file only when a new game starts.
 --
--- DRAFT (2026-06-17): structure first. Card *values* are filled from Material.php; the per-card
--- icon/orientation data is pending the art files. See CLAUDE.md "Implementation Notes".
+-- Only DYNAMIC state lives here. Static card data (faces, fad/Secret Santa/bonus definitions, VP values)
+-- lives in modules/php/Material.php, per the BGA guideline.
 
 
 -- =====================================================================
@@ -20,12 +20,17 @@
 -- Managed by the BGA "Deck" component:  $this->cards = $this->deckFactory->createDeck('card');
 --   card_type      = colour ('purple' | 'red' | 'green' | 'yellow')         [static, see Material::COLORS]
 --   card_type_arg  = value 1..12  (0 = patch / wild)                        [static]
---   card_location  = 'deck' | 'hand' | 'draftpool' | 'trick' | 'knitting' | 'discard'
---   card_location_arg = player_id for deck/hand/trick/knitting ; slot index 0..3 for draftpool
--- NOTE: each player has their own face-down 'deck' pile (location_arg = player_id), plus a 'hand'.
--- IMPORTANT (modern framework): the Deck component AUTO-CREATES this table with the 5 standard columns,
--- ignoring extra columns added here. So our dynamic per-card extras live in a SEPARATE table
--- (card_meta, below) which dbmodel.sql creates normally. Keep this table to the standard 5 columns.
+--   card_location  = see the Game::LOC_* constants:
+--                      'deck'       transient shuffle source while dealing  (Game::LOC_SOURCE)
+--                      'pile_<pid>' a player's personal face-down pile      (Game::pileLoc)
+--                      'hand'       arg = player_id                         (LOC_HAND)
+--                      'draftpool'  arg = slot 0..3                         (LOC_DRAFTPOOL)
+--                      'trick'      arg = player_id who played it           (LOC_TRICK)
+--                      'knitting'   arg = player_id                         (LOC_KNITTING)
+--                      'discard'                                            (LOC_DISCARD)
+-- A Deck-backed table takes its NAME from createDeck(), but its COLUMNS must always be the five
+-- card_* ones below — the component's own SQL selects them by those names regardless of table name.
+-- Our dynamic per-card extras therefore live in a separate table (card_meta, below).
 -- =====================================================================
 CREATE TABLE IF NOT EXISTS `card` (
   `card_id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
@@ -39,11 +44,14 @@ CREATE TABLE IF NOT EXISTS `card` (
 
 -- =====================================================================
 -- card_meta : dynamic per-card extras that the Deck component does not manage.
--- One row per card (card_id matches `card`.card_id). Maintained via game SQL (UPSERT).
+-- One row per card (card_id matches `card`.card_id). Maintained via Game::setCardMeta (UPSERT), and
+-- read back by Game::getCardsWithExtras, which LEFT JOINs it onto `card`.
 --   trick_order : play order within the current trick (resolution tie-breaks; Perfect-Fit "later wins")
 --   build_no    : which sweater build in the owner's knitting area
---   slot        : 'L' | 'R' | 'B' — orientation slot occupied when placed in a build
---   wild_value / wild_icon : patch resolution (trick = copied; knit = chosen; orientation in slot)
+--   slot        : 'L' | 'R' | 'B' — orientation slot occupied when placed in a build (NULL = floating patch)
+--   wild_value / wild_icon : patch resolution (in a trick = copied; in knitting = chosen at round end)
+-- Wiped wholesale at the start of each round (Game::setupRound) so last round's build data cannot
+-- bleed into a re-dealt card.
 -- =====================================================================
 CREATE TABLE IF NOT EXISTS `card_meta` (
   `card_id` INT UNSIGNED NOT NULL,
@@ -59,11 +67,16 @@ CREATE TABLE IF NOT EXISTS `card_meta` (
 -- =====================================================================
 -- gameplay_card : Perfect Fit / Trendy Yarn / Fad cards (the round parameters)
 -- A second Deck:  $this->gameplayCards = $this->deckFactory->createDeck('gameplay_card');
---   card_type      = 'perfectfit' | 'trendyyarn' | 'fad'
---   card_type_arg  = id of the specific card within its set (maps to Material::PERFECT_FIT / TRENDY_YARN / FADS)
---   card_location  = 'pile_perfectfit' | 'pile_trendyyarn' | 'pile_fad' | 'active' | 'discard'
---   card_location_arg = 0 (or claim order). In Express, multiple Fads may be 'active' at once.
--- Base game: one of each is flipped to 'active' per round. Express: cycles via draw/discard.
+--   card_type      = 'perfectfit' | 'trendyyarn' | 'fad'                    (Game::GAMEPLAY_TYPES)
+--   card_type_arg  = Perfect Fit value / index into Material::COLORS / Fad id
+--   card_location  = 'deck_<type>'   face-down draw pile per type           (Game::gpDeckLoc)
+--                    'seen_<type>'   revealed stack, arg = stack index      (Game::gpSeenLoc)
+--                                    the HIGHEST arg is the active card     (Game::activeGameplayCard)
+--                    'claimed_fad'   Express only, arg = claiming player_id (LOC_FAD_CLAIMED)
+--   NB 'seen_fad' doubles as the Express Fad DISPLAY (Game::LOC_FAD_DISPLAY), arg = display slot.
+-- Casual/Avid: one card per revealed type flips per round, older reveals stay under it. Express:
+-- Trendy Yarn rotates on a trick cadence and Perfect Fit is replaced when matched, each reshuffling
+-- its own seen stack back into the draw pile when it empties (Game::rotateGameplayDeck).
 -- =====================================================================
 CREATE TABLE IF NOT EXISTS `gameplay_card` (
   `card_id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
@@ -79,11 +92,11 @@ CREATE TABLE IF NOT EXISTS `gameplay_card` (
 -- =====================================================================
 -- secret_santa : per-player hidden objective cards (16 total)
 -- A Deck:  $this->secretSantas = $this->deckFactory->createDeck('secret_santa');
---   card_type_arg  = secret santa card id (maps to Material::SECRET_SANTA)
---   card_location  = 'box' (unused) | 'hand' (held by a player) | 'completed'
---   card_location_arg = owning player_id when 'hand' or 'completed'
--- Casual: 1 dealt per player per round (discarded after scoring).
--- Avid: 3 dealt per player at game start; must all be completed by game end.
+--   card_type_arg  = Secret Santa card id (maps to Material::secretSantas)
+--   card_location  = 'box' (undealt) | 'hand' (held, arg = player_id) | 'discard' (spent, out of play)
+-- Casual: 1 dealt per player per round. Express: 2. Both discard last round's before re-dealing, so a
+-- card someone has held cannot come back. Avid: 3 dealt per player at game start, never re-dealt; they
+-- must ALL be completed by game end (tracked in the 'avidSSDone' global, gated in States/EndScore).
 -- =====================================================================
 CREATE TABLE IF NOT EXISTS `secret_santa` (
   `card_id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
@@ -100,8 +113,7 @@ CREATE TABLE IF NOT EXISTS `secret_santa` (
 -- bonus_card : the 4 "Special Ability" cards (optional Kickstarter expansion, gameoptions id 102)
 -- A Deck:  $this->bonusCards = $this->deckFactory->createDeck('bonus_card');
 --   card_type_arg  = bonus card id 1..4 (maps to Material::bonusCards / BONUS_* constants)
---   card_location  = 'box' (undealt) | 'hand' (owned, face-up) | 'used' (one-shot spent)
---   card_location_arg = owning player_id when 'hand' or 'used'
+--   card_location  = 'box' (undealt) | 'hand' (owned face-up, arg = player_id) | 'used' (one-shot spent)
 -- Dealt 1 face-up per player at game start when the option is On; persist for the whole game.
 -- =====================================================================
 CREATE TABLE IF NOT EXISTS `bonus_card` (
@@ -118,18 +130,23 @@ CREATE TABLE IF NOT EXISTS `bonus_card` (
 -- =====================================================================
 -- player table extensions
 -- player_score      (built-in) = cumulative VP across rounds (the winner metric)
--- player_score_aux  (built-in) = tie-break #1, set at game end = -(unbuilt sweaters)  [higher is better]
--- player_fad_points (below)    = tie-break #2 = total Fad points scored across the game
+-- player_score_aux  (built-in) = accumulates -(unbuilt sweaters) per round, then is folded at game end
+--                                into the composite -(unbuilt) * Game::TIEBREAK_K + player_fad_points
+--                                (States/EndScore; gameinfos "tie_breaker_split" splits it for display)
+-- player_fad_points (below)    = total Fad VP scored across the game — tie-break #2
+--
+-- ⚠️ INT UNSIGNED here is load-bearing in the wrong direction: MySQL evaluates a whole expression as
+-- BIGINT UNSIGNED if ANY operand is unsigned, and the EndScore fold multiplies a deliberately NEGATIVE
+-- player_score_aux. That fold therefore CASTs this column AS SIGNED. Keep the cast if you touch it.
 -- =====================================================================
 ALTER TABLE `player` ADD `player_fad_points` INT UNSIGNED NOT NULL DEFAULT 0;
 
 
 -- =====================================================================
--- Global game state values (stored in the framework `global` table; declared in PHP, not here).
--- Planned globals:
---   round_no            1..3   (Casual) / 1 (Express)
---   leader_player_id    holder of the "1" Draft Order card (leads the next trick)
--- Active Perfect Fit value / Trendy Yarn colour / Fad(s) are derivable from gameplay_card @ 'active'
--- joined with Material; cache as globals if convenient.
--- Variant flags (Casual/Avid, Express, player count, bonus cards) come from gameoptions.jsonc.
+-- Globals live in the framework `global` table and are declared in PHP, not here — see
+-- Game::setupNewGame / setupRound for the authoritative list (roundNo, leaderId, trickIndex,
+-- draftOrder, draftOrderCards, draftIndex, scorepad, appliedPublic, handEndAnnounced,
+-- billyDiscardIndex, avidSSDone, avidSSRoundAward, and the Express set: fadClaims, expressTrickNo,
+-- pfMatched). The active round parameters are not globals — they are derived from gameplay_card's
+-- 'seen_<type>' stacks (Game::activeGameplayCard). Variant flags come from gameoptions.jsonc.
 -- =====================================================================

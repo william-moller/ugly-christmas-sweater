@@ -385,14 +385,10 @@ class Game extends \Bga\GameFramework\Table
 
         $sweaters = []; // sorted colour triple for each completed sweater
         foreach ($this->playerBuilds($playerId) as $bySlot) {
-            if (!isset($bySlot[Material::SLOT_LEFT], $bySlot[Material::SLOT_RIGHT], $bySlot[Material::SLOT_BOTTOM])) {
+            if (!self::isComplete($bySlot)) {
                 continue;
             }
-            $cols = [
-                $bySlot[Material::SLOT_LEFT]['type'],
-                $bySlot[Material::SLOT_RIGHT]['type'],
-                $bySlot[Material::SLOT_BOTTOM]['type'],
-            ];
+            $cols = array_map(fn($c) => $c['type'], self::trio($bySlot));
             sort($cols);
             $sweaters[] = $cols;
         }
@@ -695,6 +691,15 @@ class Game extends \Bga\GameFramework\Table
             "bonus"        => Material::bonusCards(),
             "colors"       => Material::COLORS,
             "icons"        => Material::ICONS,
+            // The scoring constants, so the client's live per-sweater badge and its tooltips read the
+            // same numbers the server scores with instead of hand-copied duplicates that can drift.
+            "vp"           => [
+                "sweater"     => Material::VP_SWEATER,
+                "run"         => Material::VP_RUN,
+                "fad"         => Material::VP_FAD,
+                "nonfad"      => Material::VP_NONFAD_MATCH,
+                "secretSanta" => Material::VP_SECRET_SANTA,
+            ],
         ];
 
         // Round info.
@@ -795,9 +800,8 @@ class Game extends \Bga\GameFramework\Table
     /** Build a player_id list in natural table order, rotated to start at $startId. */
     public function getPlayersInOrderStartingFrom(int $startId): array
     {
-        $order = array_keys($this->loadPlayersBasicInfos()); // table order (player_no)
-        // NOTE: loadPlayersBasicInfos isn't guaranteed ordered by player_no; sort explicitly.
-        $rows = $this->getCollectionFromDb("SELECT player_id id, player_no no FROM player ORDER BY player_no");
+        // Ordered explicitly: loadPlayersBasicInfos isn't guaranteed to come back sorted by player_no.
+        $rows  = $this->getCollectionFromDb("SELECT player_id id FROM player ORDER BY player_no");
         $order = array_map(fn($r) => (int) $r['id'], array_values($rows));
         $i = array_search($startId, $order);
         if ($i === false) return $order;
@@ -967,7 +971,7 @@ class Game extends \Bga\GameFramework\Table
     public function moveCardToTrick(int $cardId, int $playerId, ?int $copyFromCardId = null): void
     {
         $card    = $this->cards->getCard($cardId);
-        $isPatch = ((int) $card['type_arg']) === Material::PATCH_VALUE;
+        $isPatch = Material::isPatch((int) $card['type_arg']);
 
         // Resolve the patch's copied value/icon from the trick state BEFORE this card is added.
         $wildValue = null;
@@ -1071,7 +1075,7 @@ class Game extends \Bga\GameFramework\Table
         $fallback = ['build_no' => 0, 'slot' => '', 'floating_patch_slot' => ''];
 
         $card    = $this->cards->getCard($cardId);
-        $isPatch = ((int) $card['type_arg']) === Material::PATCH_VALUE;
+        $isPatch = Material::isPatch((int) $card['type_arg']);
         // A regular card always lands on its printed slot; a patch takes whichever slot we pick below.
         $printedSlot = $isPatch ? null : Material::sweater($card['type'], (int) $card['type_arg'])['slot'];
 
@@ -1155,7 +1159,7 @@ class Game extends \Bga\GameFramework\Table
         ?string $slot = null, ?string $floatingPatchSlot = null, ?string $mariaSlot = null
     ): array {
         $card    = $this->cards->getCard($cardId);
-        $isPatch = ((int) $card['type_arg']) === Material::PATCH_VALUE;
+        $isPatch = Material::isPatch((int) $card['type_arg']);
 
         // Group this player's knitting: oriented pieces per build, and any floating patch per build.
         $builds = [];          // buildNo => [slot => cardId]
@@ -1333,13 +1337,9 @@ class Game extends \Bga\GameFramework\Table
     /** Count completed sweaters (a build holding an L, R and B piece) in a player's knitting area. */
     public function countCompletedSweaters(int $playerId): int
     {
-        $byBuild = [];
-        foreach ($this->getCardsWithExtras(self::LOC_KNITTING, $playerId) as $c) {
-            $byBuild[(int) $c['buildNo']][$c['slot']] = true;
-        }
         $done = 0;
-        foreach ($byBuild as $slots) {
-            if (isset($slots[Material::SLOT_LEFT], $slots[Material::SLOT_RIGHT], $slots[Material::SLOT_BOTTOM])) {
+        foreach ($this->playerBuilds($playerId) as $bySlot) {
+            if (self::isComplete($bySlot)) {
                 $done++;
             }
         }
@@ -1371,6 +1371,45 @@ class Game extends \Bga\GameFramework\Table
             }
         }
         return $builds;
+    }
+
+    /**
+     * Every build a player has STARTED, keyed buildNo => [slot => card row], ascending by buildNo.
+     * Unlike playerBuilds this keeps a build that holds only a floating patch — it maps to an empty
+     * slot array — so callers that must count unfinished sweaters (scoreRound, roundScorepad) see it.
+     */
+    public function playerBuildsStarted(int $playerId): array
+    {
+        $builds = [];
+        foreach ($this->getCardsWithExtras(self::LOC_KNITTING, $playerId) as $c) {
+            $b = (int) $c['buildNo'];
+            $builds[$b] ??= [];
+            if ($c['slot'] !== null) {
+                $builds[$b][$c['slot']] = $c;
+            }
+        }
+        ksort($builds);
+        return $builds;
+    }
+
+    /** True when a build's slot map holds all three pieces (L + R + B) — i.e. a completed sweater. */
+    public static function isComplete(array $bySlot): bool
+    {
+        return isset($bySlot[Material::SLOT_LEFT], $bySlot[Material::SLOT_RIGHT], $bySlot[Material::SLOT_BOTTOM]);
+    }
+
+    /** A completed build's three pieces in L, R, B order. Callers must have checked isComplete first. */
+    public static function trio(array $bySlot): array
+    {
+        return [$bySlot[Material::SLOT_LEFT], $bySlot[Material::SLOT_RIGHT], $bySlot[Material::SLOT_BOTTOM]];
+    }
+
+    /** True when a card row is a Patch whose wild value/icon are still unresolved. */
+    public static function isUnresolvedPatch(array $card): bool
+    {
+        return Material::isPatch((int) $card['type_arg'])
+            && ($card['wildValue'] === null || $card['wildValue'] === ''
+                || $card['wildIcon'] === null || $card['wildIcon'] === '');
     }
 
     /** The active Fad for the round (round-bonus parameter), or null if none is active. */
@@ -1408,26 +1447,15 @@ class Game extends \Bga\GameFramework\Table
      */
     public function fadSweaterScore(array $bySlot, array $fad): int
     {
-        if (!isset($bySlot[Material::SLOT_LEFT], $bySlot[Material::SLOT_RIGHT], $bySlot[Material::SLOT_BOTTOM])) {
+        if (!self::isComplete($bySlot)) {
             return 0;
         }
-        $cards  = [$bySlot[Material::SLOT_LEFT], $bySlot[Material::SLOT_RIGHT], $bySlot[Material::SLOT_BOTTOM]];
-        $colors = array_map(fn($c) => $c['type'], $cards);
-        $icons  = array_map(fn($c) => $this->effectiveIcon($c), $cards);
-        $allSameColor = count(array_unique($colors)) === 1;
-        $allSameIcon  = !in_array(null, $icons, true) && count(array_unique($icons)) === 1;
-
-        if (!empty($fad['clash'])) {
-            $allDiffColor = count(array_unique($colors)) === 3;
-            $allDiffIcon  = !in_array(null, $icons, true) && count(array_unique($icons)) === 3;
-            return ($allDiffColor && $allDiffIcon) ? Material::VP_FAD : 0;
-        }
-        $vp = 0;
-        foreach ($fad['objectives'] ?? [] as $obj) {
-            if ($obj['match'] === 'color' && $allSameColor && $colors[0] === $obj['value']) $vp += Material::VP_FAD;
-            if ($obj['match'] === 'icon'  && $allSameIcon  && $icons[0]  === $obj['value']) $vp += Material::VP_FAD;
-        }
-        return $vp;
+        $cards = self::trio($bySlot);
+        return $this->fadParts(
+            array_map(fn($c) => $c['type'], $cards),
+            array_map(fn($c) => $this->effectiveIcon($c), $cards),
+            [$fad]
+        )['fad'];
     }
 
     /** Express: the buildNos of a player's sweaters that are locked by a claimed Fad (can't be altered). */
@@ -1515,20 +1543,13 @@ class Game extends \Bga\GameFramework\Table
     /** Card ids of this player's Patches that sit in a COMPLETED sweater but have no value/icon yet. */
     public function unassignedPatchesInCompletedSweaters(int $playerId): array
     {
-        $builds = [];
-        foreach ($this->getCardsWithExtras(self::LOC_KNITTING, $playerId) as $c) {
-            if ($c['slot'] !== null) {
-                $builds[(int) $c['buildNo']][$c['slot']] = $c;
-            }
-        }
         $ids = [];
-        foreach ($builds as $bySlot) {
-            if (!isset($bySlot[Material::SLOT_LEFT], $bySlot[Material::SLOT_RIGHT], $bySlot[Material::SLOT_BOTTOM])) {
+        foreach ($this->playerBuilds($playerId) as $bySlot) {
+            if (!self::isComplete($bySlot)) {
                 continue; // incomplete sweater → never scored, so its patch is never assigned
             }
             foreach ($bySlot as $c) {
-                if (((int) $c['type_arg']) === Material::PATCH_VALUE
-                    && ($c['wildValue'] === null || $c['wildValue'] === '' || $c['wildIcon'] === null || $c['wildIcon'] === '')) {
+                if (self::isUnresolvedPatch($c)) {
                     $ids[] = (int) $c['id'];
                 }
             }
@@ -1602,42 +1623,15 @@ class Game extends \Bga\GameFramework\Table
     }
 
     /**
-     * Public (non-Secret-Santa) VP of ONE completed sweater, given its pieces keyed by slot and the list
-     * of active Fads (see fadParts). Covers everything visible to all players: the +2 build, +2 three-
-     * consecutive-numbers, Fad objectives (+3 each), and the +1 all-matching-non-Fad bonus (per attribute).
-     * Secret Santa is hidden and is NOT scored here. Returns 0 for an incomplete build.
+     * Public (non-Secret-Santa) VP of ONE completed sweater: everything visible to all players — the +2
+     * build, +2 three-consecutive-numbers, Fad objectives (+3 each) and the +1 all-matching-non-Fad bonus
+     * (per attribute). The hidden Secret Santa bonus is NOT scored here. 0 for an incomplete build.
+     * Totals sweaterParts, which owns the actual rules.
      */
     public function publicSweaterScore(array $bySlot, array $fads): int
     {
-        if (!isset($bySlot[Material::SLOT_LEFT], $bySlot[Material::SLOT_RIGHT], $bySlot[Material::SLOT_BOTTOM])) {
-            return 0;
-        }
-        $cards  = [$bySlot[Material::SLOT_LEFT], $bySlot[Material::SLOT_RIGHT], $bySlot[Material::SLOT_BOTTOM]];
-
-        // A completed sweater containing a Patch whose value/icon aren't chosen yet (that happens at
-        // round-end, see the AssignPatches state) can only be credited the +2 build for now — its run /
-        // Fad / icon bonuses depend on the patch and are added once it's assigned (scoreRound re-scores).
-        foreach ($cards as $c) {
-            if (((int) $c['type_arg']) === Material::PATCH_VALUE
-                && ($c['wildValue'] === null || $c['wildValue'] === '' || $c['wildIcon'] === null || $c['wildIcon'] === '')) {
-                return Material::VP_SWEATER;
-            }
-        }
-
-        $values = array_map(fn($c) => $this->effectiveValue($c), $cards);
-        $colors = array_map(fn($c) => $c['type'], $cards);
-        $icons  = array_map(fn($c) => $this->effectiveIcon($c), $cards);
-
-        $vp = Material::VP_SWEATER; // +2: every completed L+R+B sweater
-
-        // +2: three consecutive numbers (no wrap, e.g. 11-12-1 does not count).
-        sort($values);
-        if ($values[1] === $values[0] + 1 && $values[2] === $values[1] + 1) {
-            $vp += Material::VP_RUN;
-        }
-
-        $fp = $this->fadParts($colors, $icons, $fads);
-        return $vp + $fp['fad'] + $fp['nonfad_color'] + $fp['nonfad_icon'];
+        $p = $this->sweaterParts($bySlot, $fads);
+        return $p['build'] + $p['run'] + $p['fad'] + $p['nonfad'];
     }
 
     /** Total public (non-Secret-Santa) VP a player has earned from their completed sweaters so far. */
@@ -1762,10 +1756,7 @@ class Game extends \Bga\GameFramework\Table
             $pid = (int) $pid;
             $claimedByBuild = $express ? $this->claimedFadByBuild($pid) : [];
 
-            $byBuild = [];
-            foreach ($this->getCardsWithExtras(self::LOC_KNITTING, $pid) as $c) {
-                $byBuild[(int) $c['buildNo']][] = $c;
-            }
+            $byBuild = $this->playerBuildsStarted($pid);
 
             $fadVp = 0;
             $unbuilt = 0;
@@ -1776,12 +1767,8 @@ class Game extends \Bga\GameFramework\Table
             $ptsRuns = 0;
             $ptsNonfadColor = 0;
             $ptsNonfadIcon = 0;
-            foreach ($byBuild as $buildNo => $cards) {
-                $bySlot = [];
-                foreach ($cards as $c) {
-                    if ($c['slot'] !== null) $bySlot[$c['slot']] = $c;
-                }
-                if (!isset($bySlot[Material::SLOT_LEFT], $bySlot[Material::SLOT_RIGHT], $bySlot[Material::SLOT_BOTTOM])) {
+            foreach ($byBuild as $buildNo => $bySlot) {
+                if (!self::isComplete($bySlot)) {
                     $unbuilt++;
                     continue;
                 }
@@ -1794,7 +1781,7 @@ class Game extends \Bga\GameFramework\Table
                 $ptsNonfadColor += $parts['nonfad_color'];
                 $ptsNonfadIcon  += $parts['nonfad_icon'];
                 foreach ($bySlot as $c) {
-                    if (((int) $c['type_arg']) === Material::PATCH_VALUE) $patches++;
+                    if (Material::isPatch((int) $c['type_arg'])) $patches++;
                 }
             }
 
@@ -1921,8 +1908,8 @@ class Game extends \Bga\GameFramework\Table
         // Completed sweaters only, as buildNo => [L, R, B].
         $sweaters = [];
         foreach ($builds as $buildNo => $bySlot) {
-            if (isset($bySlot[Material::SLOT_LEFT], $bySlot[Material::SLOT_RIGHT], $bySlot[Material::SLOT_BOTTOM])) {
-                $sweaters[(int) $buildNo] = [$bySlot[Material::SLOT_LEFT], $bySlot[Material::SLOT_RIGHT], $bySlot[Material::SLOT_BOTTOM]];
+            if (self::isComplete($bySlot)) {
+                $sweaters[(int) $buildNo] = self::trio($bySlot);
             }
         }
 
@@ -1965,22 +1952,33 @@ class Game extends \Bga\GameFramework\Table
     }
 
     /**
-     * Decompose a completed sweater's public VP into its components for the scoring summary:
+     * THE public (non-Secret-Santa) scorer for one sweater, decomposed into its components:
      * ['build'=>+2, 'run'=>+2 consecutive, 'fad'=>+3 per Fad objective met, 'nonfad_color'=>+1 all-one-
      * non-Fad colour, 'nonfad_icon'=>+1 all-one-non-Fad icon, 'nonfad'=> their sum]. $fads is the list of
-     * active Fads (see fadParts) — one for Casual, the sweater's claimed Fads for Express. Mirrors
-     * publicSweaterScore exactly, so build+run+fad+nonfad always sum to that total. All zeros if incomplete.
+     * active Fads (see fadParts) — one for Casual, the sweater's claimed Fads for Express. All zeros if
+     * incomplete. publicSweaterScore is build+run+fad+nonfad over this, so the scorepad's per-component
+     * rows and the applied VP cannot drift.
      */
     public function sweaterParts(array $bySlot, array $fads): array
     {
         // 'nonfad' stays as the combined colour+icon total (the scorepad shows one non-Fad row);
         // 'nonfad_color' / 'nonfad_icon' split it for the per-source statistics.
         $parts = ['build' => 0, 'run' => 0, 'fad' => 0, 'nonfad' => 0, 'nonfad_color' => 0, 'nonfad_icon' => 0];
-        if (!isset($bySlot[Material::SLOT_LEFT], $bySlot[Material::SLOT_RIGHT], $bySlot[Material::SLOT_BOTTOM])) {
+        if (!self::isComplete($bySlot)) {
             return $parts; // incomplete sweater never scores
         }
-        $cards  = [$bySlot[Material::SLOT_LEFT], $bySlot[Material::SLOT_RIGHT], $bySlot[Material::SLOT_BOTTOM]];
+        $cards = self::trio($bySlot);
         $parts['build'] = Material::VP_SWEATER;
+
+        // A Patch whose value/icon aren't chosen yet (that happens at round-end — see the AssignPatches
+        // state) can only be credited the +2 build for now: the run / Fad / icon bonuses all depend on
+        // the patch, and land once it is assigned and scoreRound re-scores. Only reachable from the live
+        // scorer (refreshPublicScore); by the time the scorepad runs, every patch is resolved.
+        foreach ($cards as $c) {
+            if (self::isUnresolvedPatch($c)) {
+                return $parts;
+            }
+        }
 
         $values = array_map(fn($c) => $this->effectiveValue($c), $cards);
         sort($values);
@@ -1998,13 +1996,6 @@ class Game extends \Bga\GameFramework\Table
         return $parts;
     }
 
-    /**
-     * Full end-of-round scoring detail for the summary overlay (RoundReview / final round). For every
-     * player: cumulative score, each sweater they STARTED (complete or not) with a per-component
-     * breakdown + whether it satisfies their Secret Santa (gold border), and their revealed Secret
-     * Santa(s) with satisfied yes/no + points. Call at scoring time — knitting still in place, patches
-     * already assigned. Knitting is public and Secret Santas are revealed at round end, so this is safe.
-     */
     /**
      * Cumulative scorepad payload for the end-of-round summary — modelled on the printed ScorePad sheet:
      * category rows × (per player, per round) columns. Called once per round from ScoreRound AFTER
@@ -2053,21 +2044,11 @@ class Game extends \Bga\GameFramework\Table
 
             $claimedByBuild = $express ? $this->claimedFadByBuild($pid) : [];
 
-            $byBuild = [];
-            foreach ($this->getCardsWithExtras(self::LOC_KNITTING, $pid) as $c) {
-                $byBuild[(int) $c['buildNo']][] = $c;
-            }
-            ksort($byBuild);
-
             $built = $run = $fad = $nonfad = 0;
             $unfinished = 0;
             $fadsCompleted = 0;
-            foreach ($byBuild as $buildNo => $cards) {
-                $bySlot = [];
-                foreach ($cards as $c) {
-                    if ($c['slot'] !== null) $bySlot[$c['slot']] = $c;
-                }
-                if (!isset($bySlot[Material::SLOT_LEFT], $bySlot[Material::SLOT_RIGHT], $bySlot[Material::SLOT_BOTTOM])) {
+            foreach ($this->playerBuildsStarted($pid) as $buildNo => $bySlot) {
+                if (!self::isComplete($bySlot)) {
                     $unfinished++;
                     continue;
                 }

@@ -95,13 +95,14 @@ worth eyeballing on a normal table, not only under `debug_playMoves`.
 
 ## Data model (`dbmodel.sql`)
 
-The Deck component **auto-creates the `card` table with exactly its 5 standard columns and ignores
-extra columns** — so per-card dynamic extras live in a **separate `card_meta` table**.
+A Deck-backed table takes its NAME from `createDeck()`, but its **columns must always be the five
+`card_*` ones** — the component's own SQL selects them by those names regardless of table name. So
+per-card dynamic extras live in a **separate `card_meta` table**.
 
-- `card` — the 52-card sweater deck via `Deck`. `card_type` = colour, `card_type_arg` = value 1..12 (0 = patch), `card_location` ∈ `deck|hand|draftpool|trick|knitting|discard`, `card_location_arg` = player_id or pool slot. Each player has their own face-down `deck` pile keyed by player_id.
-- `card_meta` — one row per card for what Deck doesn't manage: `trick_order` (play order for resolution tie-breaks), `build_no` (which sweater), `slot` (`L|R|B`), `wild_value`/`wild_icon` (patch resolution). Cleared at round start so stale wild data can't bleed into a re-dealt card.
-- `gameplay_card` — a second Deck: Perfect Fit / Trendy Yarn / Fad cards, flipped to `active` per round.
-- `secret_santa` — Deck of the 16 hidden objectives (`box|hand|completed`, arg = owner).
+- `card` — the 52-card sweater deck via `Deck`. `card_type` = colour, `card_type_arg` = value 1..12 (0 = patch), `card_location_arg` = player_id or pool slot. Locations (the `Game::LOC_*` constants): `deck` is the transient shuffle source used while dealing, **not** a per-player pile — each player's own face-down pile is `pile_<player_id>` (`Game::pileLoc`). The rest are `hand`, `draftpool`, `trick`, `knitting`, `discard`.
+- `card_meta` — one row per card for what Deck doesn't manage: `trick_order` (play order for resolution tie-breaks), `build_no` (which sweater), `slot` (`L|R|B`, NULL = floating patch), `wild_value`/`wild_icon` (patch resolution). Read back via `Game::getCardsWithExtras`, which LEFT JOINs it onto `card`. Cleared at round start so stale wild data can't bleed into a re-dealt card.
+- `gameplay_card` — a second Deck: Perfect Fit / Trendy Yarn / Fad cards. Locations are `deck_<type>` (face-down pile) and `seen_<type>` (revealed stack, `location_arg` = stack index — the **highest** arg is the active card, see `Game::activeGameplayCard`); Express adds `claimed_fad`, and reuses `seen_fad` as the Fad display.
+- `secret_santa` — Deck of the 16 hidden objectives (`box|hand|discard`, arg = owner). Spent cards go to `discard`, never back to `box`, so a card someone has held can't be re-dealt.
 - `bonus_card` — Deck of the 4 Special Ability cards (`box|hand|used`, arg = owner); gameoption `102`.
 - `player.player_fad_points` — added column; tie-break #2 (total Fad points). Declared `INT UNSIGNED`, which is right (Fad points never go negative) but means **any expression mixing it with the negative `player_score_aux` must `CAST(... AS SIGNED)`** or MySQL evaluates the lot as `BIGINT UNSIGNED` and errors — see [`../../.claude/framework.md`](../../.claude/framework.md).
 - Globals (declared in PHP): `round_no`, `leader_player_id`, plus per-feature globals (e.g. `roundResult` for F5-safe review, Billy/Maria/Tina bookkeeping).

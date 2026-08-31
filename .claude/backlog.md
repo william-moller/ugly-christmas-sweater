@@ -12,6 +12,18 @@ not of the code.
 
 ## Release-blocking (BGA pre-release checklist)
 
+- **Verify the declared interface minimum width on a real table.** `gameinfos.jsonc`
+  `game_interface_width.min` is 490, not the 740 default. That number is what BGA lays the game area
+  out at on a phone before scale-to-fitting it with a CSS `zoom`, so it is the upstream cause of the
+  ~0.586 / ~0.458 factors measured in [`responsive.md`](responsive.md) — and of everything in `Game.ts`
+  built to survive them (`visualScale`, `placeFan`, `handCardWidth`'s layout-vs-device-px rules). The
+  narrow layout is already asserted down to 320px, so the interface genuinely runs far below 740, which
+  is what the BGA docs require before declaring a lower number; 490 rather than 320 because player
+  panels stop being two-column below 490. **None of this has been exercised at a declared width other
+  than 740.** Open a test table on a phone, re-measure the zoom by calibrating against
+  `.ucs-my-pile .ucs-pile-card` (hard-coded 52×73 — the method is in `responsive.md`), and check the
+  fanned hand, the floating fan's centring, and the parameter row. If the zoom is now ~1, the
+  compensation code should self-correct to a no-op — confirm that rather than assuming it.
 - **Centering audit** — checklist: if elements don't occupy all available horizontal space, they should
   be centered. `Game.scss` centres in ~22 places, so this is a *verification* pass, not a build: find
   the zones that still stretch or left-pin when their row is shrink-to-fit. Two bands are worth the

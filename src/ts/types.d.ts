@@ -34,6 +34,16 @@ interface UcsMaterial {
     bonus: { [id: number]: any };   // the 4 Bonus / Special Ability cards (optional expansion)
     colors: string[];
     icons: string[];
+    vp: UcsVp;                      // the scoring constants, straight from Material::VP_*
+}
+
+/** Material::VP_* as sent to the client, so nothing here re-declares a scoring value. */
+interface UcsVp {
+    sweater: number;      // VP_SWEATER      — each completed L+R+B sweater
+    run: number;          // VP_RUN          — three consecutive numbers
+    fad: number;          // VP_FAD          — per Fad objective met
+    nonfad: number;       // VP_NONFAD_MATCH — all-one colour/icon that no Fad matched
+    secretSanta: number;  // VP_SECRET_SANTA — a completed sweater satisfying a Secret Santa
 }
 
 /** A player's revealed Bonus / Special Ability card (optional expansion; public). */

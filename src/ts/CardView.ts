@@ -45,30 +45,27 @@ export function orientationName(slot: string): string {
     }
 }
 
-// VP values shown in the round-parameter / Secret Santa tooltips. These mirror Material.php
-// (VP_FAD, VP_SECRET_SANTA); the client is never sent the scoring constants, so keep them in sync
-// by hand if the PHP values change.
-const VP_FAD = 3;
-const VP_SECRET_SANTA = 3;
+/** The three orientation slots a sweater piece can occupy — mirrors Material::SLOTS. */
+export const SLOTS = ['L', 'R', 'B'] as const;
 
 /**
  * HTML tooltip for a Fad round-parameter card: its printed title plus the concrete scoring every player
  * can earn this round. `fad` is a Material::fads() entry — either { title, objectives:[{match,value}×2] }
  * (one colour + one icon objective, each scored independently) or { title, clash:true } (the "Clash Is In"
- * card, which instead scores an all-different sweater).
+ * card, which instead scores an all-different sweater). VP comes from the server (material.vp).
  */
-export function fadTooltip(fad: any): string {
+export function fadTooltip(fad: any, vp: UcsVp): string {
     const title = fad?.title ? _(fad.title) : _('Fad');
     let lines: string;
     if (fad?.clash) {
-        lines = `<li>${_('Three pieces all different colours and all different icons')} — <b>+${VP_FAD} ${_('VP')}</b></li>`;
+        lines = `<li>${_('Three pieces all different colours and all different icons')} — <b>+${vp.fad} ${_('VP')}</b></li>`;
     } else {
         lines = (fad?.objectives ?? []).map((o: any) => {
             // colourName/iconName are the single source of truth for the player-facing value text.
             const what = o.match === 'icon'
                 ? `${_('All')} ${iconName(o.value)} ${_('icons')}`
                 : `${_('All')} ${colourName(o.value)}`;
-            return `<li>${what} — <b>+${VP_FAD} ${_('VP')}</b></li>`;
+            return `<li>${what} — <b>+${vp.fad} ${_('VP')}</b></li>`;
         }).join('');
     }
     const note = fad?.clash ? '' : `<div class="ucs-tt-note">${_('A single sweater can score both.')}</div>`;
@@ -83,7 +80,7 @@ export function fadTooltip(fad: any): string {
  * each piece counts toward EITHER its colour or its icon (orientation ignored), so the needs are shown as
  * a plain checklist.
  */
-export function secretSantaTooltip(ss: any): string {
+export function secretSantaTooltip(ss: any, vp: UcsVp): string {
     const name = ss?.name ? _(ss.name) : _('Secret Santa');
     const needs = (ss?.needs ?? []).map((n: string) => {
         const [kind, value] = String(n).split(':');
@@ -92,7 +89,19 @@ export function secretSantaTooltip(ss: any): string {
     return `<div class="ucs-tt"><strong>${name}</strong>`
         + `<div class="ucs-tt-sub">${_('Your private objective — complete a sweater covering all three:')}</div>`
         + `<ul class="ucs-tt-list">${needs}</ul>`
-        + `<div class="ucs-tt-note">${_('Worth')} <b>+${VP_SECRET_SANTA} ${_('VP')}</b> ${_('when satisfied.')}</div></div>`;
+        + `<div class="ucs-tt-note">${_('Worth')} <b>+${vp.secretSanta} ${_('VP')}</b> ${_('when satisfied.')}</div></div>`;
+}
+
+/**
+ * A card's wild value / icon if it has taken one on, else null. A patch carries these once it has
+ * copied a card in a trick or been assigned at round-end scoring; the server sends them as strings,
+ * and an unresolved patch as null or ''. Single source of truth for that "resolved?" test.
+ */
+export function wildValueOf(card: SweaterCard): number | null {
+    return card.wildValue != null && card.wildValue !== '' ? Number(card.wildValue) : null;
+}
+export function wildIconOf(card: SweaterCard): string | null {
+    return card.wildIcon != null && card.wildIcon !== '' ? String(card.wildIcon) : null;
 }
 
 /** Resolve a card row to its static face via the material map. */
@@ -126,8 +135,8 @@ export function cardFaceInner(card: SweaterCard, material: UcsMaterial): string 
     const face = faceOf(card, material);
     if (!face?.patch) return ''; // numbered card — the printed art shows everything
 
-    const wildValue = card.wildValue != null && card.wildValue !== '' ? Number(card.wildValue) : null;
-    const wildIcon = card.wildIcon != null && card.wildIcon !== '' ? String(card.wildIcon) : null;
+    const wildValue = wildValueOf(card);
+    const wildIcon = wildIconOf(card);
     if (wildValue == null && wildIcon == null) return ''; // unresolved patch — art's own "?" suffices
 
     const valueLabel = wildValue != null ? String(wildValue) : '';
@@ -138,7 +147,7 @@ export function cardFaceInner(card: SweaterCard, material: UcsMaterial): string 
 }
 
 /** Add the sizing + sprite-face classes and any patch overlay (shared by both render paths). */
-export function applyCardFace(el: HTMLElement, card: SweaterCard, material: UcsMaterial): void {
+function applyCardFace(el: HTMLElement, card: SweaterCard, material: UcsMaterial): void {
     const face = faceOf(card, material);
     el.classList.add('ucs-card', 'ucs-face', faceSpriteClass(card));
     if (face?.patch) {
@@ -172,7 +181,7 @@ export function createCardElement(card: SweaterCard, material: UcsMaterial): HTM
 export function cardLogChip(card: SweaterCard, material: UcsMaterial): string {
     const face = faceOf(card, material);
     const color = face?.color ?? String(card.type);
-    const wildValue = card.wildValue != null && card.wildValue !== '' ? Number(card.wildValue) : null;
+    const wildValue = wildValueOf(card);
     // Native `title` tooltip: log HTML is injected by the framework (main log + replay/chat log) with no
     // live node we could addTooltipHtml onto, so a plain-text title is the robust way to make the chip
     // hoverable. Escaped for the attribute; our label strings never contain quotes, but be defensive.
@@ -199,10 +208,10 @@ export function cardLogChip(card: SweaterCard, material: UcsMaterial): string {
  * Doubles as the card's accessible name — see the `cardAriaLabel` alias below. The card faces are
  * sprite-painted divs with no intrinsic text, so without this a screen reader announces nothing at all.
  */
-export function cardLogTitle(card: SweaterCard, material: UcsMaterial): string {
+function cardLogTitle(card: SweaterCard, material: UcsMaterial): string {
     const face = faceOf(card, material);
     const colour = colourName(face?.color ?? String(card.type));
-    const wildValue = card.wildValue != null && card.wildValue !== '' ? Number(card.wildValue) : null;
+    const wildValue = wildValueOf(card);
     if (face?.patch) {
         const base = `${colour} ${_('Patch')} (${_('wild')})`;
         return wildValue != null ? `${base} ${_('as')} ${wildValue}` : base;
@@ -219,13 +228,6 @@ export function cardLogTitle(card: SweaterCard, material: UcsMaterial): string {
  * deliberate alias, not a copy that could drift.
  */
 export const cardAriaLabel = cardLogTitle;
-
-/** A face-down placeholder (e.g. opponents' hand backs). */
-export function createCardBack(): HTMLElement {
-    const el = document.createElement('div');
-    el.classList.add('ucs-card', 'ucs-card-back');
-    return el;
-}
 
 /** Tooltip HTML describing a card (colour + value; icon/orientation once known). */
 export function cardTooltip(card: SweaterCard, material: UcsMaterial): string {

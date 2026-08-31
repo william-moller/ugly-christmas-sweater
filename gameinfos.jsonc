@@ -89,12 +89,28 @@
 
     // Game interface width range (pixels)
     // Note: game interface = space on the left side, without the column on the right
+    //
+    // 490, not the 740 default. This number is what BGA lays the game area out at on a phone before
+    // scale-to-fitting it down with a CSS `zoom` — so a 740 declaration on a 412px device is what
+    // produced the ~0.586 / ~0.458 zoom factors measured in .claude/responsive.md, and every bit of
+    // zoom-compensation code in Game.ts (visualScale, placeFan, handCardWidth's layout-vs-device-px
+    // rules) exists to survive it. The narrow layout is already built and asserted down to 320px
+    // (responsive.md: scrollWidth === innerWidth at 320 / 360 / 411 / 768), so the interface genuinely
+    // runs far below 740 — which the BGA docs require before you may declare a lower number.
+    //
+    // 490 rather than 320 because BGA stops putting player panels in two columns below 490 (see
+    // reference/client-mobile-version.md), and nothing here needs the last 170px.
+    //
+    // ⚠️ VERIFY ON A TEST TABLE before shipping: the zoom factor is measurable (calibrate against
+    // .ucs-my-pile .ucs-pile-card, a hard-coded 52x73 — see responsive.md), and the zoom-correction
+    // code paths above all self-correct from measurement, but none of this has been exercised at a
+    // declared width other than 740.
     "game_interface_width": {
         // Minimum width
         //  default: 740
         //  maximum possible value: 740 (ie: your game interface should fit with a 740px width (correspond to a 1024px screen)
         //  minimum possible value: 320 (the lowest value you specify, the better the display is on mobile)
-        "min": 740
+        "min": 490
     },
 
     // Trigger an exception when PHP detect warnings.

@@ -4,7 +4,7 @@ import { RoundReview } from "./States/RoundReview";
 import { AssignPatches } from "./States/AssignPatches";
 import { BillyChoice } from "./States/BillyChoice";
 import { TinaTink } from "./States/TinaTink";
-import { createCardElement, cardTooltip, cardLogChip, cardAriaLabel, faceOf, isPatch, cardFaceInner, faceSpriteClass, colourName, iconName, orientationName, trendyLogChip, fadTooltip, secretSantaTooltip } from "./CardView";
+import { createCardElement, cardTooltip, cardLogChip, cardAriaLabel, faceOf, isPatch, cardFaceInner, faceSpriteClass, colourName, iconName, orientationName, trendyLogChip, fadTooltip, secretSantaTooltip, wildValueOf, wildIconOf, SLOTS } from "./CardView";
 import { BgaAnimations, BgaCards, BgaHelp } from "./libs";
 
 type CardMapT = { [cardId: number]: SweaterCard };
@@ -328,53 +328,34 @@ export class Game {
      * The fanned hand's card width.
      *
      * Wide viewports keep the tuned 96px base times the Card-size preference (handSizeScale). At phone
-     * widths the fan spans the WHOLE viewport — the floating stock is pinned left and right, and the
-     * library packs all HAND_SIZE cards into whatever box that leaves — so the width stops being a
-     * preference and becomes a derivation from how much of each card must stay uncovered:
+     * widths the floating stock is pinned left and right and the library packs all HAND_SIZE cards into
+     * whatever box that leaves, so the width becomes a derivation from how much of each card must stay
+     * uncovered: `W <= (band - 24) / 2.8`, capped at 200. That formula and the 22.4% info-strip
+     * measurement behind it are derived in .claude/responsive.md ("Upper caps"); 200 is the number to
+     * nudge if the hand reads small, and the hand gets its own ceiling above the Draft Pool's 128
+     * because it is the zone you choose from under time pressure.
      *
-     *     step = (band - W) / (HAND_SIZE - 1)
+     * Three rules the derivation depends on, each of which has cost a deploy:
      *
-     * The identifying strip on the printed art — the value numeral with the two orientation bulbs under
-     * it — ends at ~22.4% of the card face (measured off the sprite: the numeral spans 8-22% and the
-     * bulbs 13-22%). Requiring `step >= 0.224 W + 2` (that strip plus the card's own border) and
-     * solving with HAND_SIZE = 9 gives
+     * - `band` is MEASURED off the holder, never window.innerWidth. BGA scale-to-fits the game area with
+     *   a CSS zoom on a narrow screen, so innerWidth is 412 while the layout the cards live in is 700-900
+     *   CSS px. Sizing off the viewport there is the same unit error as `vw` in the stylesheet.
+     * - Measured with **offsetWidth**, not getBoundingClientRect().width. Under `zoom` those are in
+     *   different spaces (rect = post-zoom device px, offsetWidth = pre-zoom layout px), and bga-cards
+     *   takes `cardWidth` as a layout px — mixing them scales the hand by exactly the zoom factor.
+     * - PREFERENCE-INDEPENDENT in the narrow layout, like every other narrow zone: at Large, 96 * 1.4
+     *   puts the step at 19% of the card and clips the numeral off every card but the last, so the
+     *   preference would make the hand *less* readable.
      *
-     *     W <= (band - 24) / 2.8
-     *
-     * Capped at 200px. The hand gets its own ceiling rather than the Draft Pool's 128, because it is the
-     * one zone you choose from under time pressure and the only one handed the full width — it is
-     * *meant* to be the biggest card on a phone. The cap is in LAYOUT px like everything else here, so
-     * what reaches the screen is 200 x zoom; at the measured 0.586 that is ~117 device px against the
-     * ~79 the previous 144 cap gave. This is the number to nudge if the hand still reads small.
-     *
-     * `band` is MEASURED off the holder via **offsetWidth**, and both halves of that matter.
-     *
-     * Measured, because window.innerWidth is the wrong quantity: BGA scale-to-fits the game area with a
-     * CSS zoom on a narrow screen (~0.586 fullscreen, ~0.458 windowed, measured on a Pixel 8), so the
-     * viewport is 412 while the layout the cards actually live in is 700-900 CSS px wide. Sizing a card
-     * off the viewport in a zoomed layout is the same unit error as `vw` in the stylesheet — see the
-     * no-viewport-units note at the top of the .ucs-narrow block in Game.scss.
-     *
-     * offsetWidth rather than getBoundingClientRect().width, because under `zoom` those two are in
-     * DIFFERENT SPACES: the rect is post-zoom (device px), offsetWidth is pre-zoom (layout px). The
-     * number here is handed to bga-cards as `cardWidth`, which it uses as a layout px, so it has to be
-     * measured in layout px or the hand comes out wrong by exactly the zoom factor.
-     *
-     * Deliberately PREFERENCE-INDEPENDENT below 700px, like every other narrow zone (responsive.md,
-     * "Upper caps"): at Large the old 96 * 1.4 = 134px puts the step at 19% of the card, which clips the
-     * numeral off every card but the last — the preference would make the hand *less* readable, not more.
-     *
-     * The band is the full viewport on purpose. Reserving width for the bottom-corner buttons instead is
-     * the wrong lever: taking ~176px out of a 411px band costs card width faster (W <= band/3.4) than it
-     * buys clearance. The buttons are cleared vertically instead — see fanLift.
+     * The band is the full viewport on purpose — reserving width for the bottom-corner buttons costs
+     * card width faster than it buys clearance. They are cleared vertically instead; see fanLift.
      */
     private handCardWidth(): number {
-        // Gated on the LAYOUT's own narrow/wide boundary, not a px of its own. A bare
+        // ⚠️ Gated on the LAYOUT's own narrow/wide boundary, not a px of its own. A bare
         // `window.innerWidth > 700` looks equivalent and is not: BGA hands a phone a layout viewport of
-        // ~750 CSS px and scales it down, so innerWidth is ~750 on a Pixel 8 and that test was always
-        // true — the narrow branch below had never run on a phone, and the hand shipped at the desktop
-        // 96 * preference, i.e. SMALLER than a Draft Pool card. narrowMq() is the same matchMedia the
-        // .ucs-narrow class is toggled from, so the hand can no longer disagree with the layout it is in.
+        // ~750 CSS px and scales it down, so that test is always true on a phone and the narrow branch
+        // never runs. narrowMq() is the same matchMedia the .ucs-narrow class is toggled from, so the
+        // hand cannot disagree with the layout it is in.
         if (!this.narrowMq().matches) return Math.round(96 * this.handSizeScale());
         // The holder is in flow and full-width, so its offsetWidth is the table's content width in
         // layout px. Guard against a not-yet-laid-out box (it would collapse the hand to nothing) by
@@ -420,7 +401,8 @@ export class Game {
                 div.classList.add('ucs-card-face', 'ucs-face', faceSpriteClass(c));
                 if (face.patch) div.classList.add('ucs-patch');
                 div.innerHTML = cardFaceInner(c, this.material);
-                if (!div.id) div.id = `ucs-hand-${c.id}-front`;
+                // bga-cards has already given this div its own prefixed id (`ucs-sweater-ucs-hand-<id>-front`)
+                // before handing it over — it cannot be overridden here, so use the one it set.
                 (this.bga.gameui as any).addTooltipHtml?.(div.id, cardTooltip(c, this.material));
                 // The hand is built by bga-cards, so it never reaches attachTooltip — label it here or
                 // the player's own hand is the one zone a screen reader cannot read at all.
@@ -544,7 +526,7 @@ export class Game {
                 el.id = `ucs-avid-ss-${player.id}-${ss.id}`;
                 // secretSantaTooltip wants a Material::secretSantas() entry; the revealed payload has the
                 // same shape ({name, needs}) so it renders identically.
-                this.addTip(el.id, secretSantaTooltip(ss));
+                this.addTip(el.id, secretSantaTooltip(ss, this.material.vp));
                 slot.appendChild(el);
                 row.appendChild(slot);
             });
@@ -589,7 +571,7 @@ export class Game {
             el.id = `ucs-santa-el-${arg}`;
             // secretSantaTooltip translates the (clienttranslate-marked) name and lists the 3 required
             // pieces; deferred via addTip since el is appended below, after this call.
-            this.addTip(el.id, secretSantaTooltip(ss));
+            this.addTip(el.id, secretSantaTooltip(ss, this.material.vp));
             slot.appendChild(el);
             // The tick goes on the slot, not the card: the card is rotate(90deg) for the landscape art, and
             // anything inside it turns with it. The slot already reserves that landscape footprint upright.
@@ -676,36 +658,27 @@ export class Game {
      * is what lets the narrow layout be a class rather than a media query, with the floors living here
      * only instead of being restated in Game.scss.
      *
-     * Replaces a hardcoded 1000px that was below every shape's real floor (the cheapest, Casual at Small,
-     * needs 1278), so the band above it rendered the wide layout squeezed — #ucs-board-strip is
-     * flex: 0 0 auto, so #ucs-center-stack was what gave.
-     *
-     * CARD/FIXED per shape come from responsive.md's "Every shape, totalled". Avid uses the STACKED-Santa
-     * numbers, which are what its wide layout costs when it first becomes viable — the unscaled Santa row
-     * is an upgrade applied further up, at $avid-santa-row-floors in Game.scss. Express 3P likewise uses
-     * its Santa-row cost, not the Santa-column fold ($santa-column-floors).
-     *
-     * CARD is now 320 (the Draft Pool, 4 x 80) for EVERY shape, because the board strip stopped reading
-     * --ucs-card-scale: the round parameters and both Secret Santa zones are reference art you never
-     * click, so they are pinned and moved wholesale from CARD into FIXED (see the #ucs-board-strip note
-     * in Game.scss). Each shape's strip term, now part of FIXED:
+     * CARD/FIXED per shape come from responsive.md's "Every shape, totalled". CARD is 320 (the Draft Pool,
+     * 4 x 80) for every shape: the board strip does not read --ucs-card-scale, because the round
+     * parameters and both Secret Santa zones are reference art you never click, so they are pinned and
+     * counted in FIXED (see the #ucs-board-strip note in Game.scss). Each shape's strip term within FIXED:
      *
      *     Casual / Avid  parameter row 3 x 90                = 270  ->  FIXED 454 + 270 = 724
      *     Express 2P     parameter row 5 x 90                = 450  ->  FIXED 466 + 450 = 916
      *     Express 3P     Santa pair 2 x 188 (beats params)   = 376  ->  FIXED 388 + 376 = 764
      *     Express 4P     Santa pair 2 x 188 (beats params)   = 376  ->  FIXED 442 + 376 = 818
      *
-     * Only the strip term moved; every other term is untouched, so this inherits whatever accuracy the
-     * original table had rather than being a fresh derivation. Resulting floors, Small / Medium / Large:
+     * Resulting floors, Small / Medium / Large:
      *
-     *     Casual · Avid  1291 / 1307 / 1467      (was 1278 / 1307 / 1602)
-     *     Express 2P     1483 / 1499 / 1659      (was 1461 / 1499 / 1884)
-     *     Express 3P     1331 / 1347 / 1507      (was 1312 / 1347 / 1695)
-     *     Express 4P     1385 / 1401 / 1561      (was 1366 / 1401 / 1749)
+     *     Casual · Avid  1291 / 1307 / 1467
+     *     Express 2P     1483 / 1499 / 1659
+     *     Express 3P     1331 / 1347 / 1507
+     *     Express 4P     1385 / 1401 / 1561
      *
-     * Medium is unchanged by construction (scale 1 moves nothing), Small rises slightly — the strip no
-     * longer shrinks below 90px — and Large drops 135-225px, which is the point: three of the four shapes
-     * now reach the wide layout on a 1366-1536px laptop at Large, where before none did.
+     * Avid uses the STACKED-Santa numbers, which are what its wide layout costs when it first becomes
+     * viable — the unscaled Santa row is an upgrade applied further up, at $avid-santa-row-floors in
+     * Game.scss. Express 3P likewise uses its Santa-row cost, not the Santa-column fold
+     * ($santa-column-floors).
      */
     private wideLayoutFloor(): number {
         const scale = this.cardSizeScale();
@@ -724,21 +697,12 @@ export class Game {
      * The Card-size preference (gamepreferences 101) as a size name. EVERY read of the card size goes
      * through here; callers map the name to their own multiplier.
      *
-     * Read from the PREFERENCE, never from the html.ucs-cards-* class. That class is a `cssPref`, which
-     * BGA applies on its own schedule, and it was NOT yet on <html> when setup() first called
-     * wideLayoutFloor() — so a Large session computed the MEDIUM floor (1307), cached it in narrowMq()
-     * for the whole session, and left the wide layout running below its real floor (1602) with no way to
-     * recover. Symptom: at 1536px the Draft Pool wrapped to two rows, because #ucs-board-strip is
-     * flex: 0 0 auto and #ucs-center-stack was what gave (529.6px against the 532px four Large cards
-     * need). The CSS variable was unaffected — the cards were correctly Large — which is what made it
-     * look like crowding rather than a boundary that never fired.
-     *
-     * handSizeScale() read the class directly and had the same hazard for the same reason: a Large
-     * session whose class landed after setupHandStock() sized the fanned hand's frame for Medium (1.0)
-     * and kept it all game, because the frame px are handed to bga-cards once at construction.
-     *
-     * The preference value arrives with the page from the server, so it has no such ordering hazard.
-     * The class check stays as a fallback for any path where userPreferences isn't readable.
+     * ⚠️ Read from the PREFERENCE, never from the html.ucs-cards-* class. That class is a `cssPref`, and
+     * BGA applies it on its own schedule — it is NOT reliably on <html> when setup() runs. Anything that
+     * reads the size once and caches it (wideLayoutFloor via narrowMq, setupHandStock's bga-cards frame)
+     * then locks in the Medium answer for the whole session, with no way to recover. The preference value
+     * arrives with the page from the server, so it has no such ordering hazard. The class check below is
+     * only a fallback for a path where userPreferences isn't readable.
      */
     private cardSizePref(): 'small' | 'medium' | 'large' {
         const pref = Number(this.bga.userPreferences?.get?.(101));
@@ -966,7 +930,7 @@ export class Game {
         } else {
             const fad = this.material.fads[arg];
             el.classList.add('ucs-gp-fad', `ucs-gp-fad-${arg}`); // ucs-gp-fad = styling/hook; -${arg} = sprite face
-            this.addTip(this.gpId(el), fadTooltip(fad));
+            this.addTip(this.gpId(el), fadTooltip(fad, this.material.vp));
         }
         return el;
     }
@@ -1435,14 +1399,12 @@ export class Game {
 
     /** A card's effective value (a placed patch carries its chosen wildValue; else its printed value). */
     private effValue(c: SweaterCard): number {
-        if (c.wildValue != null && c.wildValue !== '') return Number(c.wildValue);
-        return Number(faceOf(c, this.material).value);
+        return wildValueOf(c) ?? Number(faceOf(c, this.material).value);
     }
 
     /** A card's effective icon (a placed patch's wildIcon; else its printed icon; may be null pre-art). */
     private effIcon(c: SweaterCard): string | null {
-        if (c.wildIcon != null && c.wildIcon !== '') return String(c.wildIcon);
-        return faceOf(c, this.material).icon;
+        return wildIconOf(c) ?? faceOf(c, this.material).icon;
     }
 
     /**
@@ -1452,7 +1414,7 @@ export class Game {
      * unassigned patch (its run / Fad / icon bonuses land at round-end once the patch is assigned).
      */
     private buildPublicScore(cards: SweaterCard[], playerId: number, buildNo: number): number {
-        const VP_SWEATER = 2, VP_RUN = 2, VP_FAD = 3, VP_NONFAD = 1; // == Material::VP_*
+        const VP = this.material.vp; // straight from Material::VP_* — see getAllDatas
 
         const bySlot: { [slot: string]: SweaterCard } = {};
         cards.forEach((c) => {
@@ -1464,9 +1426,8 @@ export class Game {
 
         // A completed sweater with an unresolved patch scores only the +2 build for now.
         for (const c of trio) {
-            if (isPatch(c, this.material)
-                && (c.wildValue == null || c.wildValue === '' || c.wildIcon == null || c.wildIcon === '')) {
-                return VP_SWEATER;
+            if (isPatch(c, this.material) && (wildValueOf(c) == null || wildIconOf(c) == null)) {
+                return VP.sweater;
             }
         }
 
@@ -1474,8 +1435,8 @@ export class Game {
         const colors = trio.map((c) => faceOf(c, this.material).color);
         const icons = trio.map((c) => this.effIcon(c));
 
-        let vp = VP_SWEATER;
-        if (values[1] === values[0] + 1 && values[2] === values[1] + 1) vp += VP_RUN;
+        let vp = VP.sweater;
+        if (values[1] === values[0] + 1 && values[2] === values[1] + 1) vp += VP.run;
 
         const allSameColor = new Set(colors).size === 1;
         const allSameIcon = !icons.includes(null) && new Set(icons).size === 1;
@@ -1490,16 +1451,16 @@ export class Game {
         let colorIsFad = false, iconIsFad = false;
         for (const f of fads) {
             if (f.clash) {
-                if (allDiffColor && allDiffIcon) vp += VP_FAD;
+                if (allDiffColor && allDiffIcon) vp += VP.fad;
                 continue;
             }
             (f.objectives ?? []).forEach((o: any) => {
-                if (o.match === 'color' && allSameColor && colors[0] === o.value) { vp += VP_FAD; colorIsFad = true; }
-                if (o.match === 'icon' && allSameIcon && icons[0] === o.value) { vp += VP_FAD; iconIsFad = true; }
+                if (o.match === 'color' && allSameColor && colors[0] === o.value) { vp += VP.fad; colorIsFad = true; }
+                if (o.match === 'icon' && allSameIcon && icons[0] === o.value) { vp += VP.fad; iconIsFad = true; }
             });
         }
-        if (allSameColor && !colorIsFad) vp += VP_NONFAD;
-        if (allSameIcon && !iconIsFad) vp += VP_NONFAD;
+        if (allSameColor && !colorIsFad) vp += VP.nonfad;
+        if (allSameIcon && !iconIsFad) vp += VP.nonfad;
         return vp;
     }
 
@@ -1606,7 +1567,7 @@ export class Game {
                     // Offer all three orientations; exclude the slot reserved for this sweater's floating
                     // patch (the two patches must land in different slots).
                     const reserved = (floatDest && floatDest.buildNo === buildNo) ? floatDest.slot : null;
-                    (['L', 'R', 'B'] as const).forEach((s) => {
+                    SLOTS.forEach((s) => {
                         if (s === reserved) return;
                         const isSel = picked === buildNo && this.patchSlot === s;
                         cell(s, isSel ? 'selected' : 'option', () => this.placePatchTarget(buildNo, s));
@@ -1617,7 +1578,7 @@ export class Game {
                 // L/R/B as a dotted placeholder, so a build occupies the same L+R/B footprint whether it
                 // has 1 or 3 pieces. (A lone floating patch — no slotted piece yet — is left as-is.)
                 if (Object.keys(slotEls).length > 0) {
-                    (['L', 'R', 'B'] as const).forEach((s) => {
+                    SLOTS.forEach((s) => {
                         if (!takenSlots.has(s)) build.appendChild(this.makeEmptySlot(s));
                     });
                 }
@@ -1660,7 +1621,7 @@ export class Game {
             // Draw the other two orientations as dotted (non-clickable) placeholders so a new sweater
             // reads as the full L/R-over-B silhouette, even though this card can only land in its one
             // printed slot. Matches the static footprint a started sweater already shows.
-            (['L', 'R', 'B'] as const).forEach((s) => {
+            SLOTS.forEach((s) => {
                 if (s !== regularSlot) newBuild.appendChild(this.makeEmptySlot(s));
             });
             zone.appendChild(newBuild);
@@ -1711,7 +1672,7 @@ export class Game {
             // L/R/B as a dotted placeholder so the build keeps its full footprint whether it has 1 or
             // 3 pieces. A lone floating patch (0 slotted pieces) is left as-is, exactly as renderKnitting.
             if (takenSlots.size > 0) {
-                (['L', 'R', 'B'] as const).forEach((s) => {
+                SLOTS.forEach((s) => {
                     if (!takenSlots.has(s)) group.appendChild(this.makeMiniEmptySlot(s));
                 });
             }
@@ -1735,7 +1696,7 @@ export class Game {
         el.id = `ucs-mini-${card.id}`;
         el.className = `ucs-mini-card ucs-color-${color}`;
         if (face?.patch) el.classList.add('ucs-mini-patch');
-        const wildValue = card.wildValue != null && card.wildValue !== '' ? Number(card.wildValue) : null;
+        const wildValue = wildValueOf(card);
         el.textContent = face?.patch
             ? (wildValue != null ? String(wildValue) : '★')
             : String(wildValue ?? face?.value ?? '?');
@@ -1944,33 +1905,6 @@ export class Game {
     }
 
     /**
-     * How far to raise the fan so the bottom-corner buttons stop hiding the cards under them.
-     *
-     * The floating fan hangs off the viewport bottom, and the arc pushes each outer card a further
-     * `2 * mid^2` px down — straight into the band our "?" strip (plus the round-summary restore chip
-     * beside it) and BGA's own replay / chat controls occupy. Those controls are z-index 949 against the
-     * fan's 900, so they both paint over the cards AND swallow the taps on them: on a 411px phone the
-     * leftmost card sat entirely behind the "?" and the two rightmost behind BGA's pair.
-     *
-     * Reserving that width horizontally is the wrong lever — see handCardWidth: with HAND_SIZE cards
-     * sharing the band, the ~176px those buttons want costs card width faster than it buys clearance. So
-     * the fan keeps the full width and moves UP instead, by exactly enough that every card's identifying
-     * strip — the value numeral and the orientation bulbs under it, the top ~42% of the printed face —
-     * clears the buttons. The lower halves stay covered, which is what the art can afford to lose: the
-     * sweater illustration repeats what the numeral and bulbs already say.
-     *
-     * 0.55 of the MEASURED box rather than 0.42 of the card, because these cards are rotated: an outer
-     * card sits in a bounding box ~15% taller than itself, with its own top-left corner well below the
-     * box's top. Running the worst case (the ±17° outermost card of a 9-card fan) through the rotation
-     * puts its info strip at 0.515 of the box height; 0.55 is that rounded up, and over-lifting is the
-     * cheap direction to be wrong in.
-     *
-     * Only cards that actually reach into a corner constrain the lift, so a fan narrower than the
-     * viewport — every desktop width, and the attached (non-floating) state — computes 0 and nothing
-     * moves. Deliberately not gated on `.ucs-narrow`: the buttons are position:fixed at every width, so
-     * the question is always geometric rather than a breakpoint's to answer.
-     */
-    /**
      * How much smaller the page is painted than it is laid out — BGA's scale-to-fit zoom on the game
      * area, recovered by measuring one element in both spaces (getBoundingClientRect is post-zoom,
      * offsetWidth is pre-zoom). Measured rather than read from a variable because it is not ours to
@@ -1984,6 +1918,26 @@ export class Game {
         return ratio > 0.05 && ratio < 20 ? ratio : 1; // ignore nonsense from a mid-teardown box
     }
 
+    /**
+     * How far to raise the fan so the bottom-corner buttons stop hiding the cards under them.
+     *
+     * The floating fan hangs off the viewport bottom and the arc pushes each outer card a further
+     * `2 * mid^2` px down — into the band our "?" strip and BGA's own replay / chat controls occupy.
+     * Those controls are z-index 949 against the fan's 900, so they paint over the cards AND swallow
+     * the taps on them. Reserving that width horizontally is the wrong lever (see handCardWidth), so
+     * the fan keeps the full width and moves UP by enough to clear them.
+     *
+     * The clearance target is 0.55 of each card's MEASURED bounding box, not 0.42 of the card: these
+     * cards are rotated, so an outer card sits in a box ~15% taller than itself and its identifying
+     * strip (value numeral + orientation bulbs) lands at ~0.515 of the box height for the worst case
+     * — the ±17° outermost card of a 9-card fan. 0.55 rounds that up; over-lifting is the cheap
+     * direction to be wrong in.
+     *
+     * Only cards that actually reach into a corner constrain the lift, so a fan narrower than the
+     * viewport — every desktop width, and the attached (non-floating) state — computes 0 and nothing
+     * moves. Deliberately not gated on `.ucs-narrow`: the buttons are position:fixed at every width, so
+     * the question is always geometric rather than a breakpoint's to answer.
+     */
     private fanLift(cards: HTMLElement[], currentLift: number): number {
         // Our own lower-left strip, measured rather than assumed: it holds the "?" and, once a round has
         // been scored, the round-summary restore chip beside it, so its width is not a constant.
@@ -2433,7 +2387,7 @@ export class Game {
             const floatId = (buildNo in builds) ? floating[buildNo] : undefined;
             if (floatId !== undefined && this.floatingPatchSlot == null) {
                 const cardSlot = faceOf(card, this.material).slot ?? null;
-                const openForFloat = ['L', 'R', 'B'].filter((s) => !builds[buildNo].has(s) && s !== cardSlot);
+                const openForFloat = SLOTS.filter((s) => !builds[buildNo].has(s) && s !== cardSlot);
                 sb.setTitle(_('Orient the floating patch already in this sweater'));
                 openForFloat.forEach((s) => sb.addActionButton(`${_('Patch')} ${s}`, () => {
                     this.floatingPatchSlot = s; this.renderPlacementPanel();
@@ -2485,7 +2439,7 @@ export class Game {
 
         // The chosen sweater still holds a floating patch → orient it (needs a 2nd, distinct open slot).
         if (floatId !== undefined && this.floatingPatchSlot == null) {
-            const openForFloat = ['L', 'R', 'B'].filter((s) => !occupied.has(s) && s !== cardSlot);
+            const openForFloat = SLOTS.filter((s) => !occupied.has(s) && s !== cardSlot);
             sb.setTitle(_('Orient the floating patch already in this sweater'));
             openForFloat.forEach((s) => sb.addActionButton(`${_('Patch')} ${s}`, () => {
                 this.floatingPatchSlot = s; this.renderPlacementPanel();
@@ -2538,7 +2492,7 @@ export class Game {
             { color: this.mariaBuildNo === 0 ? 'primary' : 'secondary' });
         buildNos.forEach((b) => sb.addActionButton(`${_('Sweater')} ${b}`, () => { this.mariaBuildNo = b; this.renderPlacementPanel(); },
             { color: this.mariaBuildNo === b ? 'primary' : 'secondary' }));
-        ['L', 'R', 'B'].forEach((s) => sb.addActionButton(s, () => { this.mariaSlot = s; this.renderPlacementPanel(); },
+        SLOTS.forEach((s) => sb.addActionButton(orientationName(s), () => { this.mariaSlot = s; this.renderPlacementPanel(); },
             { color: this.mariaSlot === s ? 'primary' : 'secondary' }));
         if (this.mariaBuildNo != null && this.mariaSlot) {
             sb.addActionButton(_('Submit'), () => this.submitMariaDraft(), { color: 'primary' });
@@ -2625,7 +2579,7 @@ export class Game {
                 const { buildNos } = this.myBuilds();
                 sb.addActionButton(_('+ New sweater'), () => { this.tinaBuildNo = 0; this.renderTinaPanel(); }, { color: this.tinaBuildNo === 0 ? 'primary' : 'secondary' });
                 buildNos.forEach((b) => sb.addActionButton(`${_('Sweater')} ${b}`, () => { this.tinaBuildNo = b; this.renderTinaPanel(); }, { color: this.tinaBuildNo === b ? 'primary' : 'secondary' }));
-                ['L', 'R', 'B'].forEach((s) => sb.addActionButton(s, () => { this.tinaSlot = s; this.renderTinaPanel(); }, { color: this.tinaSlot === s ? 'primary' : 'secondary' }));
+                SLOTS.forEach((s) => sb.addActionButton(orientationName(s), () => { this.tinaSlot = s; this.renderTinaPanel(); }, { color: this.tinaSlot === s ? 'primary' : 'secondary' }));
                 if (this.tinaBuildNo != null && this.tinaSlot) {
                     sb.addActionButton(_('Confirm move'), () => this.onTinaMove?.(this.tinaSelA!, this.tinaBuildNo!, this.tinaSlot!), { color: 'primary' });
                 }

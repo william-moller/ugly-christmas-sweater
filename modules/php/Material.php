@@ -53,7 +53,7 @@ class Material
 
     /**
      * Per-card face data: the printed ICON and ORIENTATION for each of the 48 numbered cards.
-     * Key = "<color>_<value>". Transcribed from the physical card faces (2026-06-22).
+     * Key = "<color>_<value>". Transcribed from the physical card faces.
      *
      * Orientation is a PRINTED property of the card (not player-chosen) — only Patches let the player
      * pick the slot. Note the deck's regular structure (a useful integrity check):
@@ -167,14 +167,14 @@ class Material
 
     /**
      * PERFECT FIT (6 cards) — "super trump": a sweater card whose value matches takes the trick.
-     * Confirmed 2026-06-24: one card per value 1..6.
+     * One card per value 1..6.
      * @var int[]
      */
     const PERFECT_FIT = [1, 2, 3, 4, 5, 6];
 
     /**
      * TRENDY YARN (4 cards) — trump colour for the round. One card per colour.
-     * Confirmed 2026-06-24: exactly one card for each of the four sweater colours.
+     * Exactly one card for each of the four sweater colours.
      * @var string[]
      */
     const TRENDY_YARN = self::COLORS;
@@ -190,14 +190,12 @@ class Material
      *    'objectives' => [ ['match'=>'color','value'=>COLOR_*], ['match'=>'icon','value'=>ICON_*] ]]
      *   or ['id'=>int, 'title'=>clienttranslate('...'), 'clash'=>true]
      *
-     * DECK (confirmed from the publisher art 2026-07-15): 10 physical cards = 8 distinct colour+icon
-     * fads + "Clash Is In" ×2. Each colour appears on TWO cards, each paired with a DIFFERENT icon —
-     * the earlier "one tidy colour⇄icon pair per colour, 2× each" guess was WRONG. The eight pairings:
+     * DECK (confirmed against the publisher art): 10 physical cards = 8 distinct colour+icon fads +
+     * "Clash Is In" ×2. Each colour appears on TWO cards, each paired with a DIFFERENT icon:
      *   yellow+bell, yellow+snowman, purple+snowman, purple+bell,
      *   red+candycane, red+tree, green+tree, green+candycane  (+ clash ×2).
      * createGameplayCards() makes one card per entry (type_arg = id), so this returns all 10 physical
-     * cards. Scoring (Game::sweaterScoreParts / fadPointsFor) already iterates objectives independently,
-     * so no scoring change was needed — only this data.
+     * cards; Game::fadParts iterates each card's objectives independently.
      */
     public static function fads(): array
     {
@@ -237,12 +235,8 @@ class Material
      *   'needs' is an unordered multiset of exactly 3 requirements (a completed sweater's 3 pieces
      *   must cover them; each piece counts toward EITHER its colour or its icon, orientation ignored).
      *
-     * CONFIRMED against the publisher art (2026-07-15): all 16 cards transcribed. The 15 previously
-     * known requirement multisets were each verified correct, and the 16th (#16, Auntie Jaimie) is the
-     * hypothesised **1 Purple + 2 Candy Canes** — the one (colour, icon) pair that was missing. 'name'
-     * now holds each card's real printed family-member title. Requirements are the trusted data; each
-     * completed sweater's 3 pieces must cover the multiset, each piece counting toward EITHER its
-     * colour or its icon (orientation ignored). 'id' also keys the Secret Santa card art sprite.
+     * All 16 cards transcribed from the publisher art, names and requirements both. The 16 multisets
+     * cover every (colour, icon) pair. 'id' also keys the Secret Santa card art sprite.
      */
     public static function secretSantas(): array
     {
@@ -291,10 +285,9 @@ class Material
      * of the 4 used); they persist for the whole game. Each is either an 'objective' (a passive VP bonus,
      * like a Secret Santa) or a 'oneshot' (a once-per-game triggered effect, discarded after use).
      *
-     * EFFECTS (2026-07-09): all four are implemented from Will's exact card text — Little Brothers in
-     * scoreRound (littleBrothersSatisfied), Maria in placeDraftedCard/actDraftCard, Tina in the TinaTink
-     * state, Billy in the BillyChoice state. 'name'/'text' are the displayed strings (final art may retitle).
-     * The Little Brothers colour requirement is encoded directly in littleBrothersSatisfied (two sweaters:
+     * Where each effect lives: Little Brothers in Game::scoreRound (littleBrothersSatisfied), Maria in
+     * placeDraftedCard / actDraftCard, Tina in the TinaTink state, Billy in the BillyChoice state. The
+     * Little Brothers colour requirement is encoded directly in littleBrothersSatisfied (two sweaters:
      * {1 green,2 red} + {1 red,2 green}), so 'objectiveNeeds' stays null here.
      *
      * Format: ['id'=>int, 'key'=>string, 'name'=>clienttranslate('...'), 'kind'=>'objective'|'oneshot',

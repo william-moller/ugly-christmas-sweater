@@ -740,13 +740,12 @@ html[data-theme="dark"] {
 // Trade Area, my knitting area) and not to reference art. Nothing in this strip is ever clicked — the
 // round parameters are read off, the Secret Santas are read-once private objectives.
 //
-// This is also what makes the wide layout reachable on a laptop. Scaled, Large inflated a 90px parameter
-// card to 135px and put Casual's floor at 1602 — above a 1536px screen — so a 1536 laptop at Large got
-// the narrow (phone-shaped) layout: stacked column, Draft Pool below the parameter row, dead green beside
-// it. Unscaled, the strip is a pure FIXED term and every shape costs `320 x scale + FIXED`, dropping
-// Casual's Large floor to 1467. Note what else it buys: the within-shape spread collapses (Casual
-// 324px -> 176px), which is the "narrow the card-size spread" goal in backlog.md — size stops being a
-// layout axis because the only thing left that scales is the centre stack.
+// This is also what makes the wide layout reachable on a laptop. Were the strip scaled, Large would
+// inflate a 90px parameter card to 135px and put Casual's floor at 1602 — above a 1536px screen — so a
+// 1536 laptop at Large would get the narrow (phone-shaped) layout. Unscaled, the strip is a pure FIXED
+// term and every shape costs `320 x scale + FIXED`, putting Casual's Large floor at 1467. It also
+// collapses the within-shape spread (Casual 324px -> 176px): size stops being a layout axis, because
+// the only thing left that scales is the centre stack.
 #ucs-board-strip {
     flex: 0 0 auto;
     display: flex;
@@ -1767,23 +1766,22 @@ $ucs-sheet-anim: 220ms;
 // ---- Responsive: narrow window — everything stacks in one column --------------------------------
 // The desktop layout is a wide three-column strip (board strip · centre trick · opponents) with a
 // full-width Knitting Area beneath. Below the width where those columns fit, the whole thing collapses
-// to a vertical stack with the Round-Tracker/opponents sidebar. (An earlier tablet-specific "reference
-// rail" was retired in the layout rework; the tier derivations in .claude/responsive.md predate it.)
+// to a vertical stack with the Round-Tracker/opponents sidebar.
 //
 // Driven by a CLASS, not a media query. The switch width is per content shape and per card size — the
-// cheapest shape needs 1278px and the dearest 1884 — and a single hardcoded 1000 left every shape
-// rendering a squeezed wide layout in the band above it (#ucs-board-strip is flex: 0 0 auto, so
-// #ucs-center-stack was what gave). Both inputs are fixed for a session: the shape is the variant plus
-// player count, and the card-size preference is needReload. So Game.ts::wideLayoutFloor computes ONE
-// width from the responsive.md formula and Game.ts::layoutNarrowSidebar toggles this class at it —
-// one source of truth, rather than the same floors restated in CSS and JS.
+// cheapest shape needs 1291px and the dearest 1659 — and both inputs are fixed for a session: the shape
+// is the variant plus player count, and the card-size preference is needReload. So
+// Game.ts::wideLayoutFloor computes ONE width from the responsive.md formula and
+// Game.ts::layoutNarrowSidebar toggles this class at it — one source of truth, rather than the same
+// floors restated in CSS and JS. A single hardcoded width here would sit below most shapes' real floor
+// and render them a squeezed wide layout (#ucs-board-strip is flex: 0 0 auto, so #ucs-center-stack is
+// what gives).
 // Upper bounds for the narrow layout's fluid (cqi) card sizing.
 //
-// The narrow layout is no longer a phone layout: since the boundary moved to each shape's real floor
-// it is what renders at EVERY width below that floor — up to 1602px for Casual at Large and 1884 for
-// Express 2P. Uncapped, `(100cqi - 12px) / 3` grew a Casual parameter card to ~376px on a 1536px
-// laptop: fluid sizing doing exactly what it was told, at a width it was never exercised at (the
-// narrow pass only ever went up to ~1000px — see backlog).
+// The narrow layout is not just a phone layout: the boundary is each shape's real floor, so this is
+// what renders at EVERY width below it — up to 1467px for Casual at Large and 1659 for Express 2P.
+// Uncapped, `(100cqi - 12px) / 3` grows a Casual parameter card to ~376px on a 1536px laptop: fluid
+// sizing doing exactly what it was told, at a width the narrow pass was never exercised at.
 //
 // Cap each at the WIDE layout's own Large size, since that is the largest these cards are ever meant
 // to be drawn anywhere: the 90px and 128px reference bases at --ucs-card-scale 1.5. Flat px rather
@@ -2293,13 +2291,13 @@ $narrow-santa-cap: 192px; // 128 x 1.5 — Secret Santa cards
 // ---- Avid: the three revealed Secret Santas ---------------------------------------------------------
 // Avid deals 3 Secret Santas (Casual 1, Express 2) and they render as landscape cards. A row of three
 // is the layout we want — three stacked run ~600px tall at Large, which is most of the table's height
-// and pushes the centre column's content off a 1080p screen. The obstacle was only ever width: at Large
-// the zone inherits --ucs-card-scale, so each slot is 300px and the row is 956px (≈2093px of viewport,
-// past any common monitor), hence the stacked fallback below.
+// and pushes the centre column's content off a 1080p screen. Width is the only obstacle: scaled, at
+// Large each slot would be 300px and the row 956px (≈2093px of viewport, past any common monitor),
+// which is what the stacked fallback below exists for.
 //
-// The fix is to stop scaling them. A Secret Santa is a read-once private objective — you never click
-// one — so unlike the hand / Draft Pool / knitting it gains nothing from the Card-size preference,
-// which .claude/responsive.md defines as a multiplier on INTERACTIVE card art. Pinned to their
+// So they are not scaled. A Secret Santa is a read-once private objective — you never click one — so
+// unlike the hand / Draft Pool / knitting it gains nothing from the Card-size preference, which
+// .claude/responsive.md defines as a multiplier on INTERACTIVE card art. Pinned to their
 // unscaled 128x200 the row is 656px (3 x 200 slot + 2 x 8 gap + 16 zone padding + 24 label overhang)
 // at EVERY size, so only the Draft Pool still scales and the shape costs:
 //
@@ -2314,20 +2312,20 @@ $narrow-santa-cap: 192px; // 128 x 1.5 — Secret Santa cards
 // way), so it keeps the full-size art. Tier A only — below 1000px the whole table is a single column
 // where vertical space is the scarce axis, and Casual/Avid have not been through the narrow pass yet
 // (see backlog).
-// :not(.ucs-narrow) on both blocks below — the narrow layout now starts at the shape's real floor
-// (1602 for Avid at Large), so it overlaps this min-width band. Without the guard these win on
-// specificity (they carry an extra `html` element selector) and would re-stack the Santas inside the
-// narrow layout, which gives them their own full-width row precisely to avoid that.
+// :not(.ucs-narrow) on both blocks below — the narrow layout starts at the shape's real floor (1467
+// for Avid at Large), so it overlaps this min-width band. Without the guard these win on specificity
+// (they carry an extra `html` element selector) and would re-stack the Santas inside the narrow
+// layout, which gives them their own full-width row precisely to avoid that.
 @media (min-width: 1001px) {
     #ucs-table.ucs-avid:not(.ucs-narrow) #ucs-secret-santa .ucs-santa-cards {
         flex-direction: column;
         align-items: flex-start;
     }
 }
-// The row now SHRINKS rather than collapsing to a column. Pinning it to 128x200 meant that below the
-// width where three full-size slots fit, the whole arrangement fell back to stacking — which is the one
-// thing the row exists to avoid, and it wasted the width it was trying to protect (three cards in a
-// column leave the strip one card wide and the space beside them empty).
+// The row SHRINKS rather than collapsing to a column. A fixed 128x200 slot would fall back to stacking
+// below the width where three full-size slots fit — the one thing this row exists to avoid, and it
+// wastes the width it is protecting (three cards in a column leave the strip one card wide and the
+// space beside them empty).
 //
 // Rearranging responsive.md's formula: everything that is NOT the three rotated slots costs
 // `320 x scale + 733` — the Draft Pool's scaling cards, plus this shape's other FIXED terms and the 56px
@@ -2378,10 +2376,6 @@ $avid-santa-row-floors: (small: 1415px, medium: 1430px, large: 1590px);
 // since #ucs-board-strip is flex: 0 0 auto and the centre stack is what gives. Small has no floor: it
 // still uses the Santa row at every width.
 //
-// Large was 1840 while the board strip still scaled (CARD 778 / FIXED 406 → 1836). Pinning the strip
-// moved the whole parameter + Santa block out of CARD, so only the 320px Draft Pool scales now and Large
-// costs 1607, not 1836 — the old floor was withholding the Santa column for 230px it no longer needs.
-// Medium is unchanged by construction: at scale 1 nothing moves.
 $santa-column-floors: (medium: 1450px, large: 1610px);
 @each $size, $floor in $santa-column-floors {
     @media (min-width: $floor) {

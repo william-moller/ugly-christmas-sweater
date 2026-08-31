@@ -1,7 +1,7 @@
 {
    "name": "uglychristmassweaters",
    "version": "1.0.0",
-   "description": "",
+   "description": "Ugly Christmas Sweaters — Board Game Arena implementation (build + deploy toolchain)",
    "main": "modules/js/Game.js",
    "scripts": {
       "build:ts": "rollup -c",
@@ -16,7 +16,7 @@
       "watch": "npm run watch:ts & npm run watch:scss",
       "build": "npm run build:ts && npm run build:scss"
    },
-   "author": "yourname",
+   "author": "Will Moller <will.moller@gmail.com>",
    "license": "MIT",
    "devDependencies": {
       "@rollup/plugin-typescript": "^12.3.0",
