@@ -20,6 +20,24 @@ nothing.
 
 ---
 
+## Solved a "how many fit" formula as an equality, so nothing fit
+
+- **What happened** — the rule sizing my Knitting Area's cards to fit four sweaters per row shipped as
+  `c = (100cqi - 68px) / 8`, derived from `4 × (2c + 8) + 36 <= W`. It produced three per row, not four.
+- **Root cause** — I solved the inequality *at the boundary* and used the result. That makes
+  `8c + 68` come to exactly W by construction, so the four builds always total precisely the container
+  width, and flex wraps on the tie as soon as sub-pixel rounding pushes any of the seven boxes up a
+  fraction. The arithmetic was right and the answer was still wrong, which is why checking the
+  derivation again would never have found it — the defect is in using an exact fit at all.
+- **Consequence** — another deploy and report cycle on a feature whose entire purpose was the column
+  count, and it was off by three pixels.
+- **Rule** — **a layout formula that answers "how many fit" must fit STRICTLY, never exactly.** Subtract
+  a slack term of about a pixel per box and gap before using the result, and say in the comment that
+  the slack is anti-tie rather than a fudge. Sub-pixel rounding, fractional custom-property values and
+  border rounding all round *up* in practice; an exact fit is a coin flip that lands badly.
+
+---
+
 ## Superseded: "use sticky to keep chrome in the play zone" — sticky does not work on a BGA page
 
 - **What happened** — the first entry in this log (the footer overlap) prescribed `position: sticky` as

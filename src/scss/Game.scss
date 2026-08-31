@@ -1004,9 +1004,16 @@ html[data-theme="dark"] {
 //
 //     4 × (2c + 8) + 36 <= W    ->    c <= (W - 68) / 8
 //
-// At the ~972px of content that arrangement gives, that is 113px against Large's 120 — a 6% trim to
-// gain a whole column. On a full-width table it resolves above 120 and the preference wins outright,
-// so this is inert everywhere it is not needed.
+// ...plus 8px of SLACK, which is the whole reason this reads 76 and not 68. Solving the equality makes
+// `8c + 68` come to exactly W by construction, so the four builds always total precisely the container
+// width — and flex wraps on that tie as soon as sub-pixel rounding pushes any of the seven boxes
+// (4 builds, 3 gaps) up a fraction, which it does. Measured on a table: builds rendered 213px into a
+// 888px container needing 888, and the fourth wrapped. 8px absorbs a rounding pixel per box and costs
+// 1px of card width.
+//
+// At the ~890px of content this arrangement gives, that is ~101px against Large's 120 — a trim to gain
+// a whole column. On a full-width table it resolves above 120 and the preference wins outright, so
+// this is inert everywhere it is not needed.
 //
 // The 56px floor is the interactive-card floor from responsive.md (the bulb letter at 0.16 × W needs
 // ~9px). Below it the builds wrap to three per row instead, which is the correct failure: legibility
@@ -1017,10 +1024,10 @@ html[data-theme="dark"] {
 // Both are scoped away from .ucs-narrow, which sizes this zone off its own 25cqi rule.
 #ucs-table:not(.ucs-narrow) #ucs-my-area { container-type: inline-size; }
 #ucs-table:not(.ucs-narrow) #ucs-my-area .ucs-knitting {
-    --ucs-card-w: min(
-        calc(#{$card-w} * var(--ucs-card-scale, 1)),
-        max(56px, calc((100cqi - 68px) / 8))
-    );
+    // NB no comments inside the value below: Sass passes custom-property values through as raw tokens
+    // and does not strip `//` from them, so an inline comment ends up in the shipped CSS and corrupts
+    // the declaration. 76px = 68px of boxes and gaps + 8px of anti-tie slack, both derived above.
+    --ucs-card-w: min(calc(#{$card-w} * var(--ucs-card-scale, 1)), max(56px, calc((100cqi - 76px) / 8)));
     --ucs-card-h: calc(var(--ucs-card-w) * 1.556);
 }
 

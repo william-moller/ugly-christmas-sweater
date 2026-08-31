@@ -276,16 +276,20 @@ Two properties of that pass are deliberate, and both follow this document's own 
 Scoped to Avid — the only variant whose strip carries three stacked landscape cards. The Express
 arrangements are signed off as they stand and are not worth disturbing for a hole they do not have.
 
-**Four sweaters per row, or the preference — whichever is smaller.** The arrangement above leaves the
-Knitting Area ~992px, and a build is `2 × card + 8` (3px padding and 1px border each side) with 12px
-`.ucs-knitting` gaps, so:
+**Four sweaters per row, or the preference — whichever is smaller.** A build is `2 × card + 8` (3px
+padding and 1px border each side) with 12px `.ucs-knitting` gaps, so:
 
 ```
 4 × (2c + 8) + 36 <= W        ->    c <= (W - 68) / 8
 ```
 
-At Large that wants 113px against the preference's 120 — a 6% trim to gain a whole column, so
-`.ucs-knitting` takes `min(preference, max(56px, (100cqi - 68px) / 8))`. It can only ever shrink a card,
+**Never solve a fit formula as an equality.** `c = (W - 68) / 8` makes `8c + 68` equal W *exactly*, so
+the four builds always total precisely the container width — and flex wraps on that tie the moment
+sub-pixel rounding pushes any of the seven boxes (4 builds, 3 gaps) up a fraction. Shipped that way it
+gave three per row: builds rendered 213px into an 888px container needing 888. The rule therefore
+subtracts **8px of slack** — a rounding pixel per box — and reads `(100cqi - 76px) / 8`.
+
+`.ucs-knitting` takes `min(preference, max(56px, (100cqi - 76px) / 8))`. It can only ever shrink a card,
 never inflate one past what the player asked for, and on a full-width table it resolves above the
 preference and is inert. The 56px is the interactive floor from this document; below it the builds wrap
 to three per row instead, which is the correct failure — legibility outranks the column count.

@@ -1307,10 +1307,7 @@ html[data-theme=dark] {
 }
 
 #ucs-table:not(.ucs-narrow) #ucs-my-area .ucs-knitting {
-  --ucs-card-w: min(
-      calc(80px * var(--ucs-card-scale, 1)),
-      max(56px, calc((100cqi - 68px) / 8))
-  );
+  --ucs-card-w: min(calc(80px * var(--ucs-card-scale, 1)), max(56px, calc((100cqi - 76px) / 8)));
   --ucs-card-h: calc(var(--ucs-card-w) * 1.556);
 }
 
