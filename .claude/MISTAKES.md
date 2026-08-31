@@ -20,6 +20,26 @@ nothing.
 
 ---
 
+## Picked the narrower of two layout structures without costing either
+
+- **What happened** — the tall-strip lift put `#ucs-lower` inside a wrapper around the centre stack, so
+  my Knitting Area was capped at the centre column's width for its whole height: two sweaters per row
+  on a table with room for four, with the right column sitting empty beside it. Making `#ucs-upper` a
+  grid and spanning the Knitting Area across centre + right was available from the start and is
+  strictly better.
+- **Root cause** — I checked that the structure fixed the reported symptom (the empty band) and stopped
+  there. The width it cost was disclosed as a trade-off rather than *computed*, and it was entirely
+  computable: a build is `2 × card + 8` and the gaps are 12px, so how many fit per row is arithmetic,
+  not a judgement to be discovered on a screenshot.
+- **Consequence** — a third deploy/push/review round trip on one feature, and a layout shipped that
+  looked worse than what it replaced in the dimension nobody was asked about.
+- **Rule** — **when a layout change trades one axis for another, compute the cost on the axis being
+  given up before shipping, and put the number in the message.** "It will be narrower" is not a cost;
+  "it drops from four builds per row to two" is, and it would have rejected this structure immediately.
+  The components here all have exact box formulas in the stylesheet — use them.
+
+---
+
 ## A gate invented from a card's height blocked the only shape it was written for
 
 - **What happened** — `layoutTallStrip` was added to lift the Knitting Area beside Avid's stacked

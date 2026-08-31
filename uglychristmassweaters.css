@@ -1172,22 +1172,23 @@ html[data-theme=dark] {
   box-shadow: none;
 }
 
-#ucs-mid-col {
-  display: contents;
+#ucs-table.ucs-tall-strip:not(.ucs-narrow) #ucs-upper {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-areas: "strip center right" "strip lower  lower";
+  align-items: start;
 }
-
-#ucs-table.ucs-tall-strip:not(.ucs-narrow) #ucs-mid-col {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  flex: 1 1 auto;
-  min-width: 0;
+#ucs-table.ucs-tall-strip:not(.ucs-narrow) #ucs-upper > #ucs-board-strip {
+  grid-area: strip;
 }
-#ucs-table.ucs-tall-strip:not(.ucs-narrow) #ucs-mid-col > #ucs-center-stack {
-  flex: 0 0 auto;
-  width: 100%;
+#ucs-table.ucs-tall-strip:not(.ucs-narrow) #ucs-upper > #ucs-center-stack {
+  grid-area: center;
 }
-#ucs-table.ucs-tall-strip:not(.ucs-narrow) #ucs-mid-col > #ucs-lower {
+#ucs-table.ucs-tall-strip:not(.ucs-narrow) #ucs-upper > #ucs-right-col {
+  grid-area: right;
+}
+#ucs-table.ucs-tall-strip:not(.ucs-narrow) #ucs-upper > #ucs-lower {
+  grid-area: lower;
   margin-top: 0;
 }
 
@@ -1299,6 +1300,18 @@ html[data-theme=dark] {
   justify-content: center;
   gap: 12px;
   min-height: var(--ucs-card-h);
+}
+
+#ucs-table:not(.ucs-narrow) #ucs-my-area {
+  container-type: inline-size;
+}
+
+#ucs-table:not(.ucs-narrow) #ucs-my-area .ucs-knitting {
+  --ucs-card-w: min(
+      calc(80px * var(--ucs-card-scale, 1)),
+      max(56px, calc((100cqi - 68px) / 8))
+  );
+  --ucs-card-h: calc(var(--ucs-card-w) * 1.556);
 }
 
 .ucs-panel-tally {

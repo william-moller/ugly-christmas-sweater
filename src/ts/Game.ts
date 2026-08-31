@@ -156,11 +156,9 @@ export class Game {
                         <div id="ucs-secret-santa" class="ucs-zone ucs-secret-santa" style="display:none"></div>
                         <div id="ucs-my-santa" class="ucs-my-santa" style="display:none"></div>
                     </div>
-                    <div id="ucs-mid-col">
-                        <div id="ucs-center-stack">
-                            <div id="ucs-draft-pool" class="ucs-zone"></div>
-                            <div id="ucs-trade-area" class="ucs-zone"></div>
-                        </div>
+                    <div id="ucs-center-stack">
+                        <div id="ucs-draft-pool" class="ucs-zone"></div>
+                        <div id="ucs-trade-area" class="ucs-zone"></div>
                     </div>
                     <div id="ucs-right-col"><div id="ucs-opponents"></div></div>
                 </div>
@@ -700,11 +698,11 @@ export class Game {
      * centre stack's height, leaving a card-sized hole under the Trade Area and pushing the Knitting Area
      * below all of it.
      *
-     * The fix moves #ucs-lower into #ucs-mid-col, a wrapper around #ucs-center-stack that is
-     * `display: contents` by default (see Game.scss). Default, it does not exist as far as layout is
-     * concerned, so every other shape — wide flex row and narrow grid alike — behaves exactly as it did
-     * before the wrapper existed. Activated, it becomes the real middle column and the Knitting Area sits
-     * under the Trade Area, to the right of the Santas.
+     * The fix moves #ucs-lower INTO #ucs-upper, which becomes a grid (see .ucs-tall-strip in Game.scss):
+     * the strip spans both rows down the left, and the Knitting Area takes a second row spanning the
+     * centre AND right columns. Spanning both matters — an earlier version parked #ucs-lower inside a
+     * wrapper around the centre stack alone, which capped the Knitting Area at the centre column's width
+     * for its whole height and got two sweaters per row where the table had room for four.
      *
      * The condition is MEASURED, not restated from the floors. Those live in the stylesheet; a copy here
      * would be a second source of truth for a number responsive.md exists to keep singular. Measuring
@@ -717,11 +715,10 @@ export class Game {
     private layoutTallStrip() {
         const table = document.getElementById('ucs-table');
         const upper = document.getElementById('ucs-upper');
-        const mid = document.getElementById('ucs-mid-col');
         const strip = document.getElementById('ucs-board-strip');
         const centre = document.getElementById('ucs-center-stack');
         const lower = document.getElementById('ucs-lower');
-        if (!table || !upper || !mid || !strip || !centre || !lower) return;
+        if (!table || !upper || !strip || !centre || !lower) return;
 
         // Scoped to Avid: it is the only variant whose strip carries three stacked landscape cards. The
         // Express arrangements are signed off as they stand (see backlog) and are not worth disturbing
@@ -733,9 +730,9 @@ export class Game {
 
         // Already where it belongs — bail before touching the DOM, so an observer tick that changed
         // nothing does not reparent the Knitting Area (which would restart its cards' transitions).
-        if (want === (lower.parentElement === mid)) return;
+        if (want === (lower.parentElement === upper)) return;
 
-        if (want) mid.appendChild(lower);
+        if (want) upper.appendChild(lower);
         else upper.after(lower);
         table.classList.toggle('ucs-tall-strip', want);
     }

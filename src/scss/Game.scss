@@ -813,7 +813,7 @@ html[data-theme="dark"] {
     flex: 1 1 auto;
     min-width: 0; // let long builds wrap rather than overflow the row
     // Real card faces (my own sweater builds) — scale with the "Card size" preference (see html
-    // .ucs-cards-*).
+    // .ucs-cards-*). The value here is the ceiling; .ucs-knitting below fits it to the row.
     --ucs-card-w: calc(#{$card-w} * var(--ucs-card-scale, 1));
     --ucs-card-h: calc(#{$card-h} * var(--ucs-card-scale, 1));
     // Takes the standard opaque panel fill (inherited from .ucs-zone) and adds a frame. It used to
@@ -837,36 +837,31 @@ html[data-theme="dark"] {
     box-shadow: none;
 }
 
-// Wrapper around the centre stack. `display: contents` by default, which is what makes it free: with
-// it the wrapper is invisible to layout, so #ucs-center-stack stays a direct layout child of #ucs-upper
-// and BOTH existing arrangements behave exactly as they did before it existed — the wide flex row, and
-// the narrow grid that places #ucs-center-stack by `grid-area: center`.
+// Tall strip (wide Avid, Secret Santas stacked): #ucs-upper switches from a flex row to a GRID so my
+// Knitting Area can take a second row while the board strip spans both. Game.ts::layoutTallStrip moves
+// #ucs-lower in here and adds the class; the condition is measured in JS rather than written here
+// because it depends on the strip's rendered HEIGHT, which no media query can ask about.
 //
-// It becomes a real column in one shape only: the wide Avid table whose strip carries three stacked
-// Secret Santas. There Game.ts::layoutTallStrip moves #ucs-lower (my Knitting Area) inside it and adds
-// .ucs-tall-strip, so the Knitting Area sits under the Trade Area beside the Santas instead of below
-// the whole strip. The condition is measured in JS rather than written here because it depends on the
-// strip's rendered HEIGHT, which no media query can ask about.
-#ucs-mid-col { display: contents; }
+// `lower` spans the centre AND right columns, and that span is the whole point. The first version of
+// this parked #ucs-lower in a wrapper around the centre stack alone, which capped the Knitting Area at
+// the centre column's width for its entire height — two sweaters per row on a table with room for four,
+// with the right column sitting empty beside it below the opponents.
+//
+// Only the flex row is replaced. Every other shape, and the whole .ucs-narrow grid, is untouched.
+#ucs-table.ucs-tall-strip:not(.ucs-narrow) #ucs-upper {
+    display: grid;
+    // `minmax(0, 1fr)` rather than `1fr`: a bare 1fr floors at min-content, so a wide Trade Area frame
+    // would push the right column off instead of the centre column shrinking.
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    grid-template-areas:
+        "strip center right"
+        "strip lower  lower";
+    align-items: start; // grid items default to stretch; these are all content-height
 
-#ucs-table.ucs-tall-strip:not(.ucs-narrow) #ucs-mid-col {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-    // The flex sizing #ucs-center-stack carries as a row child moves up to the wrapper — it is the
-    // middle column now, and the stack is its first row.
-    flex: 1 1 auto;
-    min-width: 0;
-
-    > #ucs-center-stack {
-        // In a column `flex: 1 1 auto` grows the stack's HEIGHT, which would push the Knitting Area back
-        // down — the exact thing this arrangement exists to fix. Content height, full width.
-        flex: 0 0 auto;
-        width: 100%;
-    }
-    > #ucs-lower {
-        margin-top: 0; // the column's own gap replaces it
-    }
+    > #ucs-board-strip  { grid-area: strip; }
+    > #ucs-center-stack { grid-area: center; }
+    > #ucs-right-col    { grid-area: right; }
+    > #ucs-lower        { grid-area: lower; margin-top: 0; } // the grid's own gap replaces it
 }
 
 #ucs-center-stack {
@@ -997,6 +992,36 @@ html[data-theme="dark"] {
     justify-content: center;
     gap: 12px;
     min-height: var(--ucs-card-h);
+}
+
+// Four sweaters per row in my own Knitting Area, at the preference's size or the largest that fits —
+// whichever is SMALLER, so this can only ever shrink a card, never inflate one past what the player
+// asked for. Without it the row count is whatever the width happens to allow: the tall-strip
+// arrangement leaves ~992px there, which takes three builds and leaves a 200px margin doing nothing.
+//
+// A build is `2 × card + 8` (its 3px padding and 1px border, both sides), and .ucs-knitting gaps are
+// 12px, so four builds and three gaps fit when:
+//
+//     4 × (2c + 8) + 36 <= W    ->    c <= (W - 68) / 8
+//
+// At the ~972px of content that arrangement gives, that is 113px against Large's 120 — a 6% trim to
+// gain a whole column. On a full-width table it resolves above 120 and the preference wins outright,
+// so this is inert everywhere it is not needed.
+//
+// The 56px floor is the interactive-card floor from responsive.md (the bulb letter at 0.16 × W needs
+// ~9px). Below it the builds wrap to three per row instead, which is the correct failure: legibility
+// outranks the column count.
+//
+// Sizing lives on .ucs-knitting, NOT on #ucs-my-area, because cqi always resolves against an ANCESTOR
+// container and never the element carrying `container-type` — the same trap .ucs-santa-cards documents.
+// Both are scoped away from .ucs-narrow, which sizes this zone off its own 25cqi rule.
+#ucs-table:not(.ucs-narrow) #ucs-my-area { container-type: inline-size; }
+#ucs-table:not(.ucs-narrow) #ucs-my-area .ucs-knitting {
+    --ucs-card-w: min(
+        calc(#{$card-w} * var(--ucs-card-scale, 1)),
+        max(56px, calc((100cqi - 68px) / 8))
+    );
+    --ucs-card-h: calc(var(--ucs-card-w) * 1.556);
 }
 
 // ---- Player-panel knitting tally: per-colour + per-icon counts of cards knitted -----------------

@@ -245,11 +245,19 @@ Santas fall back to their stacked column (below `$avid-santa-row-floors`) the st
 the centre stack's height. That left a card-sized hole under the Trade Area with the Knitting Area
 pushed below the whole strip; at 1536 × Large it is the shape a real table showed first.
 
-`#ucs-mid-col` wraps the centre stack and is `display: contents` by default, so in every other shape it
-is invisible to layout and both existing arrangements — the wide flex row, and the narrow grid that
-places `#ucs-center-stack` by `grid-area: center` — behave exactly as they did before it existed. In the
-tall-strip case `Game.ts::layoutTallStrip` moves `#ucs-lower` inside it and the wrapper becomes the real
-middle column, so the Knitting Area sits under the Trade Area, right of the Santas.
+`Game.ts::layoutTallStrip` moves `#ucs-lower` into `#ucs-upper`, which switches from the flex row to a
+**grid**: the strip spans both rows down the left, and the Knitting Area takes a second row spanning the
+centre **and right** columns.
+
+```
+grid-template-areas:  "strip center right"
+                      "strip lower  lower"
+```
+
+Spanning both is the point, and the first version got it wrong: it parked `#ucs-lower` in a wrapper
+around the centre stack alone, which capped the Knitting Area at the centre column's width **for its
+entire height** — two sweaters per row on a table with room for four, with the right column sitting
+empty beside it below the opponents. Only the flex row is replaced; the `.ucs-narrow` grid is untouched.
 
 Two properties of that pass are deliberate, and both follow this document's own rules:
 
@@ -267,6 +275,24 @@ Two properties of that pass are deliberate, and both follow this document's own 
 
 Scoped to Avid — the only variant whose strip carries three stacked landscape cards. The Express
 arrangements are signed off as they stand and are not worth disturbing for a hole they do not have.
+
+**Four sweaters per row, or the preference — whichever is smaller.** The arrangement above leaves the
+Knitting Area ~992px, and a build is `2 × card + 8` (3px padding and 1px border each side) with 12px
+`.ucs-knitting` gaps, so:
+
+```
+4 × (2c + 8) + 36 <= W        ->    c <= (W - 68) / 8
+```
+
+At Large that wants 113px against the preference's 120 — a 6% trim to gain a whole column, so
+`.ucs-knitting` takes `min(preference, max(56px, (100cqi - 68px) / 8))`. It can only ever shrink a card,
+never inflate one past what the player asked for, and on a full-width table it resolves above the
+preference and is inert. The 56px is the interactive floor from this document; below it the builds wrap
+to three per row instead, which is the correct failure — legibility outranks the column count.
+
+The sizing lives on `.ucs-knitting` and the `container-type` on `#ucs-my-area`, because **cqi always
+resolves against an ancestor container, never the element carrying `container-type`** — the same trap
+`.ucs-santa-cards` documents.
 
 **Express · 3 and 4 players** fold the board strip instead of running it flat, because Express deals
 `players + 1` Fads and a six- or seven-card parameter row pushes the centre column right for no gain:
