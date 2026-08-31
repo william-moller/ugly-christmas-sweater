@@ -2750,9 +2750,11 @@ $santa-column-floors: (medium: 1450px, large: 1610px);
 // `auto`. On BGA the result is a strip that never floats at all and simply sits at its flow position,
 // the bottom of #left-side, below the How-to-Play block. Do not reach for sticky here again.
 //
-// So: fixed, and JS lifts it off the viewport bottom by however far #left-side's bottom edge has risen
-// into view. While the play zone runs off the bottom of the window that lift is zero and this is plain
-// `fixed`; once the footer scrolls in, the strip stops at the bottom of the play zone.
+// So: fixed, and JS lifts it off the viewport bottom by however far #ucs-table's bottom edge has risen
+// into view. While the table runs off the bottom of the window that lift is zero and this is plain
+// `fixed`; once it ends on screen the strip stops above it. The anchor is our OWN table, not
+// #left-side — BGA nests its game-tab bar ("How to play?", "Competition", ...) in there too, and
+// clamping to #left-side put the "?" over those tabs. See Game.ts::helpPinAnchor.
 #bga-help_buttons {
     position: fixed;
     left: 8px;

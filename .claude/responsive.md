@@ -619,9 +619,11 @@ breakpoint needed, because the obstruction is geometric at every width. The left
 pair has no reliable id and carries a measured **120px** constant, which is the one number to raise if
 they ever clip again.
 
-**Our own strip is `sticky`, so it is not always in the band.** It was `position: fixed` until the
-public-alpha review rejected it for sitting on BGA's site footer; sticky inside `#left-side` keeps the
-float but stops at the bottom of the play zone. `fanLift` therefore tests whether the strip is actually
+**Our own strip moves, so it is not always in the band.** It is `position: fixed`, but `Game.ts::pinHelpStrip`
+raises its bottom offset as `#left-side`'s bottom edge scrolls into view, so it floats in the corner
+normally and comes to rest above BGA's site footer instead of on it — the public-alpha review rejected
+the un-clamped version. (`position: sticky` expresses this directly and does *not* work on a BGA page;
+the write-up is in `../../.claude/framework.md`.) `fanLift` therefore tests whether the strip is actually
 parked at the viewport bottom (`strip.bottom > innerHeight - 48`) before treating it as an obstruction.
 Measuring it wherever it happens to be would compute a lift against a strip halfway up the page and
 throw the hand off the top of the window. When it is not stuck the left corner is left unconstrained

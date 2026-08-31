@@ -633,13 +633,11 @@ class Game {
      * _reference/castlecombo): HelpManager appends its #bga-help_buttons container to the BGA-standard
      * #left-side element.
      *
-     * That parent is not incidental. The strip is `position: fixed` with its bottom offset driven by
-     * pinHelpStrip(), and #left-side is the element that pass measures to decide where the play zone
-     * ends — so #left-side is what makes "inside the play zone" true.
-     *
-     * The missing-#left-side fallback therefore has to place the stand-in somewhere that is still the
-     * play zone: we append it to BGA's game area, NOT to <body>, whose bottom edge is below the site
-     * footer and would defeat the clamp entirely.
+     * #left-side is only the container bga-help insists on; what keeps the strip inside the play zone is
+     * pinHelpStrip(), which measures #ucs-table (see helpPinAnchor). The stand-in below therefore goes
+     * in the game area rather than on <body> for tidiness rather than correctness — but keep it that
+     * way: a container appended to <body> lands below every page element, which is where this whole
+     * problem started.
      */
     setupHelpButton() {
         if (!document.getElementById('left-side')) {
@@ -1034,10 +1032,10 @@ class Game {
      * page wrapper is enough, because it computes `overflow-y` to `auto`. Shipped, it never floated at
      * all — it sat at its flow position under the How-to-Play block.
      *
-     * So the clamp is computed instead, against #left-side's bottom edge, which is where the play zone
-     * ends. Cheap enough to run on raw scroll: one getBoundingClientRect and one custom-property write,
-     * coalesced to a frame. The ResizeObserver covers the play zone growing under it — a longer game
-     * log, a revealed Santa row — which no scroll event would announce.
+     * So the clamp is computed instead, against the bottom edge of OUR OWN table. Cheap enough to run
+     * on raw scroll: one getBoundingClientRect and one custom-property write, coalesced to a frame. The
+     * ResizeObserver covers the table growing under it — a revealed Santa row, a knitting area filling
+     * up — which no scroll event would announce.
      */
     setupHelpStripPin() {
         let queued = false;
@@ -1053,29 +1051,45 @@ class Game {
         };
         window.addEventListener('scroll', schedule, { passive: true });
         window.addEventListener('resize', schedule);
-        const zone = document.getElementById('left-side');
-        if (zone)
-            new ResizeObserver(schedule).observe(zone);
+        const anchor = this.helpPinAnchor();
+        if (anchor)
+            new ResizeObserver(schedule).observe(anchor);
         this.pinHelpStrip();
+    }
+    /**
+     * What the corner strip is not allowed to overhang: **our own table**, not #left-side.
+     *
+     * #left-side was the first choice and it is too low. BGA nests more than the play area in there —
+     * below the game sits the page's own game-tab bar ("How to play?", "Competition", "Strategy tips",
+     * "Options", "Credits"), and clamping to #left-side's bottom put the "?" straight over those tabs.
+     * They are BGA page elements, so that is the same defect the review raised, one band higher up.
+     *
+     * #ucs-table cannot have that problem by construction: we build it, and it contains only our
+     * content. Anchoring here means the strip can never overlap anything of BGA's, whatever their page
+     * nests where — which matters because their DOM is not ours to rely on and has now surprised us
+     * twice. Erring high is free; erring low is a rejection.
+     */
+    helpPinAnchor() {
+        return document.getElementById('ucs-table') ?? document.getElementById('left-side');
     }
     /**
      * How far to lift the corner strip off the viewport bottom so it stops at the play zone's edge.
      *
-     * `lift` is how far #left-side's bottom edge sits ABOVE the viewport bottom. While the play zone
-     * runs off the bottom of the window that is negative, the lift clamps to 0, and the strip behaves
-     * as plain `bottom: 12px` fixed — floating in the corner, which is the normal case and what the
-     * button is for. Once the page is scrolled far enough that #left-side ends on screen — which is
-     * exactly when BGA's footer appears — it goes positive and the strip rises by that much, so the
-     * buttons come to rest 12px above the bottom of the play zone and never cross onto the footer.
+     * `lift` is how far the table's bottom edge sits ABOVE the viewport bottom. While the table runs off
+     * the bottom of the window that is negative, the lift clamps to 0, and the strip behaves as plain
+     * `bottom: 12px` fixed — floating in the corner, which is the normal case and what the button is
+     * for. Once the page is scrolled far enough that the table ends on screen — which is when BGA's own
+     * page furniture below it appears — it goes positive and the strip rises by that much, coming to
+     * rest 12px above the table and crossing onto none of it.
      *
      * Set on <html> rather than the strip: .ucs-score-restore-solo reads the same variable, and it is
      * not inside the strip when the fallback path puts it in the game area instead.
      */
     pinHelpStrip() {
-        const zone = document.getElementById('left-side');
-        if (!zone)
+        const anchor = this.helpPinAnchor();
+        if (!anchor)
             return;
-        const lift = window.innerHeight - zone.getBoundingClientRect().bottom;
+        const lift = window.innerHeight - anchor.getBoundingClientRect().bottom;
         document.documentElement.style.setProperty('--ucs-corner-bottom', `${Math.max(0, lift) + 12}px`);
     }
     /**

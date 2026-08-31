@@ -236,8 +236,9 @@ and the sheet renders **modeless** (`renderRoundSummary(args, undefined, false)`
 
 `setRoundSummaryMinimized()` shrinks the sheet into a restore chip parked in bga-help's lower-left
 strip (so it inherits that strip's pinning and can't land on the "?" button). That strip is `position:
-sticky` inside `#left-side`, not `fixed` — a viewport-pinned button reaches BGA's own site footer, which
-is what the public-alpha review rejected; sticky floats identically but stops at the play zone's bottom. `display: none` can't be animated,
+fixed` with its bottom offset computed by `Game.ts::pinHelpStrip`, which lifts it clear of BGA's site
+footer — a plain viewport pin lands on the footer, which is what the public-alpha review rejected, and
+`position: sticky` is inert on a BGA page (see `../../.claude/framework.md`). `display: none` can't be animated,
 so a **timer** applies it after the shrink plays — `SHEET_ANIM_MS` and `$ucs-sheet-anim` must stay in
 step. A timer rather than `animationend`, so a browser that suppresses the animation still lands in the
 right state; and `hideRoundSummary()` clears that timer, or an Okay mid-minimize strands the chip.
