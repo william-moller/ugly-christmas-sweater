@@ -1888,12 +1888,11 @@ $ucs-sheet-anim: 220ms;
     stroke-linejoin: round;
 }
 // Fallback pin, only used if bga-help's container is missing (see Game.setRoundSummaryMinimized).
-// Sticky for the same reason the strip above is: this one is appended to the game area rather than to
-// #left-side, but a viewport-pinned chip reaches the site footer just as readily.
+// Shares --ucs-corner-bottom with the strip above, so it observes the same footer clearance.
 .ucs-score-restore-solo {
-    position: sticky;
-    bottom: 12px;
-    margin: 0 0 12px 8px;
+    position: fixed;
+    left: 8px;
+    bottom: var(--ucs-corner-bottom, 12px);
     z-index: 949;
 }
 
@@ -2737,28 +2736,27 @@ $santa-column-floors: (medium: 1450px, large: 1610px);
 // The "?" button (and the round-summary restore chip beside it) live in a lower-left strip that
 // bga-help appends as the last child of BGA's #left-side.
 //
-// STICKY, NOT FIXED. `position: fixed` — what bga-help ships, and what castlecombo / crybaby /
-// insidejob all use — pins the strip to the VIEWPORT, so it has no idea where the game ends. On a
-// short table, or once the page is scrolled to its end, BGA's own site footer is on screen and the "?"
-// sits on top of it. That is what the public-alpha review rejected (guidelines A.1 / C.4: game chrome
-// stays inside the play zone). Sticky keeps the identical floating behaviour while #left-side is on
-// screen, but a sticky box can never leave its containing block — so the bottom of the play zone is a
-// hard stop and the footer is unreachable by construction, at every window size and scroll position.
+// FIXED, with the bottom offset driven by Game.ts::pinHelpStrip.
 //
-// Three details that are load-bearing rather than cosmetic:
-//   * `width: fit-content` — a fixed box shrink-to-fits; a sticky one is an ordinary block and would
-//     run the full width of #left-side. An invisible full-width bar parked over the table swallows
-//     every click in its band.
-//   * `margin-left` rather than `left` — on a sticky box the inset properties are stickiness
-//     thresholds, not offsets, so `left: 8px` would add unwanted HORIZONTAL stickiness instead of
-//     nudging the strip in from the edge.
-//   * If a skin ever nests #left-side inside a scroll container, sticky degrades to plain flow at the
-//     bottom of the play zone. Less convenient, still compliant — it fails in the safe direction.
+// The requirement has two halves and only one of them is about the footer. The strip must FLOAT in the
+// viewport's lower-left as you scroll — that is what makes a help button reachable — and it must not
+// paint on top of BGA's site footer when the footer is on screen. Plain `fixed` (what bga-help ships,
+// and what castlecombo / crybaby / insidejob all use) gets the first and fails the second, which is
+// what the public-alpha review rejected.
+//
+// `position: sticky` was tried here and does NOT work on a BGA page: a sticky box is only sticky
+// relative to its nearest scrollport, and any ancestor that is a scroll container becomes that
+// scrollport — `overflow-x: hidden` on a page wrapper is enough, because it computes `overflow-y` to
+// `auto`. On BGA the result is a strip that never floats at all and simply sits at its flow position,
+// the bottom of #left-side, below the How-to-Play block. Do not reach for sticky here again.
+//
+// So: fixed, and JS lifts it off the viewport bottom by however far #left-side's bottom edge has risen
+// into view. While the play zone runs off the bottom of the window that lift is zero and this is plain
+// `fixed`; once the footer scrolls in, the strip stops at the bottom of the play zone.
 #bga-help_buttons {
-    position: sticky;
-    bottom: 12px;
-    width: fit-content;
-    margin: 0 0 12px 8px;
+    position: fixed;
+    left: 8px;
+    bottom: var(--ucs-corner-bottom, 12px);
     display: flex;
     gap: 10px;
     z-index: 949;

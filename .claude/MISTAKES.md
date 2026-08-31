@@ -20,6 +20,26 @@ nothing.
 
 ---
 
+## Superseded: "use sticky to keep chrome in the play zone" — sticky does not work on a BGA page
+
+- **What happened** — the first entry in this log (the footer overlap) prescribed `position: sticky` as
+  the fix, and that shipped. It never floated: the "?" strip sat at its flow position at the bottom of
+  #left-side, below the How-to-Play block, unreachable without scrolling to the end of the page.
+- **Root cause** — a sticky box is sticky only within its nearest scrollport, and any ancestor that is
+  a scroll container becomes that scrollport; `overflow-x: hidden` on a page wrapper is enough, since
+  it computes `overflow-y` to `auto`. I never checked BGA's ancestor chain. I had also written the
+  degraded mode into the comment as "still compliant — it fails in the safe direction", which is what
+  made shipping it unverified feel acceptable. It was not compliant: a help button nobody can find
+  fails the requirement more completely than the overlap did.
+- **Consequence** — a deploy and a review round trip, and a worse regression than the original defect.
+- **Rule** — this supersedes the earlier entry's rule. Chrome must be `position: fixed` with its bottom
+  offset COMPUTED against #left-side's bottom edge (Game.ts::pinHelpStrip). More generally: when a fix
+  trades one behaviour for another, restate both halves of the requirement and verify the half you did
+  not set out to change. The BGA-wide write-up is in
+  [`../../.claude/framework.md`](../../.claude/framework.md).
+
+---
+
 ## Picked the narrower of two layout structures without costing either
 
 - **What happened** — the tall-strip lift put `#ucs-lower` inside a wrapper around the centre stack, so

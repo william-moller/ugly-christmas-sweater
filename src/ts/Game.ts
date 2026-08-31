@@ -242,6 +242,7 @@ export class Game {
         // parameter row on small screens (see layoutNarrowSidebar). Runs after renderAll so the containers
         // are populated; it moves the containers, not their contents.
         this.setupNarrowSidebar();
+        this.setupHelpStripPin();
 
         // Draft Order: markers are drawn into the Trade Area cards themselves, so there's nothing to
         // place here. The active state's handler (PlayCard / DraftCard onEnteringState, which fires
@@ -278,14 +279,13 @@ export class Game {
      * _reference/castlecombo): HelpManager appends its #bga-help_buttons container to the BGA-standard
      * #left-side element.
      *
-     * That parent is not incidental. The strip is `position: sticky` rather than the `fixed` bga-help
-     * ships (see #bga-help_buttons in Game.scss — a viewport-pinned button lands on BGA's site footer,
-     * which is what the public-alpha review rejected), and a sticky box stops at the bottom of its
-     * CONTAINING BLOCK. #left-side is therefore what makes "inside the play zone" true.
+     * That parent is not incidental. The strip is `position: fixed` with its bottom offset driven by
+     * pinHelpStrip(), and #left-side is the element that pass measures to decide where the play zone
+     * ends — so #left-side is what makes "inside the play zone" true.
      *
-     * So the missing-#left-side fallback has to place it somewhere that is still the play zone: we
-     * append the stand-in to BGA's game area, NOT to <body>. On <body> the strip's flow position is
-     * below every page element — the site footer included — which is the exact failure being fixed.
+     * The missing-#left-side fallback therefore has to place the stand-in somewhere that is still the
+     * play zone: we append it to BGA's game area, NOT to <body>, whose bottom edge is below the site
+     * footer and would defeat the clamp entirely.
      */
     private setupHelpButton() {
         if (!document.getElementById('left-side')) {
@@ -668,6 +668,60 @@ export class Game {
         this.narrowMq().addEventListener('change', () => this.layoutNarrowSidebar());
         this.layoutNarrowSidebar();
         this.setupTallStrip();
+    }
+
+    /**
+     * Keep the lower-left "?" strip floating in the viewport WITHOUT letting it paint on BGA's site
+     * footer — the fix the public-alpha review required.
+     *
+     * Both halves matter. A help button that scrolls away is not a help button, so plain flow is not an
+     * option; and `position: sticky`, which expresses exactly this ("float, but stop at my container's
+     * edge"), does not work on a BGA page: a sticky box is sticky only within its nearest scrollport,
+     * and any ancestor that is a scroll container becomes that scrollport. `overflow-x: hidden` on a
+     * page wrapper is enough, because it computes `overflow-y` to `auto`. Shipped, it never floated at
+     * all — it sat at its flow position under the How-to-Play block.
+     *
+     * So the clamp is computed instead, against #left-side's bottom edge, which is where the play zone
+     * ends. Cheap enough to run on raw scroll: one getBoundingClientRect and one custom-property write,
+     * coalesced to a frame. The ResizeObserver covers the play zone growing under it — a longer game
+     * log, a revealed Santa row — which no scroll event would announce.
+     */
+    private setupHelpStripPin() {
+        let queued = false;
+        const pin = () => {
+            queued = false;
+            this.pinHelpStrip();
+        };
+        const schedule = () => {
+            if (queued) return;
+            queued = true;
+            window.requestAnimationFrame(pin);
+        };
+        window.addEventListener('scroll', schedule, { passive: true });
+        window.addEventListener('resize', schedule);
+        const zone = document.getElementById('left-side');
+        if (zone) new ResizeObserver(schedule).observe(zone);
+        this.pinHelpStrip();
+    }
+
+    /**
+     * How far to lift the corner strip off the viewport bottom so it stops at the play zone's edge.
+     *
+     * `lift` is how far #left-side's bottom edge sits ABOVE the viewport bottom. While the play zone
+     * runs off the bottom of the window that is negative, the lift clamps to 0, and the strip behaves
+     * as plain `bottom: 12px` fixed — floating in the corner, which is the normal case and what the
+     * button is for. Once the page is scrolled far enough that #left-side ends on screen — which is
+     * exactly when BGA's footer appears — it goes positive and the strip rises by that much, so the
+     * buttons come to rest 12px above the bottom of the play zone and never cross onto the footer.
+     *
+     * Set on <html> rather than the strip: .ucs-score-restore-solo reads the same variable, and it is
+     * not inside the strip when the fallback path puts it in the game area instead.
+     */
+    private pinHelpStrip() {
+        const zone = document.getElementById('left-side');
+        if (!zone) return;
+        const lift = window.innerHeight - zone.getBoundingClientRect().bottom;
+        document.documentElement.style.setProperty('--ucs-corner-bottom', `${Math.max(0, lift) + 12}px`);
     }
 
     /**
