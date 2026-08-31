@@ -67,19 +67,37 @@ $colors: (
     "yellow": (#d4a017, 0deg),
 );
 
-// ---- Whole play-area backdrop: the Ugly Christmas Sweater box-cover green ------------------------
-// Green backdrop for the whole play area (Will's chosen value, 2026-07-01 — "for now"; swap
-// $box-green for a different box-cover match anytime, it's the only edit needed). Technique from the
-// trickykids reference: a radial-gradient vignette on the play surface — slightly lighter in the
-// centre, deepening to the box green at the edges.
-$box-green:    #4c8c2b; // the box-cover green
-$box-green-hi: #5ca338; // a touch lighter — the vignette centre
+// ---- Whole play-area backdrop: the knitted felt table --------------------------------------------
+// A muted sage felt with a fine knit weave over it. NOT the box-cover green any more, and the rename
+// is the point: the public-alpha review called the old #4c8c2b "a bit visually strong", and it was —
+// a saturated near-flat colour is what guideline C.5 rules out ("do not use pure flat colors";
+// "add slight texture"; "prioritize contrast against the game's components"). Sage is lighter and far
+// less saturated, so the watercolour card art stops competing with the table it sits on.
+//
+// Measured, not eyeballed: a zone label is 65% black composited over whatever is behind it, which on
+// #4c8c2b came to 3.76:1 — under the 4.5:1 WCAG AA floor for 12px text. Sage lifts that to 4.04, and
+// .ucs-zone-label's opacity bump below takes it to 5.4. Re-derive both if these values ever move.
+$table-felt:    #7d9a6b; // the felt
+$table-felt-hi: #8aa678; // a touch lighter — the vignette centre
 
-// Backdrop on <html> (always present, full-window — same target trickykids uses). A radial vignette:
-// lighter in the centre, deepening to the box green at the edges.
-html {
-    background: radial-gradient(circle at 50% 38%, $box-green-hi 0%, $box-green 72%), $box-green;
+// The knit weave. Two fine cross-hatched stripe layers that read as stitches at arm's length, over the
+// radial vignette. Deliberately faint: C.5 asks for "slight texture", and anything stronger competes
+// with the art. Layer order in the shorthand is top-to-bottom, so the weave paints OVER the vignette.
+//
+// Zero-alpha rgba rather than `transparent` for the gaps — `transparent` is rgba(0,0,0,0), so a browser
+// interpolating toward it can fringe the stripe grey. Both stops sit at the same offset here, but the
+// explicit form costs nothing and cannot be got wrong later.
+@mixin knit-felt($base, $hi) {
+    background:
+        repeating-linear-gradient(63deg, rgba(255, 255, 255, 0.05) 0 2px, rgba(255, 255, 255, 0) 2px 9px),
+        repeating-linear-gradient(-63deg, rgba(0, 0, 0, 0.055) 0 2px, rgba(0, 0, 0, 0) 2px 9px),
+        radial-gradient(circle at 50% 38%, $hi 0%, $base 72%), $base;
     background-attachment: fixed;
+}
+
+// Backdrop on <html> (always present, full-window — same target trickykids uses).
+html {
+    @include knit-felt($table-felt, $table-felt-hi);
 
     // Diameter of the fixed lower-left circles (the bga-help "?" and the round-summary restore chip).
     // Shrunk on small screens: bga-cards pins the fan to the viewport bottom once it scrolls past the
@@ -126,7 +144,12 @@ html.ucs-cards-large  { --ucs-card-scale: 1.5; }
 //  colour cards, the dark pop-ins, the player-colour accents — need no override.
 // =====================================================================================
 :root {
-    --ucs-panel-bg: rgba(0, 0, 0, 0.04);        // raised zone panels over the light backdrop
+    // OPAQUE, not a translucent darkening. Two jobs, and only an opaque fill does either: it stops the
+    // knit weave at the panel edge — a zone reads as something resting ON the felt rather than a patch
+    // of it — and it decouples the panel's lightness from the table's, so the dark ink inside a zone is
+    // no longer hostage to whatever the backdrop happens to be. Zone labels measure 6.0:1 on this
+    // against the 4.5:1 AA floor; on the old rgba(0,0,0,.04) over the felt they measured 4.04.
+    --ucs-panel-bg: #cfd9c3;                     // raised zone panels over the felt
     --ucs-panel-bg-soft: rgba(0, 0, 0, 0.03);   // player-table panel
     --ucs-panel-bg-strong: rgba(0, 0, 0, 0.06); // empty pile / ghost slot fill
     --ucs-hairline: rgba(0, 0, 0, 0.25);         // build & empty-pile separators
@@ -146,7 +169,7 @@ html.ucs-cards-large  { --ucs-card-scale: 1.5; }
 }
 
 html[data-theme="dark"] {
-    --ucs-panel-bg: rgba(255, 255, 255, 0.07);
+    --ucs-panel-bg: #303c26;
     --ucs-panel-bg-soft: rgba(255, 255, 255, 0.05);
     --ucs-panel-bg-strong: rgba(255, 255, 255, 0.1);
     --ucs-hairline: rgba(255, 255, 255, 0.25);
@@ -164,9 +187,9 @@ html[data-theme="dark"] {
     --ucs-oppo-bg: #2e3b26;
     --ucs-oppo-ink: #e8f0dd;
 
-    // Deepen the box-cover green vignette so the toggle actually darkens the table (brand kept).
-    background: radial-gradient(circle at 50% 38%, #274618 0%, #16290f 72%), #16290f;
-    background-attachment: fixed;
+    // Deepen the felt so the toggle actually darkens the table, weave and all (same mixin, so the two
+    // themes cannot drift apart in texture — only in colour).
+    @include knit-felt(#232e1c, #354427);
 }
 
 #ucs-table {
@@ -199,6 +222,9 @@ html[data-theme="dark"] {
     background: var(--ucs-panel-bg);
     border-radius: 8px;
     padding: 6px 8px;
+    // A shallow drop shadow to seat the panel on the felt. The opaque fill above already separates
+    // them; this is what makes the separation read as depth rather than as a colour change.
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.18);
 }
 
 .ucs-zone-label {
@@ -206,7 +232,11 @@ html[data-theme="dark"] {
     font-weight: bold;
     text-transform: uppercase;
     letter-spacing: 0.04em;
-    opacity: 0.65;
+    // 0.8, not the old 0.65. Three of these labels ("Your hand", the round parameters, "Your Secret
+    // Santa") sit on zones that drop their panel fill, so they land straight on the textured felt with
+    // no opaque surface to help them. At 0.65 that composite measured 4.04:1 — under the AA floor for
+    // 12px text; at 0.8 it measures 5.4:1. The labelled zones that DO keep a panel are already clear.
+    opacity: 0.8;
     margin-bottom: 4px;
 }
 
@@ -786,20 +816,25 @@ html[data-theme="dark"] {
     // .ucs-cards-*).
     --ucs-card-w: calc(#{$card-w} * var(--ucs-card-scale, 1));
     --ucs-card-h: calc(#{$card-h} * var(--ucs-card-scale, 1));
-    // A slightly darker green than the box-cover table, framed, so my own Knitting Area reads as a
-    // distinct workspace rather than blending into the backdrop.
-    background: #3f7424;
+    // Takes the standard opaque panel fill (inherited from .ucs-zone) and adds a frame. It used to
+    // hard-code #3f7424 — a shade of the old box green — to read as a distinct workspace; against the
+    // sage felt that reads as a dark blob, and a table-coloured literal here silently rots every time
+    // the backdrop is retuned. The frame is what makes it a workspace; the fill can stay standard.
     border: 2px solid rgba(0, 0, 0, 0.3);
     border-radius: 8px;
     padding: 8px;
 }
 
-// These zones don't need their own raised panel — let the box-green table show through. Only the panel
-// fill is dropped; padding/position stay, so the components sit exactly where they did.
+// These zones don't need their own raised panel — let the felt show through, weave included. Only the
+// panel fill is dropped; padding/position stay, so the components sit exactly where they did. Their
+// labels are therefore on the felt rather than on a panel, which is what sets .ucs-zone-label's opacity.
 #ucs-gameplay,
 #ucs-secret-santa,
 #ucs-my-hand-wrap {
     background: none;
+    // The shadow goes with the fill. box-shadow paints outside the border box whether or not there is
+    // a background behind it, so leaving .ucs-zone's on here would ring a panel that isn't there.
+    box-shadow: none;
 }
 
 #ucs-center-stack {
@@ -854,7 +889,7 @@ html[data-theme="dark"] {
 // Each opponent table is a click target that opens the full-size popin.
 .ucs-oppo {
     cursor: pointer;
-    // An opaque fill (not the near-transparent default) so the box-green backdrop can't bleed through
+    // An opaque fill (as the zone panels now are too) so the felt backdrop can't bleed through
     // and clash with green cards / a green player's colour. Explicit ink because BGA flips its default
     // text colour in dark mode, which would otherwise leave light text on this light panel.
     background: var(--ucs-oppo-bg);
@@ -1756,10 +1791,12 @@ $ucs-sheet-anim: 220ms;
     stroke-linejoin: round;
 }
 // Fallback pin, only used if bga-help's container is missing (see Game.setRoundSummaryMinimized).
+// Sticky for the same reason the strip above is: this one is appended to the game area rather than to
+// #left-side, but a viewport-pinned chip reaches the site footer just as readily.
 .ucs-score-restore-solo {
-    position: fixed;
+    position: sticky;
     bottom: 12px;
-    left: 8px;
+    margin: 0 0 12px 8px;
     z-index: 949;
 }
 
@@ -2595,11 +2632,31 @@ $santa-column-floors: (medium: 1450px, large: 1610px);
 }
 
 // ---- Help button (bga-help dojo module) + End-of-Round Scoring popin ----------------------------
-// The "?" button lives in a position:fixed container pinned to the lower-left corner (over everything).
+// The "?" button (and the round-summary restore chip beside it) live in a lower-left strip that
+// bga-help appends as the last child of BGA's #left-side.
+//
+// STICKY, NOT FIXED. `position: fixed` — what bga-help ships, and what castlecombo / crybaby /
+// insidejob all use — pins the strip to the VIEWPORT, so it has no idea where the game ends. On a
+// short table, or once the page is scrolled to its end, BGA's own site footer is on screen and the "?"
+// sits on top of it. That is what the public-alpha review rejected (guidelines A.1 / C.4: game chrome
+// stays inside the play zone). Sticky keeps the identical floating behaviour while #left-side is on
+// screen, but a sticky box can never leave its containing block — so the bottom of the play zone is a
+// hard stop and the footer is unreachable by construction, at every window size and scroll position.
+//
+// Three details that are load-bearing rather than cosmetic:
+//   * `width: fit-content` — a fixed box shrink-to-fits; a sticky one is an ordinary block and would
+//     run the full width of #left-side. An invisible full-width bar parked over the table swallows
+//     every click in its band.
+//   * `margin-left` rather than `left` — on a sticky box the inset properties are stickiness
+//     thresholds, not offsets, so `left: 8px` would add unwanted HORIZONTAL stickiness instead of
+//     nudging the strip in from the edge.
+//   * If a skin ever nests #left-side inside a scroll container, sticky degrades to plain flow at the
+//     bottom of the play zone. Less convenient, still compliant — it fails in the safe direction.
 #bga-help_buttons {
-    position: fixed;
+    position: sticky;
     bottom: 12px;
-    left: 8px;
+    width: fit-content;
+    margin: 0 0 12px 8px;
     display: flex;
     gap: 10px;
     z-index: 949;

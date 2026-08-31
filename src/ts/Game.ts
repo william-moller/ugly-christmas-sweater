@@ -259,17 +259,25 @@ export class Game {
     }
 
     /**
-     * The lower-left "?" help button — a fixed round button that opens a popin showing the printed
+     * The lower-left "?" help button — a round button that opens a popin showing the printed
      * End-of-Round Scoring reference (img/scoreref.png). Uses the bga-help dojo module (see libs.ts /
      * _reference/castlecombo): HelpManager appends its #bga-help_buttons container to the BGA-standard
-     * #left-side element; the button itself is position:fixed, so we defensively create #left-side if a
-     * given skin lacks it (the fixed button still anchors to the viewport corner either way).
+     * #left-side element.
+     *
+     * That parent is not incidental. The strip is `position: sticky` rather than the `fixed` bga-help
+     * ships (see #bga-help_buttons in Game.scss — a viewport-pinned button lands on BGA's site footer,
+     * which is what the public-alpha review rejected), and a sticky box stops at the bottom of its
+     * CONTAINING BLOCK. #left-side is therefore what makes "inside the play zone" true.
+     *
+     * So the missing-#left-side fallback has to place it somewhere that is still the play zone: we
+     * append the stand-in to BGA's game area, NOT to <body>. On <body> the strip's flow position is
+     * below every page element — the site footer included — which is the exact failure being fixed.
      */
     private setupHelpButton() {
         if (!document.getElementById('left-side')) {
             const ls = document.createElement('div');
             ls.id = 'left-side';
-            document.body.appendChild(ls);
+            this.bga.gameArea.getElement().appendChild(ls);
         }
         new BgaHelp.HelpManager(this, {
             buttons: [
@@ -1935,21 +1943,33 @@ export class Game {
      *
      * Only cards that actually reach into a corner constrain the lift, so a fan narrower than the
      * viewport — every desktop width, and the attached (non-floating) state — computes 0 and nothing
-     * moves. Deliberately not gated on `.ucs-narrow`: the buttons are position:fixed at every width, so
-     * the question is always geometric rather than a breakpoint's to answer.
+     * moves. Deliberately not gated on `.ucs-narrow`: the obstruction is geometric at every width, so
+     * it is measured rather than answered by a breakpoint.
      */
     private fanLift(cards: HTMLElement[], currentLift: number): number {
         // Our own lower-left strip, measured rather than assumed: it holds the "?" and, once a round has
         // been scored, the round-summary restore chip beside it, so its width is not a constant.
+        //
+        // It is STICKY, not fixed (see #bga-help_buttons in Game.scss), so — unlike BGA's own controls —
+        // it is not always in the fan's band. While it is parked at the viewport bottom it obstructs the
+        // left corner exactly as before; once the page is scrolled to the end of the play zone it
+        // un-sticks and rises up the page, and then it must stop constraining the fan. Measuring it
+        // wherever it happens to be would compute a lift against a strip halfway up the screen and throw
+        // the hand off the top of the window. 48px of slack: the strip sits at bottom:12px, which BGA's
+        // scale-to-fit `zoom` shrinks rather than grows, so "stuck" always measures well inside this.
         const strip = document.getElementById('bga-help_buttons')?.getBoundingClientRect();
-        const haveStrip = !!strip && strip.width > 0 && strip.height > 0;
+        const stuck = !!strip && strip.width > 0 && strip.height > 0
+            && strip.bottom > window.innerHeight - 48;
         // BGA's lower-RIGHT controls (replay + chat) carry no id we can rely on across skins. 120px is
         // what that pair measured on a Pixel 8 at 411px, and their top matched our own strip's. If they
         // ever clip the cards again this is the one number to raise — the previous 56px guess (a mirror
         // of our own button's width) was 64px short, which is how they came to cover two cards.
+        //
+        // Those two ARE fixed, so they stay the band's floor when our strip is not stuck: leftEdge 0
+        // leaves the left corner unconstrained (nothing of ours is in it) while the right pair still is.
         const rightEdge = window.innerWidth - 120;
-        const leftEdge = (haveStrip ? strip!.right : 56) + 6;
-        const bandTop = (haveStrip ? strip!.top : window.innerHeight - 56) - 6;
+        const leftEdge = stuck ? strip!.right + 6 : 0;
+        const bandTop = (stuck ? strip!.top : window.innerHeight - 56) - 6;
 
         let lowest = -Infinity;
         cards.forEach((el) => {

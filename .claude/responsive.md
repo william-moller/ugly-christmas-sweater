@@ -554,10 +554,18 @@ Measured on a Pixel 8: a 40px step across the full 411px — exactly the un-rese
 enough that every card's top ~42% (that same numeral-and-bulbs strip) sits above the button band, and
 their lower halves stay covered, which is what the art can afford to lose. Only cards that actually
 reach a corner constrain it, so a fan narrower than the viewport computes 0 and nothing moves — no
-breakpoint needed, because the buttons are fixed at every width. The left edge is measured off
+breakpoint needed, because the obstruction is geometric at every width. The left edge is measured off
 `#bga-help_buttons` (it holds the round-summary restore chip too, so it is not a constant); BGA's right
 pair has no reliable id and carries a measured **120px** constant, which is the one number to raise if
 they ever clip again.
+
+**Our own strip is `sticky`, so it is not always in the band.** It was `position: fixed` until the
+public-alpha review rejected it for sitting on BGA's site footer; sticky inside `#left-side` keeps the
+float but stops at the bottom of the play zone. `fanLift` therefore tests whether the strip is actually
+parked at the viewport bottom (`strip.bottom > innerHeight - 48`) before treating it as an obstruction.
+Measuring it wherever it happens to be would compute a lift against a strip halfway up the page and
+throw the hand off the top of the window. When it is not stuck the left corner is left unconstrained
+and only BGA's right-hand pair — which *is* still fixed — sets the band.
 
 The lift rides on the same `transform` `placeFan` already uses for horizontal centring. That is allowed
 here and nowhere else: the no-transform rule is about *ancestors* of a `position: fixed` element, and

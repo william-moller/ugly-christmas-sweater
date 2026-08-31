@@ -234,8 +234,10 @@ there is no `RoundReview` state at all — `ScoreRound` returns `EndScore` direc
 and the sheet renders **modeless** (`renderRoundSummary(args, undefined, false)`): no backdrop, and
 `pointer-events` pass through everywhere except the sheet, leaving the end-of-game screen live.
 
-`setRoundSummaryMinimized()` shrinks the sheet into a restore chip parked in bga-help's fixed lower-left
-strip (so it inherits that pinning and can't land on the "?" button). `display: none` can't be animated,
+`setRoundSummaryMinimized()` shrinks the sheet into a restore chip parked in bga-help's lower-left
+strip (so it inherits that strip's pinning and can't land on the "?" button). That strip is `position:
+sticky` inside `#left-side`, not `fixed` — a viewport-pinned button reaches BGA's own site footer, which
+is what the public-alpha review rejected; sticky floats identically but stops at the play zone's bottom. `display: none` can't be animated,
 so a **timer** applies it after the shrink plays — `SHEET_ANIM_MS` and `$ucs-sheet-anim` must stay in
 step. A timer rather than `animationend`, so a browser that suppresses the animation still lands in the
 right state; and `hideRoundSummary()` clears that timer, or an Okay mid-minimize strands the chip.

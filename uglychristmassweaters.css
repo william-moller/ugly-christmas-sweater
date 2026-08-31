@@ -490,7 +490,7 @@
 }
 
 html {
-  background: radial-gradient(circle at 50% 38%, #5ca338 0%, #4c8c2b 72%), #4c8c2b;
+  background: repeating-linear-gradient(63deg, rgba(255, 255, 255, 0.05) 0 2px, rgba(255, 255, 255, 0) 2px 9px), repeating-linear-gradient(-63deg, rgba(0, 0, 0, 0.055) 0 2px, rgba(0, 0, 0, 0) 2px 9px), radial-gradient(circle at 50% 38%, #8aa678 0%, #7d9a6b 72%), #7d9a6b;
   background-attachment: fixed;
   --ucs-corner-btn: 52px;
 }
@@ -517,7 +517,7 @@ html.ucs-cards-large {
 }
 
 :root {
-  --ucs-panel-bg: rgba(0, 0, 0, 0.04);
+  --ucs-panel-bg: #cfd9c3;
   --ucs-panel-bg-soft: rgba(0, 0, 0, 0.03);
   --ucs-panel-bg-strong: rgba(0, 0, 0, 0.06);
   --ucs-hairline: rgba(0, 0, 0, 0.25);
@@ -537,7 +537,7 @@ html.ucs-cards-large {
 }
 
 html[data-theme=dark] {
-  --ucs-panel-bg: rgba(255, 255, 255, 0.07);
+  --ucs-panel-bg: #303c26;
   --ucs-panel-bg-soft: rgba(255, 255, 255, 0.05);
   --ucs-panel-bg-strong: rgba(255, 255, 255, 0.1);
   --ucs-hairline: rgba(255, 255, 255, 0.25);
@@ -554,7 +554,7 @@ html[data-theme=dark] {
   --ucs-btn-border: rgba(255, 255, 255, 0.3);
   --ucs-oppo-bg: #2e3b26;
   --ucs-oppo-ink: #e8f0dd;
-  background: radial-gradient(circle at 50% 38%, #274618 0%, #16290f 72%), #16290f;
+  background: repeating-linear-gradient(63deg, rgba(255, 255, 255, 0.05) 0 2px, rgba(255, 255, 255, 0) 2px 9px), repeating-linear-gradient(-63deg, rgba(0, 0, 0, 0.055) 0 2px, rgba(0, 0, 0, 0) 2px 9px), radial-gradient(circle at 50% 38%, #354427 0%, #232e1c 72%), #232e1c;
   background-attachment: fixed;
 }
 
@@ -584,6 +584,7 @@ html[data-theme=dark] {
   background: var(--ucs-panel-bg);
   border-radius: 8px;
   padding: 6px 8px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.18);
 }
 
 .ucs-zone-label {
@@ -591,7 +592,7 @@ html[data-theme=dark] {
   font-weight: bold;
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  opacity: 0.65;
+  opacity: 0.8;
   margin-bottom: 4px;
 }
 
@@ -1159,7 +1160,6 @@ html[data-theme=dark] {
   min-width: 0;
   --ucs-card-w: calc(80px * var(--ucs-card-scale, 1));
   --ucs-card-h: calc(125px * var(--ucs-card-scale, 1));
-  background: #3f7424;
   border: 2px solid rgba(0, 0, 0, 0.3);
   border-radius: 8px;
   padding: 8px;
@@ -1169,6 +1169,7 @@ html[data-theme=dark] {
 #ucs-secret-santa,
 #ucs-my-hand-wrap {
   background: none;
+  box-shadow: none;
 }
 
 #ucs-center-stack {
@@ -2116,9 +2117,9 @@ table.ucs-scorepad th, table.ucs-scorepad td {
 }
 
 .ucs-score-restore-solo {
-  position: fixed;
+  position: sticky;
   bottom: 12px;
-  left: 8px;
+  margin: 0 0 12px 8px;
   z-index: 949;
 }
 
@@ -2620,9 +2621,10 @@ table.ucs-scorepad th, table.ucs-scorepad td {
 }
 
 #bga-help_buttons {
-  position: fixed;
+  position: sticky;
   bottom: 12px;
-  left: 8px;
+  width: fit-content;
+  margin: 0 0 12px 8px;
   display: flex;
   gap: 10px;
   z-index: 949;
