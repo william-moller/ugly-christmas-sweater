@@ -239,6 +239,32 @@ phones), 768 (iPad portrait), 1024+ (tablet landscape / desktop).
 ### Tier A — wide (at or above the shape's floor; see "The narrow/wide boundary")
 The full four-column grid: `params | santa | center | oppo`, knitting under the centre.
 
+**When the strip is tall, the knitting area rises beside it.** `#ucs-lower` is a full-width row beneath
+`#ucs-upper`, so it starts below the **tallest** of the three upper columns — and when Avid's Secret
+Santas fall back to their stacked column (below `$avid-santa-row-floors`) the strip runs roughly twice
+the centre stack's height. That left a card-sized hole under the Trade Area with the Knitting Area
+pushed below the whole strip; at 1536 × Large it is the shape a real table showed first.
+
+`#ucs-mid-col` wraps the centre stack and is `display: contents` by default, so in every other shape it
+is invisible to layout and both existing arrangements — the wide flex row, and the narrow grid that
+places `#ucs-center-stack` by `grid-area: center` — behave exactly as they did before it existed. In the
+tall-strip case `Game.ts::layoutTallStrip` moves `#ucs-lower` inside it and the wrapper becomes the real
+middle column, so the Knitting Area sits under the Trade Area, right of the Santas.
+
+Two properties of that pass are deliberate, and both follow this document's own rules:
+
+- **The condition is measured, not a floor restated.** It compares the strip's rendered height against
+  the centre stack's, watched by a `ResizeObserver`. The Santa-row floors live in the stylesheet; a copy
+  in JS would be a second source of truth for a number this file exists to keep singular, and it would
+  go stale the moment the row formula is retuned. Height is also something no media query can ask about.
+- **It trades width for height, so it has a threshold.** The Knitting Area stops spanning the table and
+  takes the middle column instead, so the hole has to be worth at least a card:
+  `Game.TALL_STRIP_MIN_SLACK` = 160px, a Medium knitting card (125) plus the zone's label, padding and
+  frame. Below that the move buys a cramped strip of panel and costs the workspace its full width.
+
+Scoped to Avid — the only variant whose strip carries three stacked landscape cards. The Express
+arrangements are signed off as they stand and are not worth disturbing for a hole they do not have.
+
 **Express · 3 and 4 players** fold the board strip instead of running it flat, because Express deals
 `players + 1` Fads and a six- or seven-card parameter row pushes the centre column right for no gain:
 

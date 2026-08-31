@@ -522,9 +522,11 @@ class Game {
                         <div id="ucs-secret-santa" class="ucs-zone ucs-secret-santa" style="display:none"></div>
                         <div id="ucs-my-santa" class="ucs-my-santa" style="display:none"></div>
                     </div>
-                    <div id="ucs-center-stack">
-                        <div id="ucs-draft-pool" class="ucs-zone"></div>
-                        <div id="ucs-trade-area" class="ucs-zone"></div>
+                    <div id="ucs-mid-col">
+                        <div id="ucs-center-stack">
+                            <div id="ucs-draft-pool" class="ucs-zone"></div>
+                            <div id="ucs-trade-area" class="ucs-zone"></div>
+                        </div>
                     </div>
                     <div id="ucs-right-col"><div id="ucs-opponents"></div></div>
                 </div>
@@ -1021,6 +1023,75 @@ class Game {
     setupNarrowSidebar() {
         this.narrowMq().addEventListener('change', () => this.layoutNarrowSidebar());
         this.layoutNarrowSidebar();
+        this.setupTallStrip();
+    }
+    /**
+     * Watch the board strip so layoutTallStrip() re-runs whenever its height changes.
+     *
+     * A ResizeObserver rather than a matchMedia on $avid-santa-row-floors: the trigger is the strip
+     * getting TALL, whatever caused it — the Santa row collapsing to a column, a Santa revealed, any
+     * later re-render — and observing the height keeps those floors in the stylesheet, which is the one
+     * place responsive.md allows a layout number to live. A matchMedia here would be a second copy that
+     * goes stale the moment the row formula is retuned.
+     */
+    setupTallStrip() {
+        const strip = document.getElementById('ucs-board-strip');
+        const centre = document.getElementById('ucs-center-stack');
+        if (!strip || !centre)
+            return;
+        const ro = new ResizeObserver(() => this.layoutTallStrip());
+        ro.observe(strip);
+        ro.observe(centre);
+        this.layoutTallStrip();
+    }
+    /**
+     * Avid, wide layout: let my Knitting Area rise into the empty space beside a tall board strip.
+     *
+     * #ucs-lower is a full-width row BENEATH #ucs-upper, so it starts below the TALLEST of the upper
+     * region's three columns. In Avid at Large on a 1536px laptop the three Secret Santas stack into a
+     * column — the row needs 1590 ($avid-santa-row-floors) — which makes the board strip about twice the
+     * centre stack's height, leaving a card-sized hole under the Trade Area and pushing the Knitting Area
+     * below all of it.
+     *
+     * The fix moves #ucs-lower into #ucs-mid-col, a wrapper around #ucs-center-stack that is
+     * `display: contents` by default (see Game.scss). Default, it does not exist as far as layout is
+     * concerned, so every other shape — wide flex row and narrow grid alike — behaves exactly as it did
+     * before the wrapper existed. Activated, it becomes the real middle column and the Knitting Area sits
+     * under the Trade Area, to the right of the Santas.
+     *
+     * The condition is MEASURED, not restated from the floors. Those live in the stylesheet; a copy here
+     * would be a second source of truth for a number responsive.md exists to keep singular. Measuring
+     * also means any future tall-strip shape is covered without another breakpoint.
+     *
+     * No feedback loop: moving #ucs-lower changes neither element the condition reads — the strip's
+     * height is its own content and the centre stack's is the pool plus the trick. Idempotent, so it is
+     * safe to call on every observer tick and every breakpoint change.
+     */
+    layoutTallStrip() {
+        const table = document.getElementById('ucs-table');
+        const upper = document.getElementById('ucs-upper');
+        const mid = document.getElementById('ucs-mid-col');
+        const strip = document.getElementById('ucs-board-strip');
+        const centre = document.getElementById('ucs-center-stack');
+        const lower = document.getElementById('ucs-lower');
+        if (!table || !upper || !mid || !strip || !centre || !lower)
+            return;
+        // Scoped to Avid: it is the only variant whose strip carries three stacked landscape cards. The
+        // Express arrangements are signed off as they stand (see backlog) and are not worth disturbing
+        // for a hole they do not have. Narrow is excluded outright — there the whole table is one column
+        // and #ucs-lower is already directly under the content above it.
+        const eligible = !!this.gamedatas.avid && !this.narrowMq().matches;
+        const slack = strip.getBoundingClientRect().height - centre.getBoundingClientRect().height;
+        const want = eligible && slack > Game.TALL_STRIP_MIN_SLACK;
+        // Already where it belongs — bail before touching the DOM, so an observer tick that changed
+        // nothing does not reparent the Knitting Area (which would restart its cards' transitions).
+        if (want === (lower.parentElement === mid))
+            return;
+        if (want)
+            mid.appendChild(lower);
+        else
+            upper.after(lower);
+        table.classList.toggle('ucs-tall-strip', want);
     }
     /**
      * Viewport width at which this game's WIDE (three-column) layout becomes viable, from the formula in
@@ -3759,5 +3830,11 @@ class Game {
     }
 }
 Game.SHEET_ANIM_MS = 220; // keep in step with $ucs-sheet-anim in Game.scss
+// How much taller the board strip must be than the centre stack before the Knitting Area is worth
+// moving up beside it (see layoutTallStrip). The move trades WIDTH for HEIGHT — the Knitting Area
+// stops spanning the table and takes the middle column instead — so it has to buy back at least a
+// card's worth of vertical space to be a win: 160px is a Medium knitting card (125) plus the zone's
+// label, padding and frame. Below that the hole is not worth a narrower workspace.
+Game.TALL_STRIP_MIN_SLACK = 160;
 
 export { Game };

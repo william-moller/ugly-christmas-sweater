@@ -163,16 +163,19 @@ not of the code.
   is *visible* — too low a floor lets `#ucs-board-strip` (`flex: 0 0 auto`) push `#ucs-center-stack`
   into the opponents. Wants a 3P Express table at Large, sized across the band. Revert to 1840 if it
   crowds; the column is an upgrade within the wide layout, so the old floor is a safe fallback.
-- **Avid at Large stacks its Secret Santas on a laptop.** `$avid-santa-row-floors` puts the three-Santa
-  row at 1590 for Large, while the wide layout itself starts at 1467 — so 1467–1590 is a band where the
-  wide layout runs but the Santas fall back to the stacked column, which costs ~600px of height. A
-  1536px laptop sits squarely in it, and only at Large: Small (1415) and Medium (1430) both clear at
-  that width, which is why the shape reads fine at those sizes and wonky at Large. The 1590 is correctly
-  derived, so this is a design choice rather than an arithmetic fix — the lever is the 125px minimum
-  slot (an 80px card) that the row must clear before it is allowed. Either let the row run below 125px
-  at Large, or accept the stacked column there. *Open question:* is a 108px Santa slot (what 1536 would
-  give) readable enough? They are read-once and never clicked, so the 56px interactive floor does not
-  bind — the 95px reference floor does not either, since a Santa has no Round Tracker numerals.
+- **Decide whether Avid's Secret Santas read better big-and-stacked or small-and-in-a-row.**
+  `$avid-santa-row-floors` puts the three-Santa row at 1590 for Large while the wide layout itself starts
+  at 1467, so 1467–1590 is a band where the wide layout runs but the Santas fall back to the stacked
+  column. A 1536px laptop sits squarely in it, and only at Large: Small (1415) and Medium (1430) both
+  clear at that width, which is why the shape reads fine at those sizes and is only in question here.
+  The stacked column no longer *wastes* the space beside it — the Knitting Area now rises into it (see
+  the tall-strip arrangement in [`responsive.md`](responsive.md)) — so what is left is purely a
+  legibility judgement between two working layouts, and it needs eyes rather than arithmetic:
+  three 200px Santas stacked down the left, against three ~108px Santas in a row across the top.
+  `(1536 - 1213) / 3 ≈ 108` is what the row formula gives at that width, so the printed objective line
+  ("2 Trees, 1 Green · 3 VP") renders at roughly half the size it does stacked. The lever, if the row
+  wins, is the 125px minimum slot the row must clear before it is allowed. They are read-once and never
+  clicked, so neither the 56px interactive floor nor the 95px reference floor binds.
 - **Animate the new-round board deal.** Every other point where a card changes location is now marked
   (play, draft, trick collection, hand refill and new-round deal, Billy's discard, Tina's rearrange, and
   the parameter reveals). `notif_newRound` is the one left: `renderAll()` replaces the draft pool and

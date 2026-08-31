@@ -837,6 +837,38 @@ html[data-theme="dark"] {
     box-shadow: none;
 }
 
+// Wrapper around the centre stack. `display: contents` by default, which is what makes it free: with
+// it the wrapper is invisible to layout, so #ucs-center-stack stays a direct layout child of #ucs-upper
+// and BOTH existing arrangements behave exactly as they did before it existed — the wide flex row, and
+// the narrow grid that places #ucs-center-stack by `grid-area: center`.
+//
+// It becomes a real column in one shape only: the wide Avid table whose strip carries three stacked
+// Secret Santas. There Game.ts::layoutTallStrip moves #ucs-lower (my Knitting Area) inside it and adds
+// .ucs-tall-strip, so the Knitting Area sits under the Trade Area beside the Santas instead of below
+// the whole strip. The condition is measured in JS rather than written here because it depends on the
+// strip's rendered HEIGHT, which no media query can ask about.
+#ucs-mid-col { display: contents; }
+
+#ucs-table.ucs-tall-strip:not(.ucs-narrow) #ucs-mid-col {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    // The flex sizing #ucs-center-stack carries as a row child moves up to the wrapper — it is the
+    // middle column now, and the stack is its first row.
+    flex: 1 1 auto;
+    min-width: 0;
+
+    > #ucs-center-stack {
+        // In a column `flex: 1 1 auto` grows the stack's HEIGHT, which would push the Knitting Area back
+        // down — the exact thing this arrangement exists to fix. Content height, full width.
+        flex: 0 0 auto;
+        width: 100%;
+    }
+    > #ucs-lower {
+        margin-top: 0; // the column's own gap replaces it
+    }
+}
+
 #ucs-center-stack {
     flex: 1 1 auto;
     min-width: 0;
@@ -1372,9 +1404,18 @@ html[data-theme="dark"] {
 // ---- Centre stack: Draft Pool above Trade Area, both shrink-to-fit and centred -------
 // (They live in #ucs-center-stack, whose `align-items: center` centres each zone.) The Trade Area
 // gets a black frame to set it apart as the current trick's play space.
+// Width of the label's own column inside these two zones. One number, used in three places below (the
+// padding that reserves it, the Trade Area's frame width, and the narrow layout's card formula), so the
+// gutter cannot be reserved in one and forgotten in another. 16px against a 12px label set at
+// line-height 1 — the rotated label's cross-axis size IS its line box, so pinning the line height is
+// what makes 16 a real clearance rather than an estimate that moves with an inherited line-height.
+$label-gutter: 16px;
+
 #ucs-draft-pool,
 #ucs-trade-area {
-    position: relative; // anchor for the vertical zone label sitting just outside the left edge
+    position: relative; // anchor for the vertical zone label sitting inside the left edge
+    // Reserve the label's column: .ucs-zone's own 8px, plus the gutter the label sits in.
+    padding-left: calc(8px + #{$label-gutter});
     // Centre the card row within the zone so a partial pool/trick stays visually centred.
     .ucs-card-row {
         justify-content: center;
@@ -1397,26 +1438,46 @@ html[data-theme="dark"] {
         var(--ucs-trade-seats) * var(--ucs-trade-slot)  // the slots themselves
         + (var(--ucs-trade-seats) - 1) * 12px           // .ucs-card-row gap between them
         + 16px                                          // .ucs-zone left + right padding
+        + #{$label-gutter}                              // the label's column inside the left padding
         + 6px                                           // this border
     );
 }
-// Zone labels live OUTSIDE their frame, running up the left edge (rotated 90°) instead of taking a row
-// of vertical space above the cards — saves height, and keeps the Trade Area's owner captions clear of
-// the label. Shared by the Draft Pool, Trade Area and Secret Santa zones.
+// These three zone labels run up the left edge (rotated 90°) instead of taking a row of vertical space
+// above the cards — it saves height, and it keeps the Trade Area's owner captions clear of the label.
+// Shared shape; the two differ only in WHICH side of the zone's left edge they sit on.
 #ucs-draft-pool .ucs-zone-label,
 #ucs-trade-area .ucs-zone-label,
 #ucs-secret-santa .ucs-zone-label {
     position: absolute;
-    right: 100%;          // to the left of the frame
     top: 0;
     bottom: 0;
-    margin: 0 6px 0 0;    // clear the border + a small gap
     display: flex;
     align-items: center;
     justify-content: center;
     writing-mode: vertical-rl;
     transform: rotate(180deg); // read bottom-to-top
     white-space: nowrap;
+    // Pins the rotated label's cross-axis size. In vertical-rl the inline axis is vertical, so what
+    // reads as the label's WIDTH is its line box — inherited line-height would make the gutter above
+    // an estimate rather than a measurement.
+    line-height: 1;
+}
+
+// INSIDE the panel, in the gutter reserved above: the label sits on the zone's own opaque fill and
+// reads as part of it. The containing block for an absolutely positioned child is the ancestor's
+// PADDING box, so `left: 0` is the inner edge of the Trade Area's border — on the panel, not on the felt.
+#ucs-draft-pool .ucs-zone-label,
+#ucs-trade-area .ucs-zone-label {
+    left: 0;
+    width: $label-gutter;
+}
+
+// OUTSIDE, to the left of the zone — the Secret Santa keeps the old placement because it is one of the
+// zones that drops its panel fill (see #ucs-gameplay/#ucs-secret-santa/#ucs-my-hand-wrap above). There
+// is no panel there to sit on, so moving it inside would only cost the cards width for no gain.
+#ucs-secret-santa .ucs-zone-label {
+    right: 100%;
+    margin-right: 6px; // clear the border + a small gap
 }
 
 // A Trade Area card captioned with who played it this trick (label not carried into the pool).
@@ -1890,9 +1951,11 @@ $narrow-santa-cap: 192px; // 128 x 1.5 — Secret Santa cards
     #ucs-trade-area { --ucs-trade-seats: 4; }
     #ucs-draft-pool,
     #ucs-trade-area {
+        // 22px is the zones' 16px padding + the trade frame's 6px border; + $label-gutter for the
+        // label's column, which is reserved here too — the labels sit inside the panel at every width.
         --ucs-card-w: min(
             #{$card-w * 1.6},
-            (100cqi - 22px - 3 * 12px) / 4 - 12px
+            (100cqi - #{22px + $label-gutter} - 3 * 12px) / 4 - 12px
         );
         --ucs-card-h: calc(var(--ucs-card-w) * 1.556);
     }

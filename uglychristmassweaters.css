@@ -1172,6 +1172,25 @@ html[data-theme=dark] {
   box-shadow: none;
 }
 
+#ucs-mid-col {
+  display: contents;
+}
+
+#ucs-table.ucs-tall-strip:not(.ucs-narrow) #ucs-mid-col {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+#ucs-table.ucs-tall-strip:not(.ucs-narrow) #ucs-mid-col > #ucs-center-stack {
+  flex: 0 0 auto;
+  width: 100%;
+}
+#ucs-table.ucs-tall-strip:not(.ucs-narrow) #ucs-mid-col > #ucs-lower {
+  margin-top: 0;
+}
+
 #ucs-center-stack {
   flex: 1 1 auto;
   min-width: 0;
@@ -1668,6 +1687,7 @@ html[data-theme=dark] {
 #ucs-draft-pool,
 #ucs-trade-area {
   position: relative;
+  padding-left: calc(8px + 16px);
 }
 #ucs-draft-pool .ucs-card-row,
 #ucs-trade-area .ucs-card-row {
@@ -1681,23 +1701,33 @@ html[data-theme=dark] {
   box-sizing: border-box;
   border: 3px solid var(--ucs-frame);
   padding-top: 20px;
-  width: calc(var(--ucs-trade-seats) * var(--ucs-trade-slot) + (var(--ucs-trade-seats) - 1) * 12px + 16px + 6px);
+  width: calc(var(--ucs-trade-seats) * var(--ucs-trade-slot) + (var(--ucs-trade-seats) - 1) * 12px + 16px + 16px + 6px);
 }
 
 #ucs-draft-pool .ucs-zone-label,
 #ucs-trade-area .ucs-zone-label,
 #ucs-secret-santa .ucs-zone-label {
   position: absolute;
-  right: 100%;
   top: 0;
   bottom: 0;
-  margin: 0 6px 0 0;
   display: flex;
   align-items: center;
   justify-content: center;
   writing-mode: vertical-rl;
   transform: rotate(180deg);
   white-space: nowrap;
+  line-height: 1;
+}
+
+#ucs-draft-pool .ucs-zone-label,
+#ucs-trade-area .ucs-zone-label {
+  left: 0;
+  width: 16px;
+}
+
+#ucs-secret-santa .ucs-zone-label {
+  right: 100%;
+  margin-right: 6px;
 }
 
 .ucs-trade-card {
@@ -2149,7 +2179,7 @@ table.ucs-scorepad th, table.ucs-scorepad td {
 #ucs-table.ucs-narrow #ucs-trade-area {
   --ucs-card-w: min(
       128px,
-      (100cqi - 22px - 3 * 12px) / 4 - 12px
+      (100cqi - 38px - 3 * 12px) / 4 - 12px
   );
   --ucs-card-h: calc(var(--ucs-card-w) * 1.556);
 }
