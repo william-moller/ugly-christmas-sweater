@@ -1472,12 +1472,23 @@ $label-gutter: 16px;
     width: $label-gutter;
 }
 
-// OUTSIDE, to the left of the zone — the Secret Santa keeps the old placement because it is one of the
-// zones that drops its panel fill (see #ucs-gameplay/#ucs-secret-santa/#ucs-my-hand-wrap above). There
-// is no panel there to sit on, so moving it inside would only cost the cards width for no gain.
-#ucs-secret-santa .ucs-zone-label {
-    right: 100%;
-    margin-right: 6px; // clear the border + a small gap
+// The Secret Santa label moves inside as well — not for the panel (this zone drops its fill, so the
+// label still sits on the felt) but because the overhang has nowhere to live. #ucs-secret-santa is in
+// #ucs-board-strip, the FIRST column of #ucs-upper, so the zone's left edge is the table's own 8px
+// padding: a label pinned at `right: 100%` hangs off the play area and gets clipped to a sliver.
+//
+// The narrow layout already hit exactly this and escaped by laying the label flat (see the note in the
+// .ucs-narrow block below, which records the 2px sliver at 411px). The wide layout has the same
+// geometry for the same reason; it keeps the rotation because height is not the scarce axis here.
+//
+// Scoped away from .ucs-narrow so it cannot fight that flat treatment — which makes the label
+// `position: static`, where `left` is inert but `width` would still squash it.
+#ucs-table:not(.ucs-narrow) #ucs-secret-santa {
+    padding-left: calc(8px + #{$label-gutter});
+}
+#ucs-table:not(.ucs-narrow) #ucs-secret-santa .ucs-zone-label {
+    left: 0;
+    width: $label-gutter;
 }
 
 // A Trade Area card captioned with who played it this trick (label not carried into the pool).
@@ -2246,6 +2257,9 @@ $narrow-santa-cap: 192px; // 128 x 1.5 — Secret Santa cards
         // column on every phone — and in this layout an overflow is not cosmetic, see the note on
         // max-width at the top of this block.
         white-space: normal;
+        // ...and it must not inherit the rotated rule's $label-gutter width either, which laid flat
+        // would squeeze the caption into a 16px column.
+        width: auto;
     }
 
     // Avid's three landscape Secret Santas are the most expensive term in the game — the wide layout only

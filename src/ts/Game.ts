@@ -74,10 +74,17 @@ export class Game {
 
     // How much taller the board strip must be than the centre stack before the Knitting Area is worth
     // moving up beside it (see layoutTallStrip). The move trades WIDTH for HEIGHT — the Knitting Area
-    // stops spanning the table and takes the middle column instead — so it has to buy back at least a
-    // card's worth of vertical space to be a win: 160px is a Medium knitting card (125) plus the zone's
-    // label, padding and frame. Below that the hole is not worth a narrower workspace.
-    private static readonly TALL_STRIP_MIN_SLACK = 160;
+    // stops spanning the table and takes the middle column instead.
+    //
+    // 80px, and the first value here was 160, which was wrong because it was reasoned from a card's
+    // height rather than measured against the shape it had to catch. The Avid stacked column on a
+    // 1536px laptop leaves a slack of ~138px — a visibly empty band under the Trade Area, and exactly
+    // the report this exists to answer — so a 160px gate blocked the only case it was written for.
+    //
+    // 80 sits clear of both ends: the row arrangement puts the strip SHORTER than the centre stack
+    // (negative slack), so it cannot misfire there, and anything above ~80px is a band a player reads
+    // as a hole rather than as spacing. Measure before moving it again; do not re-derive it from a card.
+    private static readonly TALL_STRIP_MIN_SLACK = 80;
 
     // Confirm/Reset gate: a pending play/draft waits for the player to confirm (or auto-confirms via
     // the action button's countdown). The abort controller cancels that countdown on Reset / leave.

@@ -20,6 +20,27 @@ nothing.
 
 ---
 
+## A gate invented from a card's height blocked the only shape it was written for
+
+- **What happened** — `layoutTallStrip` was added to lift the Knitting Area beside Avid's stacked
+  Secret Santa column, gated on `TALL_STRIP_MIN_SLACK = 160`. Shipped, and the reported empty band
+  under the Trade Area was still there: the real slack in that shape is ~138px, so the gate blocked the
+  one case the feature existed to fix.
+- **Root cause** — the constant was *reasoned* ("a Medium knitting card is 125, plus label and padding,
+  call it 160") instead of *measured* against the screenshot that prompted the work. The reasoning was
+  about a different quantity entirely — how tall the Knitting Area IS — when the gate's question is how
+  tall the hole is. Both are in px, which is what made the substitution feel sound.
+- **Consequence** — a deploy, a push and a review round trip that changed nothing the reporter could
+  see, and a second screenshot to establish what one calibrated measurement would have given first.
+- **Rule** — **when a constant gates a behaviour for one specific reported shape, measure that shape
+  before choosing the value, and record the measurement beside the constant.** The reporter's screenshot
+  is a measuring instrument: calibrate it against a known fixed-px element (here the Secret Santa's
+  pinned 200px rotated footprint, which also recovers the device-pixel ratio) and read the real number
+  off it. A plausible derivation from a *different* quantity is not a substitute, and a gate whose value
+  has never been compared against a real instance of the thing it gates is untested by construction.
+
+---
+
 ## Game chrome pinned to the viewport landed on BGA's site footer
 
 - **What happened** — the public-alpha request was rejected on a display issue: the lower-left "?"

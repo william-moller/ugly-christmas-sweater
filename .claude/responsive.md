@@ -259,8 +259,11 @@ Two properties of that pass are deliberate, and both follow this document's own 
   go stale the moment the row formula is retuned. Height is also something no media query can ask about.
 - **It trades width for height, so it has a threshold.** The Knitting Area stops spanning the table and
   takes the middle column instead, so the hole has to be worth at least a card:
-  `Game.TALL_STRIP_MIN_SLACK` = 160px, a Medium knitting card (125) plus the zone's label, padding and
-  frame. Below that the move buys a cramped strip of panel and costs the workspace its full width.
+  `Game.TALL_STRIP_MIN_SLACK` = **80px**. The first value was 160, derived from a card's height, and it
+  blocked the only shape it was written for: the Avid stacked column on a 1536px laptop measures a slack
+  of ~138px. The row arrangement puts the strip *shorter* than the centre stack, so slack goes negative
+  there and the pass cannot misfire; 80 sits clear of both ends. **Measure this against a real table
+  before moving it — do not re-derive it from a card.**
 
 Scoped to Avid — the only variant whose strip carries three stacked landscape cards. The Express
 arrangements are signed off as they stand and are not worth disturbing for a hole they do not have.
@@ -291,6 +294,11 @@ column instead. But stacked they run ~600px tall at Large, most of the table's h
 
 Unscaled, the row is **656px at every card size** (`3 × 200 slot + 2 × 8 gap + 16 zone padding + 24 label
 overhang`), so only the Draft Pool still scales:
+
+> The label no longer overhangs — it sits in a 16px gutter inside the zone, because pinned outside it was
+> clipped by the table's own left padding (the zone is the first column of `#ucs-upper`). That makes the
+> real figure 648, so every floor derived from 656 is now 8px conservative. Left as-is deliberately:
+> conservative is the safe direction, and re-deriving the table below for 8px would churn every number.
 
 ```
 viewport = 320 × scale + 1333      # 320 = Draft Pool 4 × 80; the strip is now a pure FIXED term

@@ -1725,9 +1725,13 @@ html[data-theme=dark] {
   width: 16px;
 }
 
-#ucs-secret-santa .ucs-zone-label {
-  right: 100%;
-  margin-right: 6px;
+#ucs-table:not(.ucs-narrow) #ucs-secret-santa {
+  padding-left: calc(8px + 16px);
+}
+
+#ucs-table:not(.ucs-narrow) #ucs-secret-santa .ucs-zone-label {
+  left: 0;
+  width: 16px;
 }
 
 .ucs-trade-card {
@@ -2333,6 +2337,7 @@ table.ucs-scorepad th, table.ucs-scorepad td {
   display: block;
   text-align: center;
   white-space: normal;
+  width: auto;
 }
 #ucs-table.ucs-narrow.ucs-avid #ucs-secret-santa {
   grid-area: santa;
