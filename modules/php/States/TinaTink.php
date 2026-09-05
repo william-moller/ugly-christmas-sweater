@@ -71,7 +71,7 @@ class TinaTink extends GameState
     private function finish(int $playerId): void
     {
         $this->game->markBonusUsed(Material::BONUS_TINA);
-        $this->game->refreshPublicScore($playerId);
+        $this->game->afterKnittingChanged($playerId);
         $this->notify->all('tinaResolved', clienttranslate('${player_name} plays Tina Can Tink'), [
             'player_id'   => $playerId,
             'player_name' => $this->game->getPlayerNameById($playerId),

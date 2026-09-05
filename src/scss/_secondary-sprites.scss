@@ -59,3 +59,31 @@
 .ucs-scoreref { background-position: calc(var(--ucs-card-w) * -1) calc(var(--ucs-card-h) * -6); }
 .ucs-roundtracker { background-position: calc(var(--ucs-card-w) * -2) calc(var(--ucs-card-h) * -6); }
 .ucs-aid-back { background-position: calc(var(--ucs-card-w) * -3) calc(var(--ucs-card-h) * -6); }
+
+// ---- Secret Santa headshots: a square crop of the santa faces above ----
+.ucs-santa-head {
+    --ucs-card-w: calc(var(--ucs-head-size) * 1.48352);
+    --ucs-card-h: calc(var(--ucs-card-w) * 1.55417);
+    width: var(--ucs-head-size);
+    height: var(--ucs-head-size);
+    background-image: url(img/secondary.jpg);
+    background-repeat: no-repeat;
+    background-size: calc(var(--ucs-card-w) * 8) calc(var(--ucs-card-h) * 7);
+    transform: rotate(90deg);
+}
+.ucs-head-1 { background-position: calc(var(--ucs-card-w) * -7.23556) calc(var(--ucs-card-h) * -2.51714); }
+.ucs-head-2 { background-position: calc(var(--ucs-card-w) * -0.23556) calc(var(--ucs-card-h) * -3.51714); }
+.ucs-head-3 { background-position: calc(var(--ucs-card-w) * -1.23556) calc(var(--ucs-card-h) * -3.51714); }
+.ucs-head-4 { background-position: calc(var(--ucs-card-w) * -2.23556) calc(var(--ucs-card-h) * -3.51714); }
+.ucs-head-5 { background-position: calc(var(--ucs-card-w) * -3.23556) calc(var(--ucs-card-h) * -3.51714); }
+.ucs-head-6 { background-position: calc(var(--ucs-card-w) * -4.23556) calc(var(--ucs-card-h) * -3.51714); }
+.ucs-head-7 { background-position: calc(var(--ucs-card-w) * -5.23556) calc(var(--ucs-card-h) * -3.51714); }
+.ucs-head-8 { background-position: calc(var(--ucs-card-w) * -6.23556) calc(var(--ucs-card-h) * -3.51714); }
+.ucs-head-9 { background-position: calc(var(--ucs-card-w) * -7.23556) calc(var(--ucs-card-h) * -3.51714); }
+.ucs-head-10 { background-position: calc(var(--ucs-card-w) * -0.23556) calc(var(--ucs-card-h) * -4.51714); }
+.ucs-head-11 { background-position: calc(var(--ucs-card-w) * -1.23556) calc(var(--ucs-card-h) * -4.51714); }
+.ucs-head-12 { background-position: calc(var(--ucs-card-w) * -2.23556) calc(var(--ucs-card-h) * -4.51714); }
+.ucs-head-13 { background-position: calc(var(--ucs-card-w) * -3.23556) calc(var(--ucs-card-h) * -4.51714); }
+.ucs-head-14 { background-position: calc(var(--ucs-card-w) * -4.23556) calc(var(--ucs-card-h) * -4.51714); }
+.ucs-head-15 { background-position: calc(var(--ucs-card-w) * -5.23556) calc(var(--ucs-card-h) * -4.51714); }
+.ucs-head-16 { background-position: calc(var(--ucs-card-w) * -6.23556) calc(var(--ucs-card-h) * -4.51714); }

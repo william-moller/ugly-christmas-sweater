@@ -200,7 +200,7 @@ export class Game {
                         <span class="ucs-player-name">${mine ? _('Your Knitting Area') : player.name}</span>
                         <span class="ucs-bonus-card" id="ucs-bonus-${player.id}"></span>
                     </div>
-                    <div class="ucs-avid-revealed" id="ucs-avid-ss-${player.id}" style="display:none"></div>
+                    <div class="ucs-santa-reveal" id="ucs-santa-reveal-${player.id}" style="display:none"></div>
                     <div class="ucs-knitting" id="ucs-knitting-${player.id}"></div>
                     ${mine ? '' : `<div class="ucs-oppo-summary" id="ucs-summary-${player.id}"></div>`}
                 </div>
@@ -509,7 +509,7 @@ export class Game {
     private renderAll() {
         this.renderGameplay();
         this.renderSecretSanta();
-        this.renderAvidRevealed();
+        this.renderSantaReveal();
         this.renderDraftPool();
         this.renderTradeArea();
         this.renderPlayers();
@@ -518,47 +518,83 @@ export class Game {
     }
 
     /**
-     * Avid: each player's publicly revealed satisfied Secret Santas, shown face-up in their area. A Secret
-     * Santa is revealed the round its colour+icon request is first met by a completed sweater. OPPONENTS
-     * ONLY — it's the only way to see what they've done, but for me it would repeat what my own Secret
-     * Santa row already shows, where a completed one is ticked instead (see renderSecretSanta). Fed by
-     * gamedatas.avidRevealed; hidden entirely outside Avid.
+     * Each player's publicly revealed Secret Santas, shown in their area once the round is scored — which
+     * of their hidden objectives they were chasing and whether they landed it. Every variant reveals; what
+     * a variant reveals and when is the server's call (Game.php::secretSantaReveal), so this just draws
+     * whatever gamedatas.santaReveal holds.
+     *
+     * OPPONENTS ONLY. For me it would repeat my own Secret Santa row, where a satisfied card is ticked
+     * live instead (renderSecretSanta) — showing it twice cost a row of space the first time round.
+     *
+     * Drawn as the card's HEADSHOT rather than the whole card: a full card has to be turned 90deg and
+     * reserve a landscape footprint, which is a lot of an opponent's compact table for a reference the
+     * tooltip carries anyway. The headshot is the recognisable half, is square, and needs no slot.
      */
-    private renderAvidRevealed() {
-        const revealed = this.gamedatas.avidRevealed ?? {};
+    private renderSantaReveal() {
+        const revealed = this.gamedatas.santaReveal ?? {};
         Object.values(this.gamedatas.players).forEach((player) => {
-            const zone = document.getElementById(`ucs-avid-ss-${player.id}`);
+            const zone = document.getElementById(`ucs-santa-reveal-${player.id}`);
             if (!zone) return;
             const list = revealed[Number(player.id)] ?? [];
             const mine = Number(player.id) === this.myId;
-            if (mine || !this.gamedatas.avid || !list.length) { zone.style.display = 'none'; zone.innerHTML = ''; return; }
+            if (mine || !list.length) { zone.style.display = 'none'; zone.innerHTML = ''; return; }
             zone.style.display = '';
-            zone.innerHTML = `<span class="ucs-avid-revealed-label">${_('Completed Secret Santas')}</span>`;
+            // Every card carries a verdict except in Avid mid-game, where only completed ones are revealed
+            // at all (an unmet one is still hidden information) — so the label has to say which list this is.
+            const allDone = list.every((ss) => ss.done !== false);
+            zone.innerHTML = `<span class="ucs-santa-reveal-label">`
+                + `${allDone ? _('Completed Secret Santas') : _('Secret Santas')}</span>`;
             const row = document.createElement('div');
-            row.className = 'ucs-avid-revealed-cards';
+            row.className = 'ucs-santa-reveal-cards';
             list.forEach((ss) => {
-                // A slot reserves the rotated (landscape) footprint so turned cards don't overlap — same
-                // pattern as renderSecretSanta.
-                const slot = document.createElement('div');
-                slot.className = 'ucs-santa-slot';
-                const el = document.createElement('div');
-                el.className = `ucs-card ucs-santa-card ucs-avid-santa ucs-art2 ucs-santa-${ss.id}`;
-                el.id = `ucs-avid-ss-${player.id}-${ss.id}`;
-                // secretSantaTooltip wants a Material::secretSantas() entry; the revealed payload has the
-                // same shape ({name, needs}) so it renders identically.
-                this.addTip(el.id, secretSantaTooltip(ss, this.material.vp));
-                slot.appendChild(el);
-                row.appendChild(slot);
+                row.appendChild(this.santaHeadEl(ss, `ucs-santa-reveal-${player.id}-${ss.id}`, player.name));
             });
             zone.appendChild(row);
         });
     }
 
+    /**
+     * One revealed Secret Santa as a headshot chip: the portrait cropped out of the card art, badged with
+     * the verdict, carrying the same tooltip the full card does. Used in the players' areas and in the
+     * scoring summary, so the two can never describe the same card differently.
+     *
+     * The badge sits on the WRAPPER, not the headshot: .ucs-santa-head is turned 90deg (the art is drawn
+     * for a landscape card) and anything inside it would turn with it — the same trap .ucs-santa-slot
+     * exists for. `owner` names whose objective it is, since the tooltip's default wording is written for
+     * my own private cards.
+     */
+    private santaHeadEl(ss: RevealedSecretSanta, domId: string, owner?: string): HTMLElement {
+        const wrap = document.createElement('div');
+        wrap.className = 'ucs-santa-head-wrap';
+        const el = document.createElement('div');
+        el.className = `ucs-santa-head ucs-head-${ss.id}`;
+        el.id = domId;
+        // secretSantaTooltip wants a Material::secretSantas() entry; the revealed payload has the same
+        // shape ({name, needs}) so it renders identically.
+        this.addTip(el.id, secretSantaTooltip(ss, this.material.vp, owner, ss.done));
+        wrap.appendChild(el);
+        if (ss.done !== undefined) wrap.appendChild(this.santaVerdict(ss.done));
+        return wrap;
+    }
+
+    /** The verdict laid over a revealed Secret Santa: green tick when satisfied, red cross when not. */
+    private santaVerdict(done: boolean): HTMLElement {
+        const badge = this.santaDoneTick();
+        if (!done) {
+            badge.classList.add('ucs-santa-missed');
+            badge.querySelector('.ucs-santa-done-mark')!
+                .setAttribute('d', 'M11 11 L21 21 M21 11 L11 21'); // the tick's path, redrawn as a cross
+            badge.setAttribute('aria-label', _('Not completed'));
+        }
+        return badge;
+    }
+
     /** My own Secret Santa objective(s) — 1 in Casual, 2 in Express, 3 in Avid (private; hidden from others).
      *  Casual/Avid render into the top `santa` grid slot; Express hands that slot to the Fad display and
      *  instead centres the Secret Santa card(s) in a row directly over my Knitting Area (#ucs-my-santa).
-     *  Avid: one I've completed gets a green tick, which is the whole of my completion read-out — the
-     *  knitting-area "Completed Secret Santas" block is opponents-only (see renderAvidRevealed). */
+     *  One I've completed gets a green tick, in every variant and the moment my knitting satisfies it —
+     *  which is the whole of my completion read-out, since the knitting-area reveal block is
+     *  opponents-only (see renderSantaReveal). */
     private renderSecretSanta() {
         const express = !!this.gamedatas.express;
         const mySanta = document.getElementById('ucs-my-santa');
@@ -574,9 +610,10 @@ export class Game {
         zone.innerHTML = `<div class="ucs-zone-label" id="ucs-label-secretsanta">${_('Your Secret Santa')}</div>`;
         this.addTip('ucs-label-secretsanta', `<b>${_('Your Secret Santa')}</b><br>`
             + _('Hidden objective(s) only you can see. Build the pieces each one lists into your sweaters to score it at the end of the round.'));
-        // Avid: which of mine are done. The revealed payload's `id` is the Material::secretSantas() index,
-        // the same number as a card's type_arg — so they key against each other directly.
-        const done = new Set((this.gamedatas.avidRevealed?.[this.myId] ?? []).map((ss) => Number(ss.id)));
+        // Which of mine my knitting currently satisfies — kept live by the server (santaProgress), so the
+        // tick lands as the sweater completes rather than at scoring. These are Material::secretSantas()
+        // indices, the same number as a card's type_arg, so they key against each other directly.
+        const done = new Set((this.gamedatas.santaDone ?? []).map(Number));
         const row = document.createElement('div');
         row.className = 'ucs-santa-cards';
         cards.forEach((c) => {
@@ -601,7 +638,7 @@ export class Game {
         zone.appendChild(row);
     }
 
-    /** The green "completed" tick laid over one of my Secret Santa cards (Avid). */
+    /** The green "completed" tick laid over a Secret Santa card (or, recoloured, over a headshot). */
     private santaDoneTick(): HTMLElement {
         const tick = document.createElement('div');
         tick.className = 'ucs-santa-done';
@@ -1201,12 +1238,23 @@ export class Game {
     }
 
     private renderPlayers() {
-        Object.values(this.gamedatas.players).forEach((player) => {
-            this.renderKnitting(Number(player.id));
-            this.renderOppoSummary(Number(player.id));
-            this.renderBonus(Number(player.id));
-            this.renderPanelTally(Number(player.id));
-        });
+        Object.values(this.gamedatas.players).forEach((player) => this.renderPlayer(Number(player.id)));
+    }
+
+    /**
+     * Everything drawn from one player's knitting: the area itself, the compact opponent chip, their bonus
+     * card, and the player-panel tally. Every read-out of a Knitting Area in one call, because they are all
+     * derived from gamedatas.knitting and any handler that refreshes one has to refresh the lot.
+     *
+     * Drafting used to re-render the area alone, so the panel tally's patch 'P' (and the opponent chip's
+     * completed-sweater pips) only caught up at the END of the trick, when notif_trickCleanup happened to
+     * call renderPlayers — a whole draft phase late for something the tally exists to announce.
+     */
+    private renderPlayer(playerId: number) {
+        this.renderKnitting(playerId);
+        this.renderOppoSummary(playerId);
+        this.renderBonus(playerId);
+        this.renderPanelTally(playerId);
     }
 
     /**
@@ -3128,14 +3176,31 @@ export class Game {
         // ---- scoring rows ----
         const cell = (v: number | undefined, extra = '') =>
             `<td class="ucs-sp-num ${extra}">${v === undefined ? '' : v}</td>`;
+        // The Secret Santa row is the one place the summary can say WHICH objectives a player was chasing,
+        // so its per-round cells carry the revealed headshots under the VP. Deferred: the cell is built as
+        // HTML with the whole table, and the headshots need tooltips bound by element id, so they are
+        // collected here and wired once the table is in the DOM (see santaCellMounts below).
+        const santaCellMounts: { id: string; santas: RevealedSecretSanta[]; owner: string }[] = [];
+        const santaCellHtml = (p: ScorepadPlayer, r: number, rec: ScorepadCell | undefined): string => {
+            const santas = rec?.santas ?? [];
+            if (!santas.length) return '';
+            const id = `ucs-sp-santas-${p.player_id}-${r}`;
+            santaCellMounts.push({ id, santas, owner: p.player_name });
+            return `<div class="ucs-sp-santas" id="${id}"></div>`;
+        };
         cats.forEach((cat) => {
-            html += `<tr class="ucs-sp-row"><th class="ucs-sp-cat"><span class="ucs-sp-lbl">${cat.label}</span>`
+            const santaRow = cat.key === 'ss';
+            html += `<tr class="ucs-sp-row${santaRow ? ' ucs-sp-row-ss' : ''}">`
+                + `<th class="ucs-sp-cat"><span class="ucs-sp-lbl">${cat.label}</span>`
                 + `<span class="ucs-sp-vp">${cat.vp}</span></th>`;
             players.forEach((p, i) => {
                 roundCols.forEach((r) => {
                     const rec = cellOf(p.player_id, r);
                     const cls = [i % 2 === 0 ? 'ucs-sp-alt' : '', r === cur ? 'ucs-sp-cur' : ''].join(' ');
-                    html += cell(rec ? Number(rec[cat.key]) : undefined, cls);
+                    const v = rec ? Number(rec[cat.key]) : undefined;
+                    html += santaRow
+                        ? `<td class="ucs-sp-num ${cls}">${v === undefined ? '' : v}${santaCellHtml(p, r, rec)}</td>`
+                        : cell(v, cls);
                 });
                 html += cell(sumCat(p.player_id, cat.key), `ucs-sp-total ${i % 2 === 0 ? 'ucs-sp-alt' : ''}`);
             });
@@ -3182,7 +3247,15 @@ export class Game {
         html += '</tbody></table>';
         const wrap = document.createElement('div');
         wrap.innerHTML = html;
-        return wrap.firstElementChild as HTMLElement;
+        const table = wrap.firstElementChild as HTMLElement;
+        // Fill the Secret Santa cells now the table exists: santaHeadEl builds real elements and binds a
+        // tooltip per id, which the string-built table above cannot do.
+        santaCellMounts.forEach(({ id, santas, owner }) => {
+            const host = table.querySelector(`#${id}`);
+            if (!host) return;
+            santas.forEach((ss) => host.appendChild(this.santaHeadEl(ss, `${id}-${ss.id}`, owner)));
+        });
+        return table;
     }
 
     // ===================================================================================
@@ -3289,7 +3362,7 @@ export class Game {
             this.gamedatas.knitting[Number(args.floating_patch.id)] = args.floating_patch;
         }
         this.renderDraftPool();
-        this.renderKnitting(args.player_id);
+        this.renderPlayer(args.player_id); // area + opponent chip + panel tally (the patch 'P' lands here)
 
         // Fly the card from the pool into its knitting slot: my own area renders it full-size
         // (`ucs-card-<id>`); an opponent's inline area renders a compact chip (`ucs-mini-<id>`).
@@ -3301,7 +3374,13 @@ export class Game {
     async notif_patchAssigned(args: NotifPatchAssigned) {
         const id = Number(args.card_id);
         this.gamedatas.knitting[id] = args.card;
-        this.renderKnitting(args.player_id);
+        this.renderPlayer(args.player_id);
+    }
+
+    /** Private: my knitting now satisfies this set of my own Secret Santas — re-tick my cards. */
+    async notif_santaProgress(args: NotifSantaProgress) {
+        this.gamedatas.santaDone = args.satisfied ?? [];
+        this.renderSecretSanta();
     }
 
     /** The trick resolved into a draft order; deal the Draft Order cards onto the Trade Area. */
@@ -3468,6 +3547,9 @@ export class Game {
         this.gamedatas.roundNo = args.round;
         this.gamedatas.leaderId = args.leaderId;
         this.gamedatas.draftOrderCards = [];
+        // Last round's revealed Secret Santas: cleared server-side with the cards themselves outside Avid,
+        // where they persist and stay revealed (Game.php::clearSecretSantaReveal).
+        this.gamedatas.santaReveal = args.santaReveal ?? {};
         this.poolRenderOrder = null; // carry-over pool: order by draft slot, not the last trick's layout
         this.showHandEndBanner(false);
         this.hideDraftOrder();
@@ -3485,6 +3567,7 @@ export class Game {
         const ss: CardMapT = {};
         args.secretSanta.forEach((c) => (ss[Number(c.id)] = c));
         this.gamedatas.secretSanta = ss;
+        this.gamedatas.santaDone = args.santaDone ?? []; // knitting was wiped; Avid keeps what it banked
         // Deal the new hand in from the draw pile rather than having it appear — the same slide a
         // mid-round refill gets (notif_handUpdate). The public newRound notify runs first (NewRound.php
         // sends it before the per-player privates), so renderAll has already drawn the pile; if it
@@ -3529,8 +3612,7 @@ export class Game {
             .forEach((c) => { delete this.gamedatas.knitting[Number(c.id)]; });
         args.knitting.forEach((c) => (this.gamedatas.knitting[Number(c.id)] = c));
         this.gamedatas.bonus = args.bonus ?? this.gamedatas.bonus;
-        this.renderKnitting(Number(args.player_id));
-        this.renderBonus(Number(args.player_id));
+        this.renderPlayer(Number(args.player_id));
         this.flipFromRects(before, 0.6);
     }
 
@@ -3543,7 +3625,7 @@ export class Game {
     async notif_fadClaimed(args: NotifFadClaimed) {
         this.gamedatas.gameplay = args.gameplay;
         this.renderGameplay();
-        this.renderKnitting(args.player_id);
+        this.renderPlayer(args.player_id);
     }
 
     /**
@@ -3555,11 +3637,11 @@ export class Game {
     async notif_roundScored(args: NotifRoundScored) {
         // The draft phase is over and we're moving on — the "last trick" banner is spent.
         this.showHandEndBanner(false);
-        // Avid: Secret Santas satisfied this round are now public — refresh every player's revealed row.
-        if (args.avidRevealed) {
-            this.gamedatas.avidRevealed = args.avidRevealed;
-            this.renderAvidRevealed();
-            this.renderSecretSanta(); // my own completion read-out is the tick on my Secret Santa cards
+        // The round's Secret Santas are now public — refresh every opponent's revealed row. Mine needs no
+        // refresh: santaProgress has been ticking my own cards live all round.
+        if (args.santaReveal) {
+            this.gamedatas.santaReveal = args.santaReveal;
+            this.renderSantaReveal();
         }
         if (args.round >= this.gamedatas.totalRounds) {
             this.renderRoundSummary(args, undefined, false); // modeless: never in the way of the end screen

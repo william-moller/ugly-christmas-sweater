@@ -225,6 +225,33 @@ absolutely positioned to the right of its sweater, so rendering one per pending 
 cards still to be assigned. Confirming sends `actAssignPatch`, drops that patch and re-renders, which
 brings up the next.
 
+### Secret Santa reveal + the live tick
+
+Two separate read-outs, deliberately, because they answer different questions.
+
+**Mine, live.** `Game::satisfiedSecretSantas` runs the round-end scorer's own maximum matching
+(`matchSecretSantas` — one completed sweater satisfies at most one card) over a player's *current*
+knitting, and `notifySantaProgress` pushes the result to that player alone. Every path a piece can move by
+calls `Game::afterKnittingChanged`, which is `refreshPublicScore` + that notify in one call so the two
+cannot drift; the client stores it as `gamedatas.santaDone` and `renderSecretSanta` ticks the matching
+cards. In every variant. An unassigned patch has no icon until `AssignPatches`, so a sweater that leans on
+one ticks at round end rather than on completion — that is the honest answer, not a lag.
+
+**Theirs, at round end.** `scoreRound` writes two globals: `santaReveal` (what is public NOW, drawn in each
+opponent's area by `renderSantaReveal`) and `santaRound` (what this round's scorepad column shows, carried
+into each `ScorepadCell.santas`). They differ in exactly one case — see below. Both are drawn as headshot
+chips (`Game.ts::santaHeadEl`) badged with a green tick or a red cross, sharing one tooltip helper with the
+full cards so the two can never describe a card differently.
+
+⚠️ **What is revealed is a hidden-information decision, not a display one.** Casual re-deals its Secret
+Santas each round and Express is a single round, so revealing every card, met or not, gives nothing away —
+and `setupRound` drops the reveal as the next round deals (`clearSecretSantaReveal`), since those cards are
+being discarded. **Avid does not work that way:** its 3 cards persist all game and every one must be
+completed, so an unmet card revealed after round 1 or 2 would tell the table exactly what an opponent still
+has to build. Mid-game Avid therefore reveals only the *completed* ones (cumulative, which is what
+completing one already makes public — this is the pre-existing behaviour); the full set with its verdicts
+follows the **final** round. Avid's reveal is also the one that is *not* cleared between rounds.
+
 ### Round-end scoring summary (`renderRoundSummary`)
 
 One overlay, two modes. In `RoundReview` it is **modal** and its Okay acknowledges (`actContinueRound`),
@@ -323,6 +350,14 @@ deck's back. Consumers (`Game.ts`) add `.ucs-art2` + the
 face class to a `.ucs-card`-sized element; Secret Santa cards are turned `rotate(90deg)` (the art is drawn
 to read in landscape). The publisher source PNGs were renamed to systematic names (`scripts/rename-art.mjs`,
 reversible via `--reverse`), so the build maps read plainly (e.g. `fad-05-red-candycane.png`).
+
+**Secret Santa headshots (`.ucs-santa-head` + `.ucs-head-<1..16>`)** come out of the *same* script and the
+*same* sheet: a square CSS crop of each santa face, emitted by `santaHeadScss()` from one measured rect
+(`HEAD`, in untrimmed 750×1125 source px). No second image — the sheet already carries the faces at 240px
+per cell, ~174 source px across the head, against the 26–40px it renders at. The consumer sets one
+variable, `--ucs-head-size`; the partial derives `--ucs-card-w/h` from it so the crop fills that square at
+any size, and turns the element `rotate(90deg)` for the same reason the full card is turned. A square's
+layout footprint survives the turn, so unlike `.ucs-santa-card` it needs no `.ucs-santa-slot` around it.
 
 **Fad deck (verified from art):** 10 physical cards = 8 distinct colour+icon fads + "Clash Is In" ×2. Each
 colour appears on two cards paired with a *different* icon (NOT one tidy colour⇄icon pair ×2). See

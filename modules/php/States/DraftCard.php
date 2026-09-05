@@ -140,7 +140,7 @@ class DraftCard extends GameState
 
         // Update the player's live public score (a newly completed sweater is worth public points
         // immediately; a "place over" may also change/break an already-scored sweater).
-        $this->game->refreshPublicScore($activePlayerId);
+        $this->game->afterKnittingChanged($activePlayerId);
 
         // Express: evaluated between each draft — the active player claims any displayed Fad their tableau
         // now satisfies (locking that sweater). Only they can claim now, so there's never a tie. Re-score
@@ -157,7 +157,7 @@ class DraftCard extends GameState
                 'build_no'    => $claim['build_no'],
                 'gameplay'    => $this->game->getGameplayState(),
             ]);
-            $this->game->refreshPublicScore($activePlayerId);
+            $this->game->afterKnittingChanged($activePlayerId);
         }
 
         // If this placement just triggered the end of the hand (someone completed their Nth sweater —

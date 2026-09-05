@@ -35,6 +35,9 @@ class NewRound extends GameState
             'counts'   => $this->game->publicCounts(),
             'knitting' => array_values($this->game->getCardsWithExtras(Game::LOC_KNITTING)),
             'leaderId' => (int) $this->game->globals->get('leaderId'),
+            // Outside Avid setupRound just dropped last round's reveal; send the (now empty) map so the
+            // opponents' areas clear instead of keeping headshots for cards that have been discarded.
+            'santaReveal' => $this->game->secretSantaReveal(),
         ]);
 
         foreach (array_keys($this->game->loadPlayersBasicInfos()) as $pid) {
@@ -42,6 +45,8 @@ class NewRound extends GameState
             $this->game->notify->player($pid, 'newRoundPrivate', '', [
                 'hand'        => array_values($this->game->cards->getCardsInLocation(Game::LOC_HAND, $pid)),
                 'secretSanta' => array_values($this->game->secretSantas->getCardsInLocation(Game::LOC_HAND, $pid)),
+                // Knitting was wiped, so nothing is satisfied any more (Avid keeps what it banked).
+                'santaDone'   => $this->game->satisfiedSecretSantas($pid),
             ]);
         }
 

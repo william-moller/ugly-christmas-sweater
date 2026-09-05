@@ -1759,6 +1759,21 @@ table.ucs-scorepad {
 .ucs-sp-cur   { background: rgba(214, 158, 46, 0.20); }
 .ucs-sp-cur.ucs-sp-alt { background: rgba(214, 158, 46, 0.26); }
 
+// The Secret Santa row's per-round cells carry the revealed headshots under the VP figure — the one place
+// the summary says WHICH objectives were in play. Only this row grows, and only by the head size, so the
+// grid keeps its shape; a 3-Secret-Santa Avid cell is the widest case and .ucs-scorepad-scroll takes it.
+.ucs-sp-row-ss .ucs-sp-num { padding: 2px 3px !important; }
+.ucs-sp-santas {
+    // 32px, not smaller: the verdict badge is a fixed fraction of the chip, so below about 30px it eats
+    // the face that identifies the card and the row degrades into anonymous ticks. Three of these is the
+    // widest a cell gets (Avid), at 3*32 + gaps = 104px, which .ucs-scorepad-scroll absorbs.
+    --ucs-head-size: 32px;
+    display: flex;
+    justify-content: center;
+    gap: 4px;
+    margin-top: 2px;
+}
+
 // Avid: a disqualified player's grand total is zeroed and flagged with a red asterisk (explained in
 // the note under the pad).
 .ucs-sp-dq { color: #b71c1c; }
@@ -2689,10 +2704,13 @@ $santa-column-floors: (medium: 1450px, large: 1610px);
     svg { display: block; width: 100%; height: 100%; }
 }
 .ucs-santa-done-disc {
-    fill: #2ea043; // the same green as the opponents' completed ring (.ucs-avid-santa)
+    fill: #2ea043;
     stroke: #fff;
     stroke-width: 2;
 }
+// The same badge, redrawn as a cross (the mark's `d` is swapped in JS — see Game.ts::santaVerdict) for a
+// Secret Santa that was revealed unmet. Red against the green so the verdict reads without the tooltip.
+.ucs-santa-missed .ucs-santa-done-disc { fill: #d13438; }
 .ucs-santa-done-mark {
     fill: none;
     stroke: #fff;
@@ -2707,36 +2725,60 @@ $santa-column-floors: (medium: 1450px, large: 1610px);
     transform: rotate(90deg);
 }
 
-// Avid: a player's publicly revealed satisfied Secret Santas, shown compact in their area (below the
-// header). Sits in both my table and the opponents' smaller tables, so the cards are shrunk via the
-// card-size vars (the sprite scales off the same vars). Rotated cards use .ucs-santa-slot to reserve
-// their landscape footprint, so no overlap.
-.ucs-avid-revealed {
-    --ucs-card-w: 34px;
-    --ucs-card-h: 53px;
+// A revealed Secret Santa, drawn as the card's HEADSHOT rather than the whole card: square, so it needs
+// no rotated footprint reserved the way .ucs-santa-slot does, and it fits an opponent's compact table at a
+// size where the full card would be an unreadable stamp. The crop and its 90deg turn come out of
+// _secondary-sprites.scss (.ucs-santa-head); everything here only ever sets --ucs-head-size.
+//
+// The verdict badge goes on this WRAPPER, not on the headshot — the headshot is rotated and anything
+// inside it turns with it (the same trap .ucs-santa-slot exists for). Bottom-right rather than centred:
+// centred over a 32-40px chip it would cover the face that identifies the card.
+.ucs-santa-head-wrap {
+    position: relative;
+    width: var(--ucs-head-size);
+    height: var(--ucs-head-size);
+    flex: 0 0 auto;
+
+    // Rounded on the headshot itself rather than clipped by an `overflow: hidden` wrapper — a background
+    // is already clipped to its own border box, and clipping here would take a bite out of the verdict
+    // badge, which deliberately sits proud of the corner.
+    .ucs-santa-head {
+        border-radius: 5px;
+        background-color: #f4efe4; // the art's own paper ground, until the sprite loads
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+    }
+    .ucs-santa-done {
+        top: auto;
+        left: auto;
+        right: -6%;
+        bottom: -6%;
+        transform: none;
+        width: calc(var(--ucs-head-size) * 0.46);
+        height: calc(var(--ucs-head-size) * 0.46);
+    }
+}
+
+// A player's publicly revealed Secret Santas, shown compact in their area (below the header). Sits in
+// both my table and the opponents' smaller tables.
+.ucs-santa-reveal {
+    --ucs-head-size: 40px;
     margin: 2px 0 6px;
     display: flex;
     align-items: center;
     flex-wrap: wrap;
     gap: 4px 6px;
 }
-.ucs-avid-revealed-label {
+.ucs-santa-reveal-label {
     font-size: 11px;
     font-weight: 700;
     opacity: 0.8;
     letter-spacing: 0.02em;
 }
-.ucs-avid-revealed-cards {
+.ucs-santa-reveal-cards {
     display: flex;
     align-items: center;
     gap: 4px;
     flex-wrap: wrap;
-}
-.ucs-avid-santa {
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
-    outline: 2px solid rgba(46, 160, 67, 0.85); // green "completed" ring
-    outline-offset: -2px;
-    border-radius: 5px;
 }
 
 // ---- Help button (bga-help dojo module) + End-of-Round Scoring popin ----------------------------

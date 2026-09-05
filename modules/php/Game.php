@@ -216,6 +216,11 @@ class Game extends \Bga\GameFramework\Table
         // { pid => [ssCardId, …] }. Tracks cumulative completion across rounds (sweaters are torn down
         // each round) for the game-end "all 3 or your score is 0" gate. Empty/unused outside Avid.
         $this->globals->set('avidSSDone', []);
+        // Round-end Secret Santa reveal, written by scoreRound: what is public NOW in each player's area
+        // (santaReveal — see secretSantaReveal for what each variant reveals), and what this round's
+        // scorepad column shows (santaRound). Initialised here so the first getAllDatas has them.
+        $this->globals->set('santaReveal', []);
+        $this->globals->set('santaRound', []);
 
         // --- Stats (defined in stats.jsonc) ---------------------------------------------------
         // Init through the SAME objects the increments use (tableStats / playerStats), not the deprecated
@@ -482,8 +487,10 @@ class Game extends \Bga\GameFramework\Table
         $this->revealGameplayCards();
 
         // 5) Deal Secret Santas: 1/player in Casual, 2 in Express, 3 in Avid. In Avid they are dealt once
-        //    (round 1) and persist all game — dealSecretSantas() no-ops on later rounds.
+        //    (round 1) and persist all game — dealSecretSantas() no-ops on later rounds. Last round's
+        //    public reveal goes with them, except in Avid where those very cards are still owed.
         $this->dealSecretSantas();
+        $this->clearSecretSantaReveal();
 
         // 6) Activate the leader to lead the first trick. No trick has resolved yet this round, so the
         //    Draft Order cards are unassigned (the leader just holds the "1" card).
@@ -676,9 +683,12 @@ class Game extends \Bga\GameFramework\Table
         $result["gameplay"] = $this->getGameplayState();
         // Bonus / Special Ability cards (optional expansion): every player's revealed card ([] when Off).
         $result["bonus"] = $this->bonusEnabled() ? $this->bonusState() : [];
-        // Avid: every player's PUBLICLY revealed satisfied Secret Santas ({} outside Avid). Grows as
-        // players complete them; broadcast again on each roundScored notification.
-        $result["avidRevealed"] = $this->avidRevealedSecretSantas();
+        // Every player's PUBLICLY revealed Secret Santas, with a done flag each (see secretSantaReveal
+        // for what each variant reveals and when). Re-broadcast on each roundScored notification.
+        $result["santaReveal"] = $this->secretSantaReveal();
+        // Private: which of MY OWN Secret Santas my knitting already satisfies, so the tick on my cards
+        // is right immediately after an F5 (it is otherwise pushed by the santaProgress notification).
+        $result["santaDone"] = $this->satisfiedSecretSantas($currentPlayerId);
 
         // Counts of hidden piles (for display) — per player.
         $result["counts"] = $this->publicCounts();
@@ -1675,6 +1685,18 @@ class Game extends \Bga\GameFramework\Table
     }
 
     /**
+     * Everything that has to follow a change to $playerId's Knitting Area: their live public score, and the
+     * private Secret Santa tick that tells them an objective is now met. One call rather than two at each
+     * site, so the two cannot drift apart as placement paths are added — every path a piece can move by
+     * (draft, Mixed-up Maria, round-end patch assignment, Tina Can Tink) goes through here.
+     */
+    public function afterKnittingChanged(int $playerId): void
+    {
+        $this->refreshPublicScore($playerId);
+        $this->notifySantaProgress($playerId);
+    }
+
+    /**
      * End-of-round scoring. Public (non-Secret-Santa) points are already reflected live as sweaters
      * complete (see refreshPublicScore), so here we only add the hidden Secret Santa bonus, then clear
      * the live tracker so the next round starts fresh (its knitting area is wiped in NewRound).
@@ -1705,7 +1727,7 @@ class Game extends \Bga\GameFramework\Table
         //     "all 3 or your score is 0" gate reads the same tracked set (EndScore::onEnteringState).
         $avid      = $this->isAvid();
         $ssDone    = (array) $this->globals->get('avidSSDone');
-        $awardThis = []; // Avid: SS cards NEWLY satisfied+scored this round, per pid (for the scorepad + reveal)
+        $awardThis = []; // SS cards satisfied+scored THIS round, per pid (feeds the scorepad + the reveal)
         foreach (array_keys($this->loadPlayersBasicInfos()) as $pid) {
             $pid = (int) $pid;
             $builds   = $this->playerBuilds($pid); // completed-orientation pieces, keyed buildNo => slot => card
@@ -1720,12 +1742,13 @@ class Game extends \Bga\GameFramework\Table
                 }
                 $eligible[] = $ss;
             }
+            $awardThis[$pid] = [];
             foreach ($this->matchSecretSantas($eligible, $builds) as $ssId) {
                 $this->bga->playerScore->inc($pid, Material::VP_SECRET_SANTA);
                 $this->playerStats->inc('points_secret_santa', Material::VP_SECRET_SANTA, $pid);
+                $awardThis[$pid][] = $ssId; // scored THIS round (every variant — see the reveal below)
                 if ($avid) {
-                    $doneThis[]        = $ssId;
-                    $awardThis[$pid][] = $ssId; // newly revealed this round
+                    $doneThis[] = $ssId;
                 }
             }
             if ($avid) {
@@ -1738,6 +1761,32 @@ class Game extends \Bga\GameFramework\Table
             // means an SS met again in a later round must NOT re-count in that round's column).
             $this->globals->set('avidSSRoundAward', $awardThis);
         }
+
+        // Reveal the round's Secret Santas. Two lists, because the knitting-area reveal and the scorepad
+        // column answer different questions, and in Avid mid-game they differ:
+        //   santaReveal — what is public NOW, shown in each player's area (see secretSantaReveal).
+        //   santaRound  — what this round's scorepad column shows, which must line up with the VP in its
+        //                 own 'ss' cell: in Avid that is only what was NEWLY scored this round, since a
+        //                 card met again in a later round scores nothing more.
+        // On the FINAL round both become the whole set with its done flags — the game is over, so there is
+        // no longer anything to protect, and the ✗ marks are the verdict the Avid all-or-nothing gate reads.
+        $final     = (int) $this->globals->get('roundNo') >= $this->totalRounds();
+        $reveal    = [];
+        $roundList = [];
+        foreach (array_keys($this->loadPlayersBasicInfos()) as $pid) {
+            $pid   = (int) $pid;
+            $award = array_map('intval', (array) ($awardThis[$pid] ?? []));
+            $all   = $avid ? array_map('intval', (array) ($ssDone[$pid] ?? [])) : $award;
+            if (!$avid || $final) {
+                $reveal[$pid]    = $this->revealedSantaCards($pid, $all, false);
+                $roundList[$pid] = $this->revealedSantaCards($pid, $all, false);
+            } else {
+                $reveal[$pid]    = $this->revealedSantaCards($pid, $all, true);   // cumulative, completed only
+                $roundList[$pid] = $this->revealedSantaCards($pid, $award, true); // this round's award only
+            }
+        }
+        $this->globals->set('santaReveal', $reveal);
+        $this->globals->set('santaRound', $roundList);
 
         // Tie-breaker, Fad tracking + per-source statistics. Per player, walk this round's builds and
         // accumulate:
@@ -1841,29 +1890,91 @@ class Game extends \Bga\GameFramework\Table
     }
 
     /**
-     * Avid: the Secret Santas each player has satisfied so far this game, made PUBLIC (revealed face-up in
-     * that player's area as they are completed at round scoring). Keyed by pid → [{id,name,needs}]. Empty
-     * outside Avid. Sourced from the cumulative 'avidSSDone' set that scoreRound maintains, so it survives a
-     * page refresh via getAllDatas and is re-broadcast on each roundScored notification.
+     * Every player's PUBLICLY revealed Secret Santas: pid => [['id','name','needs','done']]. Written by
+     * scoreRound into the 'santaReveal' global, so it survives an F5 (getAllDatas) and reaches spectators,
+     * and re-broadcast on roundScored. Empty until the first round is scored.
+     *
+     * WHAT is revealed differs by variant, and the difference is about hidden information, not display:
+     *   Casual  — the cards are discarded and re-dealt the moment the next round begins, so revealing all
+     *             of them, met or not, gives nothing away. Cleared by setupRound (see clearSecretSantaReveal).
+     *   Express — a single round, so the game is over; same, everything is revealed.
+     *   Avid    — the same 3 cards persist ALL GAME and every one must be completed, so an unmet card
+     *             revealed after round 1 or 2 would tell the table exactly what that player still has to
+     *             build. Mid-game only the COMPLETED ones are revealed (cumulative — completing one is
+     *             what makes it public); the full set with its done flags follows the FINAL round.
      */
-    public function avidRevealedSecretSantas(): array
+    public function secretSantaReveal(): array
     {
-        if (!$this->isAvid()) {
-            return [];
-        }
-        $ssDone = (array) $this->globals->get('avidSSDone');
+        $raw = (array) $this->globals->get('santaReveal');
         $out = [];
-        foreach (array_keys($this->loadPlayersBasicInfos()) as $pid) {
-            $pid = (int) $pid;
-            $out[$pid] = [];
-            foreach (array_map('intval', (array) ($ssDone[$pid] ?? [])) as $ssId) {
-                $def = Material::secretSantas()[$ssId] ?? null;
-                if ($def) {
-                    $out[$pid][] = ['id' => $ssId, 'name' => $def['name'], 'needs' => $def['needs']];
-                }
-            }
+        foreach ($raw as $pid => $cards) {
+            $out[(int) $pid] = array_values((array) $cards);
         }
         return $out;
+    }
+
+    /**
+     * Build one player's reveal list. `$doneIds` are the Secret Santas counted as complete for this
+     * reveal; `$onlyDone` drops the rest (Avid mid-game, where an unmet card is still hidden information).
+     * Always walks playerSecretSantas, so the cards come back in the order they were dealt whichever
+     * variant is asking.
+     */
+    private function revealedSantaCards(int $playerId, array $doneIds, bool $onlyDone): array
+    {
+        $doneIds = array_map('intval', $doneIds);
+        $out = [];
+        foreach ($this->playerSecretSantas($playerId) as $ss) {
+            $done = in_array((int) $ss['id'], $doneIds, true);
+            if (!$done && $onlyDone) {
+                continue;
+            }
+            $ss['done'] = $done;
+            $out[] = $ss;
+        }
+        return $out;
+    }
+
+    /**
+     * Forget the round-end reveal. Called from setupRound as the next round's cards are dealt: outside Avid
+     * the revealed cards are about to be discarded and replaced, so leaving them up states something false
+     * about the round now starting. Avid keeps its reveal — those cards are still in hand and still owed.
+     */
+    public function clearSecretSantaReveal(): void
+    {
+        if (!$this->isAvid()) {
+            $this->globals->set('santaReveal', []);
+        }
+    }
+
+    /**
+     * The Secret Santas $playerId's CURRENT knitting already satisfies — what puts the live tick on their
+     * own cards. Runs the same maximum matching the round-end scorer uses (one completed sweater satisfies
+     * at most ONE card), so the tick can never promise VP the scorer will not award. In Avid it also carries
+     * the ones banked in earlier rounds, which stay done however this round's sweaters land.
+     *
+     * A patch counts only once it has a value+icon: until AssignPatches an unassigned patch has no icon, so
+     * a sweater relying on one shows its tick at round end rather than the moment it is completed. That is
+     * the honest answer — the sweater genuinely does not satisfy anything yet.
+     *
+     * PRIVATE. Only ever sent to $playerId (getAllDatas / notifySantaProgress).
+     */
+    public function satisfiedSecretSantas(int $playerId): array
+    {
+        $done = $this->matchSecretSantas($this->playerSecretSantas($playerId), $this->playerBuilds($playerId));
+        if ($this->isAvid()) {
+            $ssDone = (array) $this->globals->get('avidSSDone');
+            $done   = array_merge($done, array_map('intval', (array) ($ssDone[$playerId] ?? [])));
+        }
+        return array_values(array_unique($done));
+    }
+
+    /** Push that live set to its owner alone — their Knitting Area just changed. */
+    public function notifySantaProgress(int $playerId): void
+    {
+        $this->notify->player($playerId, 'santaProgress', '', [
+            'player_id' => $playerId,
+            'satisfied' => $this->satisfiedSecretSantas($playerId),
+        ]);
     }
 
     /** True when a piece satisfies a single Secret Santa requirement ("color:x" / "icon:y"); orientation ignored. */
@@ -2015,6 +2126,9 @@ class Game extends \Bga\GameFramework\Table
         $express   = $this->isExpress();
         $avid      = $this->isAvid();
         $avidAward = $avid ? (array) $this->globals->get('avidSSRoundAward') : [];
+        // The revealed Secret Santa cards for THIS round's column, keyed by pid — built by scoreRound (which
+        // has the matching in hand) so the headshots in the 'ss' cell and the VP above them cannot disagree.
+        $santaRound = (array) $this->globals->get('santaRound');
         $roundFad  = $express ? null : $this->activeFad();
         $roundFads = $roundFad !== null ? [$roundFad] : [];
         $scores    = $this->getCollectionFromDb("SELECT `player_id`, `player_score` FROM `player`");
@@ -2089,6 +2203,7 @@ class Game extends \Bga\GameFramework\Table
                 'cumulative'    => $score,                  // running grand total after this round
                 'unfinished'    => $unfinished,
                 'fadsCompleted' => $fadsCompleted,
+                'santas'        => array_values((array) ($santaRound[$pid] ?? [])),
             ];
         }
 
@@ -2103,22 +2218,21 @@ class Game extends \Bga\GameFramework\Table
             'players'     => $playersMeta,
             'rounds'      => $history, // each: { round, players: { pid: {built,run,fad,nonfad,ss,bonus,total,...} } }
         ];
-        if ($avid) {
-            // Publicly revealed satisfied Secret Santas per player (grows across rounds) — shown face-up in
-            // each player's area. On the FINAL round, list players who failed to complete all 3 (their final
-            // score is zeroed in EndScore): the summary flags them with an asterisk + note.
-            $payload['avidRevealed'] = $this->avidRevealedSecretSantas();
-            if ($round >= $this->totalRounds()) {
-                $ssDone = (array) $this->globals->get('avidSSDone');
-                $dq = [];
-                foreach (array_keys($this->loadPlayersBasicInfos()) as $pid) {
-                    $pid = (int) $pid;
-                    if (count((array) ($ssDone[$pid] ?? [])) < self::AVID_SECRET_SANTAS) {
-                        $dq[] = $pid;
-                    }
+        // Publicly revealed Secret Santas per player — shown face-up in each player's area. Carried on the
+        // payload so the roundScored notification refreshes those areas without a second round trip.
+        $payload['santaReveal'] = $this->secretSantaReveal();
+        // Avid, FINAL round: list players who failed to complete all 3 (their final score is zeroed in
+        // EndScore); the summary flags them with an asterisk + note.
+        if ($avid && $round >= $this->totalRounds()) {
+            $ssDone = (array) $this->globals->get('avidSSDone');
+            $dq = [];
+            foreach (array_keys($this->loadPlayersBasicInfos()) as $pid) {
+                $pid = (int) $pid;
+                if (count((array) ($ssDone[$pid] ?? [])) < self::AVID_SECRET_SANTAS) {
+                    $dq[] = $pid;
                 }
-                $payload['disqualified'] = $dq;
             }
+            $payload['disqualified'] = $dq;
         }
         $this->globals->set('scorepad', json_encode($payload));
         return $payload;

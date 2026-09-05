@@ -116,7 +116,8 @@ interface UglyChristmasSweaterGamedatas extends Gamedatas<UglyChristmasSweaterPl
     knitting: CardMap;             // all players' knitting-area cards (location_arg = player id)
     gameplay: GameplayState;       // the three round-parameter decks (Perfect Fit / Trendy Yarn / Fad)
     bonus: BonusCardState[];       // each player's revealed Bonus card (optional expansion; [] when Off)
-    avidRevealed: RevealedSantas;  // Avid: each player's publicly revealed satisfied Secret Santas ({} otherwise)
+    santaReveal: RevealedSantas;   // every player's publicly revealed Secret Santas ({} until a round is scored)
+    santaDone: number[];           // PRIVATE: which of MY Secret Santas my knitting currently satisfies
     counts: { [playerId: number]: PlayerCounts };
     material: UcsMaterial;
     roundNo: number;
@@ -145,9 +146,10 @@ interface RevealedSecretSanta {
     id: number;        // Material::secretSantas() index
     name: string;      // family member name (clienttranslate-marked)
     needs: string[];   // three "<color|icon>:<value>" requirements
+    done?: boolean;    // satisfied? (absent on a list that only ever carries completed ones)
 }
 
-/** Avid: publicly revealed satisfied Secret Santas, keyed by player id. */
+/** Publicly revealed Secret Santas, keyed by player id. See Game.php::secretSantaReveal for the rules. */
 type RevealedSantas = { [playerId: number]: RevealedSecretSanta[] };
 
 /** One player's per-round category totals — a single column of the scorepad grid. */
@@ -162,6 +164,7 @@ interface ScorepadCell {
     cumulative: number;    // running grand total after this round
     unfinished: number;    // informational: unfinished sweaters this round
     fadsCompleted: number; // informational: Fad objectives met this round
+    santas: RevealedSecretSanta[]; // the Secret Santas this column reveals, each with its done flag
 }
 
 /** Stable per-player identity for the scorepad column headers. */
@@ -187,7 +190,7 @@ interface Scorepad {
     fad: { title?: string; objectives?: any[]; clash?: boolean } | null;
     bonus: boolean;        // Bonus cards option on → show the Bonus row
     avid?: boolean;        // Avid mode
-    avidRevealed?: RevealedSantas;  // Avid: each player's publicly revealed satisfied Secret Santas
+    santaReveal?: RevealedSantas;   // every player's publicly revealed Secret Santas (refreshes their areas)
     disqualified?: number[];        // Avid final round: pids who failed all 3 SS (final score zeroed)
     players: ScorepadPlayer[];
     rounds: ScorepadRound[];
@@ -272,12 +275,20 @@ interface NotifNewRound {
     counts: { [playerId: number]: PlayerCounts };        // resynced hidden-pile/hand counts
     knitting: SweaterCard[];                             // all players' knitting — empty at round start
     leaderId: number;                                    // holder of the "1" card, leads the first trick
+    santaReveal: RevealedSantas;                         // last round's reveal, now cleared (Avid: unchanged)
 }
 
 /** Private start-of-round deal: the receiving player's new hand + freshly dealt Secret Santa(s). */
 interface NotifNewRoundPrivate {
     hand: SweaterCard[];
     secretSanta: SweaterCard[];
+    santaDone: number[]; // reset for the new round's knitting (Avid keeps what earlier rounds banked)
+}
+
+/** Private: which of my own Secret Santas my knitting now satisfies — pushed on every change to it. */
+interface NotifSantaProgress {
+    player_id: number;
+    satisfied: number[]; // Material::secretSantas() ids
 }
 
 /** A bonus card was spent / an objective scored — carries the refreshed public bonus state. */

@@ -36,6 +36,14 @@ const CELL_W = 240;
 const CELL_H = Math.round(CELL_W * TRIM.height / TRIM.width); // 373 — same trimmed 0.643 ratio
 const COLS = 8;                                               // grid width; rows derived from count
 
+// Secret Santa HEADSHOT crop — the square portrait detail inside each santa card, in UNTRIMMED source
+// (750x1125) pixels. Measured off the art rather than reasoned from the layout, and checked against all
+// 16 faces (not a sample): every card places the head at this spot and this rect clears the dotted frame
+// on all of them. Emitted as a CSS crop of the SAME sheet rather than a second image — the sheet already
+// carries the faces at 240px/cell, which is ~174 source px across the head against the ~40-56px it
+// renders at.
+const HEAD = { left: 196, top: 580, size: 455 };
+
 // Ordered face list: [cssKey, sourceBasename]. Source art was renamed to systematic names by
 // scripts/rename-art.mjs, so key and file now read alike. Grouped by type; layout is row-major.
 const FACES = [
@@ -104,6 +112,48 @@ const src = (base) => join(ART_DIR, `${base}.png`);
 const cell = (base) => sharp(src(base)).extract(TRIM).resize(CELL_W, CELL_H, { fit: 'fill' })
     .flatten({ background: '#ffffff' }).toBuffer();
 
+/**
+ * The Secret Santa headshots, as a CSS crop of the sheet above. The consumer sets ONE variable,
+ * --ucs-head-size (the square's side); everything else is derived here, so the crop lands on the head
+ * whatever size it is asked for.
+ *
+ * The maths: HEAD covers the fraction `fw` of a cell's width, so the sheet has to be scaled until
+ * `fw * cardW` equals the requested square — hence cardW = size / fw. cardH then follows from the
+ * CELL_H/CELL_W ratio rather than from HEAD's own height fraction, so the sheet is never stretched. The
+ * two agree to within 0.1%, and erring this way shows a sliver MORE head rather than a hairline of the
+ * neighbouring cell.
+ *
+ * The rotation is not decoration: the santa art is drawn to be read in landscape (which is why
+ * .ucs-santa-card turns the whole card 90deg), so the head lies on its side until turned the same way. A
+ * square's layout footprint is unchanged by the turn, so nothing has to reserve a rotated box the way
+ * .ucs-santa-slot does for the full card.
+ */
+function santaHeadScss() {
+    const fx = (HEAD.left - TRIM.left) / TRIM.width;
+    const fy = (HEAD.top - TRIM.top) / TRIM.height;
+    const fw = HEAD.size / TRIM.width;
+    const r = (n) => Number(n.toFixed(5)).toString();
+
+    let out = `\n// ---- Secret Santa headshots: a square crop of the santa faces above ----\n`
+        + `.ucs-santa-head {\n`
+        + `    --ucs-card-w: calc(var(--ucs-head-size) * ${r(1 / fw)});\n`
+        + `    --ucs-card-h: calc(var(--ucs-card-w) * ${r(CELL_H / CELL_W)});\n`
+        + `    width: var(--ucs-head-size);\n`
+        + `    height: var(--ucs-head-size);\n`
+        + `    background-image: url(img/secondary.jpg);\n`
+        + `    background-repeat: no-repeat;\n`
+        + `    background-size: calc(var(--ucs-card-w) * ${COLS}) calc(var(--ucs-card-h) * ${ROWS});\n`
+        + `    transform: rotate(90deg);\n`
+        + `}\n`;
+    FACES.forEach(([key], i) => {
+        if (!/^santa-\d+$/.test(key)) return; // faces only — the deck back has no headshot
+        const col = i % COLS, row = Math.floor(i / COLS);
+        out += `.ucs-head-${key.slice(6)} { background-position: `
+            + `calc(var(--ucs-card-w) * ${r(-(col + fx))}) calc(var(--ucs-card-h) * ${r(-(row + fy))}); }\n`;
+    });
+    return out;
+}
+
 async function main() {
     const composites = [];
     FACES.forEach(([, base], i) => composites.push({ base, i }));
@@ -128,6 +178,7 @@ async function main() {
         const col = i % COLS, row = Math.floor(i / COLS);
         scss += `.ucs-${key} { background-position: calc(var(--ucs-card-w) * ${-col}) calc(var(--ucs-card-h) * ${-row}); }\n`;
     });
+    scss += santaHeadScss();
     writeFileSync(join(REPO, 'src', 'scss', '_secondary-sprites.scss'), scss);
 
     console.log(`Wrote img/secondary.jpg (${COLS * CELL_W}x${ROWS * CELL_H}, ${FACES.length} faces), src/scss/_secondary-sprites.scss`);

@@ -20,6 +20,28 @@ nothing.
 
 ---
 
+## A derived read-out was refreshed by whichever handler happened to redraw the whole board
+
+- **What happened** — alpha testers reported that the player-panel tally's patch **P** only appeared once
+  the whole draft phase ended, not when the patch was drafted. `notif_cardDrafted` called
+  `renderKnitting(pid)` and nothing else; the tally (and the opponent chip's completed-sweater pips) are
+  derived from the same `gamedatas.knitting` but are drawn by *different* functions, and the only handler
+  calling them was `notif_trickCleanup` → `renderPlayers()`, a whole draft phase later.
+- **Root cause** — I treated "the knitting changed" as "redraw the knitting area", because that is the
+  element the change is *about*. The panel tally and the opponent chip are equally derived from that state;
+  they were simply out of sight when I wrote the handler, and `renderPlayers()` in a neighbouring handler
+  made the board look correct in casual testing.
+- **Consequence** — a defect that survived to public alpha in the one read-out whose entire purpose is to
+  announce a patch the moment someone takes it, and a report from a tester to find it.
+- **Rule** — **when several functions derive from one piece of state, they get ONE entry point, and every
+  handler that mutates that state calls it.** Here that is `Game.ts::renderPlayer(pid)` (area + opponent
+  chip + bonus + panel tally) and, server-side, `Game::afterKnittingChanged(pid)` (live score + private
+  Secret Santa progress). Adding a new derived view means adding it to that function, not to whichever
+  handler you happen to be looking at. Before shipping a handler that redraws one view of a shared model,
+  grep for the other readers of that model and check they are on the same call.
+
+---
+
 ## Solved a "how many fit" formula as an equality, so nothing fit
 
 - **What happened** — the rule sizing my Knitting Area's cards to fit four sweaters per row shipped as

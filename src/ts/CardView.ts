@@ -78,18 +78,28 @@ export function fadTooltip(fad: any, vp: UcsVp): string {
  * HTML tooltip for a Secret Santa objective: the family member's name plus the three pieces the completed
  * sweater must cover. `ss` is a Material::secretSantas() entry — { name, needs:['<color|icon>:<value>'×3] };
  * each piece counts toward EITHER its colour or its icon (orientation ignored), so the needs are shown as
- * a plain checklist.
+ * a plain checklist. The same entry shape arrives on a REVEALED card, so opponents' cards render here too:
+ * `owner` switches the wording from my own private objective to theirs, and `done`, when the verdict is
+ * known, replaces the "when satisfied" line with what actually happened.
  */
-export function secretSantaTooltip(ss: any, vp: UcsVp): string {
+export function secretSantaTooltip(ss: any, vp: UcsVp, owner?: string, done?: boolean): string {
     const name = ss?.name ? _(ss.name) : _('Secret Santa');
     const needs = (ss?.needs ?? []).map((n: string) => {
         const [kind, value] = String(n).split(':');
         return `<li>${kind === 'icon' ? iconName(value) : colourName(value)}</li>`;
     }).join('');
+    const sub = owner
+        ? _('${player_name}\'s objective — one sweater covering all three:').replace('${player_name}', owner)
+        : _('Your private objective — complete a sweater covering all three:');
+    const note = done === undefined
+        ? `${_('Worth')} <b>+${vp.secretSanta} ${_('VP')}</b> ${_('when satisfied.')}`
+        : done
+            ? `<b>${_('Completed')}</b> — +${vp.secretSanta} ${_('VP')}`
+            : `<b>${_('Not completed')}</b> — ${_('no VP')}`;
     return `<div class="ucs-tt"><strong>${name}</strong>`
-        + `<div class="ucs-tt-sub">${_('Your private objective — complete a sweater covering all three:')}</div>`
+        + `<div class="ucs-tt-sub">${sub}</div>`
         + `<ul class="ucs-tt-list">${needs}</ul>`
-        + `<div class="ucs-tt-note">${_('Worth')} <b>+${vp.secretSanta} ${_('VP')}</b> ${_('when satisfied.')}</div></div>`;
+        + `<div class="ucs-tt-note">${note}</div></div>`;
 }
 
 /**
