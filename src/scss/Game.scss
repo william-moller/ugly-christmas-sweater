@@ -42,6 +42,7 @@
 //  Ugly Christmas Sweaters — board layout (placeholder card visuals until art arrives)
 // =====================================================================================
 
+@use "sass:math";
 @use "sass:list";
 @use "sass:map";
 @use "sweater-sprites"; // GENERATED per-card sprite face classes (scripts/build-sprites.mjs)
@@ -787,6 +788,77 @@ html[data-theme="dark"] {
 #ucs-gameplay {
     // no own card vars — inherits the strip's so its row matches Perfect Fit / Trendy Yarn exactly
     min-width: 0;
+}
+
+// ---- Round parameters at Large: grow them to the Draft Pool's card width ---------------------------
+// The 90px pin above is what puts every shape's wide layout on a laptop, and it must stay the DEFAULT or
+// wideLayoutFloor() (Game.ts) is wrong. But on a monitor with room to spare it leaves the parameters
+// visibly smaller than everything else on the table — 90px beside a 120px Draft Pool card at Large.
+//
+// So the pin gets an above-the-floor upgrade, the same device $avid-santa-row-floors already uses: below
+// each floor nothing changes at all, above it the parameter row is drawn at the Draft Pool's own card
+// width. Three properties make this safe to add without re-deriving anything:
+//
+//   1. LARGE ONLY, and not by choice — the target is `$card-w * scale`, which is 76px at Small and 80px
+//      at Medium, i.e. BELOW the 90px pin. Only Large has anything to gain, so only Large has a rule.
+//   2. EQUAL to the Draft Pool, never larger. responsive.md's one hierarchy rule is that reference art
+//      may not be drawn larger than interactive art; `$card-w * 1.5` is exactly a Large pool card, which
+//      is also what the narrow layout already targets (--ucs-param-w). Do not "round it up" to 90 x 1.5
+//      = 135 — that is 15px WIDER than the pool card and inverts the hierarchy.
+//   3. Every floor below is that shape's EXISTING Large floor plus what the wider row costs it, so the
+//      narrow/wide breakpoint is untouched and wideLayoutFloor() needs no change. The cost is the strip
+//      term only, because the strip is `max(parameter row, Secret Santa zone)` and cards are +30 each:
+//
+//      Shape        cards across   strip at 90 -> 120        cost   Large floor -> gate
+//      Casual       3 (Fad·PF·TY)  params 270 -> 360          +90   1467 -> 1557
+//      Avid         3              Santa row 656 wins          +0   free above $avid-santa-row-floors;
+//                                                                   1557 covers the stacked fallback,
+//                                                                   where the params ARE the strip
+//      Express 2P   5 (3 Fads flat) params 450 -> 600        +150   1659 -> 1809
+//      Express 3P   3 (2x2 grid+col) Santa 376 still wins      +0   ...but the Santa COLUMN fold above
+//                                                                   $santa-column-floors makes it
+//                                                                   458 -> 548, +90: 1607 -> 1697
+//      Express 4P   4 (3-across+col) 376 -> params 480       +104   1561 -> 1665
+//
+// Gaps are unchanged by the width, so each cost is exactly cards x 30 on the winning strip term.
+//
+// The row GROWS INTO the slack rather than snapping at the gate, the same shape $avid-santa-row-floors
+// uses. Each viewport pixel above the shape's own floor is slack that did not exist at the floor, so
+// handing 1/n of it to each card spends only what is new — the centre stack is left exactly as wide as
+// it was at the floor, and it cannot be squeezed. Nothing is lost by spending it: the Draft Pool and
+// Trade Area are fixed multiples of the Card-size preference, not fractions of the container, so the
+// extra width would otherwise be whitespace either side of them.
+//
+//     card = min(120px, 90px + (100vw - floor) / cards-across)
+//
+// which is 90px at the floor (today's pin, exactly) and reaches the 120px cap at floor + 30 x cards —
+// i.e. the "gate" column above. The 100vw is safe here for the one reason responsive.md allows it: it
+// sits inside the @media (min-width:) that gates it, so both read the same frame.
+$param-cap-w: $card-w * 1.5;               // 120px — EXACTLY a Large Draft Pool card, see 2 above
+$param-ratio: math.div($card-h, $card-w);  // the pool card's own ratio, so the shape can't drift
+@mixin params-fill-slack($floor, $across) {
+    #ucs-gameplay {
+        --ucs-card-w: min(#{$param-cap-w}, calc(90px + (100vw - #{$floor}) / #{$across}));
+        --ucs-card-h: calc(var(--ucs-card-w) * #{$param-ratio});
+    }
+}
+// Casual, and Avid below $avid-santa-row-floors where its Santas stack and the params ARE the strip.
+// Above that floor Avid's 656px Santa row dominates anyway, so the growth is free there and this
+// (stricter) floor simply reaches the cap a little later than it strictly has to.
+@media (min-width: 1467px) {
+    html.ucs-cards-large #ucs-table:not(.ucs-express):not(.ucs-narrow) { @include params-fill-slack(1467px, 3); }
+}
+@media (min-width: 1659px) {
+    html.ucs-cards-large #ucs-table.ucs-express.ucs-players-2:not(.ucs-narrow) { @include params-fill-slack(1659px, 5); }
+}
+// Express 3P is floored on its Santa-COLUMN cost (1607), not its Santa-row cost (1507): above
+// $santa-column-floors the Santas move beside the parameter row instead of under it, so that is the
+// arrangement in which the row has to afford its own width.
+@media (min-width: 1607px) {
+    html.ucs-cards-large #ucs-table.ucs-express.ucs-players-3:not(.ucs-narrow) { @include params-fill-slack(1607px, 3); }
+}
+@media (min-width: 1561px) {
+    html.ucs-cards-large #ucs-table.ucs-express.ucs-players-4:not(.ucs-narrow) { @include params-fill-slack(1561px, 4); }
 }
 // Casual/Avid Secret Santa (the single revealed objective) — Express hides this and uses #ucs-my-santa.
 // Unscaled, like the rest of the strip above: read-once reference art, never clicked. 128x200 is the

@@ -1237,6 +1237,13 @@ class Game {
      * viable — the unscaled Santa row is an upgrade applied further up, at $avid-santa-row-floors in
      * Game.scss. Express 3P likewise uses its Santa-row cost, not the Santa-column fold
      * ($santa-column-floors).
+     *
+     * ⚠️ The round parameters are drawn at 90px HERE, and at Large they grow beyond that on a wide
+     * enough screen (the params-fill-slack blocks in Game.scss). That does NOT make these numbers stale:
+     * the growth starts AT each shape's own floor below and spends only the viewport width that did not
+     * exist at that floor, so 90px is still what the row costs at the moment the wide layout becomes
+     * viable — which is the only width this function is about. Any future change that makes the strip
+     * wider AT its floor does invalidate them; re-total CARD/FIXED per responsive.md if that happens.
      */
     wideLayoutFloor() {
         const scale = this.cardSizeScale();

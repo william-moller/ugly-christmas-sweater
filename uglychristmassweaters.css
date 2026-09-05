@@ -1213,6 +1213,30 @@ html[data-theme=dark] {
   min-width: 0;
 }
 
+@media (min-width: 1467px) {
+  html.ucs-cards-large #ucs-table:not(.ucs-express):not(.ucs-narrow) #ucs-gameplay {
+    --ucs-card-w: min(120px, calc(90px + (100vw - 1467px) / 3));
+    --ucs-card-h: calc(var(--ucs-card-w) * 1.5625);
+  }
+}
+@media (min-width: 1659px) {
+  html.ucs-cards-large #ucs-table.ucs-express.ucs-players-2:not(.ucs-narrow) #ucs-gameplay {
+    --ucs-card-w: min(120px, calc(90px + (100vw - 1659px) / 5));
+    --ucs-card-h: calc(var(--ucs-card-w) * 1.5625);
+  }
+}
+@media (min-width: 1607px) {
+  html.ucs-cards-large #ucs-table.ucs-express.ucs-players-3:not(.ucs-narrow) #ucs-gameplay {
+    --ucs-card-w: min(120px, calc(90px + (100vw - 1607px) / 3));
+    --ucs-card-h: calc(var(--ucs-card-w) * 1.5625);
+  }
+}
+@media (min-width: 1561px) {
+  html.ucs-cards-large #ucs-table.ucs-express.ucs-players-4:not(.ucs-narrow) #ucs-gameplay {
+    --ucs-card-w: min(120px, calc(90px + (100vw - 1561px) / 4));
+    --ucs-card-h: calc(var(--ucs-card-w) * 1.5625);
+  }
+}
 #ucs-secret-santa {
   position: relative;
   --ucs-card-w: 128px;

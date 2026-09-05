@@ -433,6 +433,45 @@ pinning never moved it.
 **To floor a new arrangement:** re-total CARD and FIXED for it, then read the answer off the formula
 for each size. That is the whole derivation — no per-size arithmetic.
 
+### The parameters grow into slack above the floor (Large only)
+
+Pinning the strip is what put every shape on a laptop, but on a *monitor* it left the round parameters
+at 90px beside a 120px Draft Pool card at Large — visibly the smallest thing on a table with room to
+spare. So the pin is the **default**, not the whole story: above each shape's own floor the parameter
+row grows into the slack.
+
+```
+card = min($card-w × 1.5, 90px + (100vw - <that shape's Large floor>) / <cards across>)
+```
+
+Three properties, and all three are what make this safe to have added *after* the floors were derived:
+
+- **Large only, and not by choice.** The cap is `$card-w × scale` — 76px at Small, 80px at Medium, both
+  *below* the 90px pin. Only Large has anything to gain, so only Large has a rule, and Small/Medium are
+  untouched by construction. (Same reason Medium never moves anywhere else in this document.)
+- **Equal to the Draft Pool, never larger.** `$card-w × 1.5` is exactly a Large pool card. The hierarchy
+  ceiling above ("reference art may never be drawn larger than interactive art") is the binding
+  constraint on the cap, not legibility, and this is the same target `--ucs-param-w` already uses in the
+  narrow layout. **Do not** raise it to `90 × 1.5 = 135`: that is 15px wider than the pool card and
+  inverts the hierarchy the whole section exists to protect.
+- **It spends only new width.** At the floor the term is exactly 90px, so the arrangement costs what the
+  table above says it costs and `wideLayoutFloor()` stays correct. Every pixel it takes above the floor
+  is a pixel that did not exist at the floor, so the centre stack is never squeezed — and it loses
+  nothing, because the Draft Pool and Trade Area are fixed multiples of the preference rather than
+  fractions of the container, so that width would otherwise be whitespace beside them.
+
+| Shape | Cards across | Floor (Large) | Cap reached at | Why that floor |
+|-------|-------------:|--------------:|---------------:|----------------|
+| Casual | 3 | 1467 | 1557 | the parameter row IS the strip |
+| Avid | 3 | 1467 | 1557 | covers the stacked fallback, where the params are the strip; above `$avid-santa-row-floors` the 656px Santa row dominates and the growth is free, so this floor is merely stricter than it has to be |
+| Express 2P | 5 | 1659 | 1809 | flat five-card row, the strip |
+| Express 3P | 3 | 1607 | 1697 | its Santa-**column** cost, not its Santa-row cost (1507) — above `$santa-column-floors` the Santas sit *beside* the row, which is the arrangement the row has to afford |
+| Express 4P | 4 | 1561 | 1665 | at 120px the params (480) overtake the 376px Santa pair as the strip's widest term |
+
+The `100vw` is allowed here for the one reason the "never use viewport units" rule permits: each `calc`
+sits inside the `@media (min-width:)` that gates it, so the two read the same frame — the identical
+exemption the Avid Santa row's shrink-to-fit already relies on.
+
 ### Every shape, totalled (Tier A)
 
 The strip is a flex column, so its width is `max(parameter row, Secret Santa row)` — which term wins is
