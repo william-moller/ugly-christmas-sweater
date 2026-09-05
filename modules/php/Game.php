@@ -830,9 +830,19 @@ class Game extends \Bga\GameFramework\Table
             return array_map(fn($c) => (int) $c['id'], array_values($hand)); // leader: anything
         }
         $led = $this->getLedCard();
+        // A patch in hand has no icon of its own, but on play it copies the icon of the card played
+        // immediately before it — so probe it with that inherited icon. If that icon matches the led
+        // icon the patch IS a legal follow, and it counts toward "must follow if able" like any other
+        // match. (Second seat: the preceding card is the lead itself, so a patch always follows there.)
+        $prev = $this->getLastPlayedCard();
+        $inheritedIcon = $prev !== null ? $this->effectiveIcon($prev) : null;
         $matching = [];
         foreach ($hand as $c) {
-            if ($this->cardFollows($c, $led)) {
+            $probe = $c;
+            if ($inheritedIcon !== null && Material::isPatch((int) $c['type_arg'])) {
+                $probe['wildIcon'] = $inheritedIcon;
+            }
+            if ($this->cardFollows($probe, $led)) {
                 $matching[] = (int) $c['id'];
             }
         }
@@ -865,6 +875,18 @@ class Game extends \Bga\GameFramework\Table
             }
         }
         return (int) $hand[0]['id'];
+    }
+
+    /** The card played most recently into this trick (highest trick_order), or null. */
+    public function getLastPlayedCard(): ?array
+    {
+        $last = null;
+        foreach ($this->getCardsWithExtras(self::LOC_TRICK) as $c) {
+            if ($last === null || (int) $c['trickOrder'] > (int) $last['trickOrder']) {
+                $last = $c;
+            }
+        }
+        return $last;
     }
 
     /** The card led this trick (lowest trick_order), or null. */
@@ -1009,12 +1031,7 @@ class Game extends \Bga\GameFramework\Table
                 }
             } else {
                 // Following patch: copy the card played immediately before it (highest trick_order).
-                $prev = null;
-                foreach ($trick as $c) {
-                    if ($prev === null || (int) $c['trickOrder'] > (int) $prev['trickOrder']) {
-                        $prev = $c;
-                    }
-                }
+                $prev = $this->getLastPlayedCard();
                 if ($prev !== null) {
                     $wildValue = $this->effectiveValue($prev);
                     $wildIcon  = $this->effectiveIcon($prev);

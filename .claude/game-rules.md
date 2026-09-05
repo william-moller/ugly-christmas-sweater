@@ -54,7 +54,7 @@ structure (a useful integrity check):
 
 ### Patches (wild Sweater Cards — colour fixed, value/icon/orientation wild)
 
-- *Trade Phase:* a patch copies the **value and icon of the card played immediately before it**. If a patch *leads*, the player chooses any value/icon from a card currently in the Draft Pool. A patch following only needs to match its own colour; its icon stays undetermined until played.
+- *Trade Phase:* a patch copies the **value and icon of the card played immediately before it**. If a patch *leads*, the player chooses any value/icon from a card currently in the Draft Pool. A patch following is legal if its own **colour** matches the lead, **or** if the icon it is about to copy — the icon of the card played immediately before it — matches the led icon. In second seat that preceding card *is* the lead, so a patch always follows there. A legal patch counts toward "must follow if able" like any other match.
 - *Knit Phase:* a placed patch's **value and icon stay wild until round-end scoring** — not chosen at placement. **Orientation:** a patch *added to an existing sweater* takes an open orientation (L/R/B) immediately; a patch that *starts a new sweater* "floats" (no orientation) until a second card is added, at which point the player assigns the patch's orientation (an open slot, distinct from the card being added). Once placed, a patch can't move to another sweater (only be added to). At **round-end scoring**, every player with patch(es) in **completed** sweaters assigns each a value (1–12) + icon **simultaneously** (order doesn't matter); patches in *incomplete* sweaters never score. Colour is always fixed.
 
 ## Round setup

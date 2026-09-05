@@ -28,7 +28,7 @@ Every Sweater Card is one third of a garment: '''L''' (upper left), '''R''' (upp
 * Only the card you just drafted may be placed. It can start a new sweater or join one you have already started.
 * A card can only go into the slot matching its own orientation. You may place it '''over''' an existing piece of that same orientation, which discards the covered card.
 * Placed cards never move, and two sweaters can never be merged.
-* '''Patches''' are wild. In a trick, a patch copies the value and icon of the card played immediately before it; a patch that leads copies any card in the Draft Pool. Once placed, its value and icon stay undecided until scoring, when you choose them. Its colour is always fixed.
+* '''Patches''' are wild. In a trick, a patch copies the value and icon of the card played immediately before it; a patch that leads copies any card in the Draft Pool. Because it takes that icon, a patch follows the lead whenever its own colour matches '''or''' the card played just before it matches the led icon — so the second player to a trick can always play one. Once placed, its value and icon stay undecided until scoring, when you choose them. Its colour is always fixed.
 
 == End of Round and Scoring ==
 
