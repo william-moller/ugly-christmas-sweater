@@ -2255,19 +2255,32 @@ class Game extends \Bga\GameFramework\Table
         return $payload;
     }
 
+    /**
+     * Table/lobby progression bar, 0-100. Recomputed on entry to any state declaring
+     * `updateGameProgression: true` — NewRound (5) and EndTrickCleanup (60), i.e. after every trick.
+     *
+     * Completed rounds carry the bar; within a round it advances by the LEADING player's completed
+     * sweaters toward the round-end trigger (Casual/Avid 3, Express 4), since that is what actually
+     * ends the round. Knitting is wiped by setupRound(), so the within-round term resets each round.
+     *
+     *   Casual/Avid (3 rounds x 3 sweaters): each sweater is 1/9 — round 1's first completion shows
+     *   11%, and round ends land on 33 / 67 / 100.
+     *   Express (1 round x 4 sweaters): 25 / 50 / 75 / 100.
+     */
     public function getGameProgression()
     {
-        // Express is a single round — track progress by the leading player's sweaters toward the round-end
-        // trigger (4). Casual tracks by completed rounds out of 3.
-        if ($this->isExpress()) {
-            $max = 0;
-            foreach (array_keys($this->loadPlayersBasicInfos()) as $pid) {
-                $max = max($max, $this->countCompletedSweaters((int) $pid));
-            }
-            return min(100, (int) floor(($max / $this->sweatersToEndRound()) * 100));
+        $best = 0;
+        foreach (array_keys($this->loadPlayersBasicInfos()) as $pid) {
+            $best = max($best, $this->countCompletedSweaters((int) $pid));
         }
-        $round = (int) $this->globals->get('roundNo');
-        return min(100, (int) floor((($round - 1) / $this->totalRounds()) * 100));
+        // Clamped: a trick can in principle complete the target-th and a further sweater at once, which
+        // must not push the bar past this round's share.
+        $withinRound = min(1.0, $best / $this->sweatersToEndRound());
+
+        $round  = (int) $this->globals->get('roundNo');
+        $rounds = $this->totalRounds();
+
+        return max(0, min(100, (int) round(((($round - 1) + $withinRound) / $rounds) * 100)));
     }
 
     public function upgradeTableDb($from_version) {}
