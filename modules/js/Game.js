@@ -115,6 +115,31 @@ class AssignPatches {
 }
 
 /**
+ * Client handler for the ExpressPatchAssign state — Express only, mid-draft. The drafter just completed a
+ * sweater still holding a wild Patch, and may pin its value + icon down NOW so it can claim an icon Fad,
+ * rather than waiting for the round-end pass by which time the Fad display has moved on.
+ *
+ * Entirely optional: the same board picker as the round-end pass is reused, plus a Skip button (the
+ * `onFinish` callback), because the server waits here until the player explicitly finishes. Setting the
+ * last eligible patch finishes automatically — see Game.beginAssignPatches.
+ */
+class ExpressPatchAssign {
+    constructor(game, bga) {
+        this.game = game;
+        this.bga = bga;
+    }
+    onEnteringState(args, isCurrentPlayerActive) {
+        if (!isCurrentPlayerActive) {
+            return;
+        }
+        this.game.beginAssignPatches((args.assignable || []).map(Number), (cardId, value, icon) => this.bga.actions.performAction('actAssignExpressPatch', { card_id: cardId, value, icon }), () => this.bga.actions.performAction('actFinishExpressPatch', {}));
+    }
+    onLeavingState() {
+        this.game.endAssignPatches();
+    }
+}
+
+/**
  * Client handler for the BillyChoice (bonus) state. Only the Billy owner is active, and only when another
  * player leads the draft — they may play Billy's a Brute (draft & discard first) or pass. Everyone else
  * waits. See Game.beginBillyChoice.
@@ -465,6 +490,9 @@ class Game {
         // the order they're worked through — [0] is the one glowing and holding the picker — plus the
         // in-progress value/icon choice per patch (keyed by card id; a choice survives until its Confirm).
         this.onAssignPatch = null;
+        // Set only for the Express mid-draft offer (ExpressPatchAssign), where assigning is OPTIONAL and the
+        // server waits for an explicit "done". Null during the round-end pass, which is mandatory.
+        this.onFinishAssign = null;
         this.assignPending = [];
         this.assignSel = {};
         // The narrow/wide boundary, built once from wideLayoutFloor() — see narrowMq().
@@ -499,6 +527,7 @@ class Game {
         this.bga.states.register('DraftCard', new DraftCard(this, bga));
         this.bga.states.register('RoundReview', new RoundReview(this, bga));
         this.bga.states.register('AssignPatches', new AssignPatches(this, bga));
+        this.bga.states.register('ExpressPatchAssign', new ExpressPatchAssign(this, bga));
         this.bga.states.register('BillyChoice', new BillyChoice(this, bga));
         this.bga.states.register('TinaTink', new TinaTink(this, bga));
     }
@@ -2038,32 +2067,32 @@ class Game {
         const allDiffColor = new Set(colors).size === 3;
         const allDiffIcon = !icons.includes(null) && new Set(icons).size === 3;
         let colorIsFad = false, iconIsFad = false;
-        // In Express the +3s come from `banked`, not from this walk — but the walk still runs, because the
-        // objectives it matches are what suppress the +1 non-Fad bonus for that attribute.
+        let derivedFad = 0;
         for (const f of fads) {
             if (f.clash) {
-                if (allDiffColor && allDiffIcon && !express)
-                    vp += VP.fad;
+                if (allDiffColor && allDiffIcon)
+                    derivedFad += VP.fad;
                 continue;
             }
             (f.objectives ?? []).forEach((o) => {
                 if (o.match === 'color' && allSameColor && colors[0] === o.value) {
-                    if (!express)
-                        vp += VP.fad;
+                    derivedFad += VP.fad;
                     colorIsFad = true;
                 }
                 if (o.match === 'icon' && allSameIcon && icons[0] === o.value) {
-                    if (!express)
-                        vp += VP.fad;
+                    derivedFad += VP.fad;
                     iconIsFad = true;
                 }
             });
         }
+        // Mirrors Game::expressFadVp: in Express the banked claim is a floor, but a sweater that has since
+        // improved (its Patch finally assigned, adding the icon objective) scores the higher derived value.
+        vp += express ? Math.max(banked, derivedFad) : derivedFad;
         if (allSameColor && !colorIsFad)
             vp += VP.nonfad;
         if (allSameIcon && !iconIsFad)
             vp += VP.nonfad;
-        return vp + banked;
+        return vp;
     }
     /**
      * Render a player's knitting area: builds laid out in the sweater silhouette (L top-left, R
@@ -3251,8 +3280,9 @@ class Game {
     //  Round-end patch assignment — called by the AssignPatches state handler
     // ===================================================================================
     /** Begin assigning value+icon to my patches that sit in completed sweaters (round-end). */
-    beginAssignPatches(cardIds, onAssign) {
+    beginAssignPatches(cardIds, onAssign, onFinish) {
         this.onAssignPatch = onAssign;
+        this.onFinishAssign = onFinish ?? null;
         this.assignPending = [...cardIds];
         this.assignSel = {};
         this.renderKnitting(this.myId); // draws the glow + an inline picker beside each pending patch
@@ -3260,18 +3290,29 @@ class Game {
     }
     endAssignPatches() {
         this.onAssignPatch = null;
+        this.onFinishAssign = null;
         this.assignPending = [];
         this.assignSel = {};
         this.bga.statusBar.removeActionButtons();
         this.renderKnitting(this.myId); // drop the pickers / glow
     }
-    /** Status-bar title for the assignment phase (no action buttons — the picker is on the board). */
+    /** Status-bar title for the assignment phase. The round-end pass is mandatory and carries no buttons
+     *  (the picker is on the board); the Express mid-draft offer is optional, so it always carries a way
+     *  out — see beginAssignPatches' onFinish. */
     updateAssignTitle() {
         const sb = this.bga.statusBar;
         sb.removeActionButtons();
         if (!this.onAssignPatch)
             return;
         const left = this.assignPending.length;
+        const done = this.onFinishAssign;
+        if (done) {
+            sb.setTitle(left > 1
+                ? _('You may set a patch now to claim a Fad with it (${left} to go)')
+                : _('You may set your patch now to claim a Fad with it'), { left });
+            sb.addActionButton(_('Skip — set it at the end of the round'), () => { this.endAssignPatches(); done(); }, { color: 'secondary' });
+            return;
+        }
         if (left === 0)
             sb.setTitle(_('Waiting for other players…'));
         else if (left === 1)
@@ -3329,6 +3370,14 @@ class Game {
                 this.assignPending = this.assignPending.filter((id) => id !== cardId);
                 delete this.assignSel[cardId];
                 cb(cardId, v, ic);
+                // Express mid-draft: the server sits in ExpressPatchAssign until we say we're done, so
+                // once the last eligible patch is set, finish rather than leaving a dead prompt up.
+                const done = this.onFinishAssign;
+                if (done && this.assignPending.length === 0) {
+                    this.endAssignPatches();
+                    done();
+                    return;
+                }
                 this.renderKnitting(this.myId);
                 this.updateAssignTitle();
             };

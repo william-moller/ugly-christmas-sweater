@@ -54,7 +54,7 @@ structure (a useful integrity check):
 
 ### Patches (wild Sweater Cards — colour fixed, value/icon/orientation wild)
 
-- *Trade Phase:* a patch copies the **value and icon of the card played immediately before it**. If a patch *leads*, the player chooses any value/icon from a card currently in the Draft Pool. A patch following is legal if its own **colour** matches the lead, **or** if the icon it is about to copy — the icon of the card played immediately before it — matches the led icon. In second seat that preceding card *is* the lead, so a patch always follows there. A legal patch counts toward "must follow if able" like any other match.
+- *Trade Phase:* a patch copies the **value and icon of the card played immediately before it**. If a patch *leads*, the player chooses any value/icon from a card currently in the Draft Pool. A patch in hand follows **only by its own colour** — it has no icon until it is put into play, so it can **never** create a "must follow if able" obligation by icon, in any seat (per the designer's ruling on the BGG forums, [thread 3626318](https://boardgamegeek.com/thread/3626318): *"The patches are only 'must follow' if the led card's colour matches it … you are not obligated to play the Green patch as it only copies the previously played card's Icon once it is put into play."*). A player holding only an off-colour patch is therefore free to play anything.
 - *Knit Phase:* a placed patch's **value and icon stay wild until round-end scoring** — not chosen at placement. **Orientation:** a patch *added to an existing sweater* takes an open orientation (L/R/B) immediately; a patch that *starts a new sweater* "floats" (no orientation) until a second card is added, at which point the player assigns the patch's orientation (an open slot, distinct from the card being added). Once placed, a patch can't move to another sweater (only be added to). At **round-end scoring**, every player with patch(es) in **completed** sweaters assigns each a value (1–12) + icon **simultaneously** (order doesn't matter); patches in *incomplete* sweaters never score. Colour is always fixed.
 
 ## Round setup
@@ -134,6 +134,26 @@ require Difficulty = Expert, so they're available in Express/Avid and in Casual-
 - **Express:** 1 round. 2 Secret Santas each; Fads = players+1 face-up and **claimed** when fulfilled;
   Trendy Yarn rotates (every 3rd trick in 2P, every 4th in 3–4P); Perfect Fit replaced whenever
   matched; round ends at the **4th** sweater. Uses the Round Tracker.
+  - *Claiming:* a claimed Fad leaves the display, so **no other player can claim it** ("Fads cannot be
+    completed simultaneously" refers to competing players, not to one sweater). One completed sweater
+    claims **every** displayed Fad it satisfies, including two Fads sharing an objective — a sweater
+    claiming both is legal and scores both ([thread 2646643](https://boardgamegeek.com/thread/2646643)).
+  - *Patches may be set early, to claim with.* A wild Patch has no icon, so a sweater completed with one
+    can only ever match a Fad on its (fixed) **colour** — it would auto-claim the colour Fad, lock, and
+    never be able to take the icon Fad it was one choice away from. So in Express **only**, whenever a
+    placement completes an unlocked sweater holding a wild Patch and a Fad is still on display, the
+    drafter is offered the chance to set that Patch's value + icon **immediately**, before claims are
+    evaluated. It is **optional** — skipping leaves the Patch wild for the usual round-end pass, which is
+    what you want if you would rather keep building over that sweater than race for a Fad. Casual and Avid
+    are unchanged (a Patch there has no reason to commit before scoring). Per the designer, who asked for
+    exactly this after hitting the forced-claim case in play.
+  - *A claimed Fad is banked, not re-derived.* Once claimed it is **retained and scored even if the
+    sweater underneath is later altered or broken** — only Tina Can Tink can do so, since placing onto a
+    claimed sweater is refused. A sweater broken after claiming loses its **+2 build, run and non-Fad**
+    bonuses but still pays the Fad: *"it won't score any point other than the claimed Fad card"* (per the
+    designer's ruling on the BGG forums, [thread 3193045](https://boardgamegeek.com/thread/3193045)).
+    The banked value is a **floor, not a freeze**: a sweater that claimed while its Patch was still wild
+    banked only the colour part, and picks the icon part up if that Patch is assigned later.
 - **Avid:** the full 3-round base game, but **3** Secret Santas are dealt to each player **once at game
   start** and persist all game. Satisfaction is tracked **cumulatively** across rounds; each satisfied
   Secret Santa still scores **+3 VP**, and each is **revealed publicly** in that player's area the round
@@ -144,6 +164,6 @@ require Difficulty = Expert, so they're available in Express/Avid and in Casual-
 
 Deal 1 each, revealed. One-time cards are discarded after use.
 - **The Little Brothers Colour Coordinate** — objective, **+3 VP**: two distinct completed sweaters, one of {1 green, 2 red} and another of {1 red, 2 green} (colour multisets; patches count as their fixed colour; orientation/value ignored).
-- **Tina Can Tink** — one-time, at round end pre-scoring: move/swap a placed piece.
+- **Tina Can Tink** — one-time, at round end pre-scoring: move/swap a placed piece. It **may** move or swap a piece in an Express Fad-locked sweater — the one way a claimed sweater can change — and the claimed Fad is kept and scored regardless (see *Express* above, [thread 3193045](https://boardgamegeek.com/thread/3193045)). Because it resolves before scoring, a sweater left incomplete by the move scores nothing beyond any Fad it had already claimed.
 - **Mixed-up Maria** — one-time: break the orientation rule when placing a card.
 - **Billy's a Brute** — one-time: when another player leads the draft, jump to the front and draft first, but the contested card is **discarded** instead of kept.

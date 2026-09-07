@@ -28,7 +28,7 @@ Every Sweater Card is one third of a garment: '''L''' (upper left), '''R''' (upp
 * Only the card you just drafted may be placed. It can start a new sweater or join one you have already started.
 * A card can only go into the slot matching its own orientation. You may place it '''over''' an existing piece of that same orientation, which discards the covered card.
 * Placed cards never move, and two sweaters can never be merged.
-* '''Patches''' are wild. In a trick, a patch copies the value and icon of the card played immediately before it; a patch that leads copies any card in the Draft Pool. Because it takes that icon, a patch follows the lead whenever its own colour matches '''or''' the card played just before it matches the led icon — so the second player to a trick can always play one. Once placed, its value and icon stay undecided until scoring, when you choose them. Its colour is always fixed.
+* '''Patches''' are wild. In a trick, a patch copies the value and icon of the card played immediately before it; a patch that leads copies any card in the Draft Pool. It only picks that icon up '''once it is played''', so a patch sitting in your hand follows by its own '''colour''' and nothing else — holding one never obliges you to play it to follow an icon. Once placed, its value and icon stay undecided until scoring, when you choose them. Its colour is always fixed.
 
 == End of Round and Scoring ==
 
@@ -40,7 +40,7 @@ Each completed sweater scores:
 * '''+2 VP''' — its three values are three consecutive numbers. There is no wrap-around: 11-12-1 does not count.
 * '''+3 VP per objective''' — it matches an active '''Fad'''. Each Fad card carries two objectives, one colour and one icon, and each scores separately. Under the "Clash Is In" Fad the sweater must instead be all different colours and all different icons.
 * '''+1 VP each''' — all one colour that is not the Fad colour, and, separately, all one icon that is not the Fad icon. A sweater can score both.
-* '''+3 VP''' — it satisfies your '''Secret Santa''', a hidden request for a colour and an icon. Each card in the sweater counts toward either its colour or its icon, not both.
+* '''+3 VP''' — it satisfies your '''Secret Santa''', a hidden request for a colour and an icon. Each card in the sweater counts toward either its colour or its icon, not both. One sweater can satisfy only '''one''' Secret Santa — you cannot gift the same sweater twice — but it may score a Secret Santa and a Fad and the non-Fad bonuses all at once.
 
 After the final round the highest total wins. Ties are broken by fewest unbuilt sweaters, then by most Fad points.
 
@@ -49,11 +49,15 @@ After the final round the highest total wins. Ties are broken by fewest unbuilt 
 '''Game mode'''
 
 * '''Casual''' — the base game. 3 rounds, with 1 Secret Santa dealt fresh each round. Satisfying it is optional and there is no penalty for missing it.
-* '''Express''' — a single round. 2 Secret Santas each; Fads are claimed by the first sweater to fulfil them; Trendy Yarn rotates during the round and Perfect Fit is replaced whenever it is matched; the round ends on the 4th sweater.
+* '''Express''' — a single round. 2 Secret Santas each; Fads are claimed by the first sweater to fulfil them; Trendy Yarn rotates during the round and Perfect Fit is replaced whenever it is matched; the round ends on the 4th sweater. Claiming works like this:
+** A claimed Fad leaves the display, so '''no one else can take it'''. "Fads cannot be completed simultaneously" is about competing players, not about one sweater: a single sweater claims '''every''' displayed Fad it fulfils, all at once, even two that ask for the same thing.
+** Claiming '''locks''' that sweater. It can never be added to or placed over again, so a Fad is worth racing for but costs you the sweater as a work in progress.
+** A wild patch has no icon yet, so a sweater finished with one can only claim on '''colour'''. When that happens you are offered the chance to set the patch's value and icon '''immediately''', so you can take an icon Fad with it too. This is optional — skip it and you choose as normal at the end of the round, which is what you want if you would rather keep building over that sweater than lock it.
+** Once claimed, a Fad's points are '''yours to keep''', even if ''Tina Can Tink'' later moves a piece out of that sweater. The sweater then scores nothing else, but the Fad still pays.
 * '''Avid''' — 3 rounds, but 3 Secret Santas are dealt once at the start and last all game, tracked across rounds and revealed as each is completed. Each still scores +3 VP, but '''a player who has not completed all three by the end of the game scores 0.'''
 
 '''Difficulty''' (Casual only) — Beginner reveals Fads only, Novice adds Trendy Yarn, Expert uses all three round parameters.
 
-'''Bonus cards''' (Expert difficulty) — each player gets one Special Ability card. The Little Brothers Colour Coordinate is a +3 VP objective; Tina Can Tink lets you move or swap a placed piece at round end; Mixed-up Maria lets you ignore the orientation rule once; Billy's a Brute lets you jump to the front of the draft once, but the card you take is discarded rather than kept.
+'''Bonus cards''' (Expert difficulty) — each player gets one Special Ability card. The Little Brothers Colour Coordinate is a +3 VP objective; Tina Can Tink lets you move or swap a placed piece at round end, and is the one thing that can alter a sweater locked by a claimed Fad; Mixed-up Maria lets you ignore the orientation rule once; Billy's a Brute lets you jump to the front of the draft once, but the card you take is discarded rather than kept.
 
 '''Player count''' — with 2 players you play and draft 2 cards per trick. With 3 players the pool holds 4 cards but only 3 are drafted.

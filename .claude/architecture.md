@@ -34,7 +34,8 @@ or an action method. Verified list (`id` · type · role · → next):
 | `NextInTrick` | 20 | GAME | More players still to play this trick? | `PlayCard` / `ResolveTrick` |
 | `ResolveTrick` | 30 | GAME | Rank the played cards into Draft Order (Perfect Fit → Trendy Yarn → value; later-played wins ties) | `BillyChoice` |
 | `BillyChoice` | 35 | ACTIVE | If a *Billy's a Brute* owner can jump the draft, prompt Play/Pass; else pass straight through | `DraftCard` |
-| `DraftCard` | 40 | ACTIVE | Active drafter picks a Draft Pool card and places/orients it in their Knitting Area (patch & Maria sub-flows) | `NextDrafter` |
+| `DraftCard` | 40 | ACTIVE | Active drafter picks a Draft Pool card and places/orients it in their Knitting Area (patch & Maria sub-flows) | `ExpressPatchAssign` / `NextDrafter` |
+| `ExpressPatchAssign` | 45 | ACTIVE | **Express only.** A placement completed a sweater still holding a wild patch: the drafter may set its value+icon NOW so it can claim an icon Fad (optional; skip leaves it for `AssignPatches`). Fad claims resolve on the way out | `NextDrafter` |
 | `NextDrafter` | 50 | GAME | More drafters left in this Draft Order? | `DraftCard` / `EndTrickCleanup` |
 | `EndTrickCleanup` | 60 | GAME | Rotate Trade Area → Draft Pool, redraw hands; is the round over? | `PlayCard` / `TinaTink` |
 | `TinaTink` | 62 | MULTI | *Tina Can Tink* owner may move/swap a placed piece before scoring | `AssignPatches` |
@@ -44,8 +45,9 @@ or an action method. Verified list (`id` · type · role · → next):
 | `EndScore` | 98 | GAME | Fold tie-break keys into `score_aux`, then end | `GameStopped` / framework end |
 | `GameStopped` | 97 | ACTIVE | Terminal/hold state (zombie handler only) | — |
 
-The per-trick loop is `PlayCard ↔ NextInTrick → ResolveTrick → BillyChoice → DraftCard ↔ NextDrafter
-→ EndTrickCleanup`, looping back to `PlayCard` until the round ends, then
+The per-trick loop is `PlayCard ↔ NextInTrick → ResolveTrick → BillyChoice → DraftCard
+(→ ExpressPatchAssign) ↔ NextDrafter → EndTrickCleanup`, looping back to `PlayCard` until the round
+ends, then
 `TinaTink → AssignPatches → ScoreRound → RoundReview → NewRound` (or `EndScore` after the last round).
 
 ### Studio debug helpers (`Game.php`, bottom)
@@ -144,7 +146,7 @@ TypeScript + SCSS. **Edit `src/`, never the generated `modules/js/Game.js` or `u
 (overwritten every build).
 
 - `src/ts/Game.ts` — the client entry (rollup `input`); holds selection state and all rendering.
-- `src/ts/States/*.ts` — one handler per interactive state (`PlayCard`, `DraftCard`, `RoundReview`, `AssignPatches`, `BillyChoice`, `TinaTink`), imported and registered in `Game.ts`.
+- `src/ts/States/*.ts` — one handler per interactive state (`PlayCard`, `DraftCard`, `RoundReview`, `AssignPatches`, `ExpressPatchAssign`, `BillyChoice`, `TinaTink`), imported and registered in `Game.ts`.
 - `src/ts/CardView.ts` — card element/tooltip/log-chip/icon-glyph helpers. Faces are painted from the CSS sprite sheet via `.ucs-face-<colour>_<value>` (see `faceSpriteClass`); the printed art carries value/icon/orientation, so the only DOM overlay is a patch's wild-value badge.
 - `src/ts/libs.ts` — `BgaAnimations` / `BgaCards` (loaded from BGA at runtime; not bundled).
 - `src/ts/types.d.ts` — gamedatas / notif / args types.
@@ -234,8 +236,10 @@ Two separate read-outs, deliberately, because they answer different questions.
 knitting, and `notifySantaProgress` pushes the result to that player alone. Every path a piece can move by
 calls `Game::afterKnittingChanged`, which is `refreshPublicScore` + that notify in one call so the two
 cannot drift; the client stores it as `gamedatas.santaDone` and `renderSecretSanta` ticks the matching
-cards. In every variant. An unassigned patch has no icon until `AssignPatches`, so a sweater that leans on
-one ticks at round end rather than on completion — that is the honest answer, not a lag.
+cards. In every variant. An unassigned patch has no icon until it is assigned, so a sweater that leans on
+one ticks then rather than on completion — that is the honest answer, not a lag. Usually that means round
+end (`AssignPatches`); in Express the player may pin the patch down mid-draft (`ExpressPatchAssign`), and
+the tick simply lands there instead.
 
 **Theirs, at round end.** `scoreRound` writes two globals: `santaReveal` (what is public NOW, drawn in each
 opponent's area by `renderSantaReveal`) and `santaRound` (what this round's scorepad column shows, carried

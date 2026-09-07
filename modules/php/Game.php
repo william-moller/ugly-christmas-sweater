@@ -1527,7 +1527,7 @@ class Game extends \Bga\GameFramework\Table
                 }
                 $fadId = (int) $fadCard['id'];
                 // The VP is BANKED here rather than re-derived at scoring: a claimed Fad is retained and
-                // scored even if the sweater under it is later altered or broken (see bankedFadVp).
+                // scored even if the sweater under it is later altered or broken (see expressFadVp).
                 $claims[$fadId] = ['playerId' => $playerId, 'buildNo' => (int) $buildNo, 'vp' => $vp];
                 $this->gameplayCards->moveCard($fadId, self::LOC_FAD_CLAIMED, $playerId);
                 $events[] = ['fad_id' => $fadId, 'build_no' => (int) $buildNo, 'type_arg' => (int) $fadCard['type_arg']];
@@ -1577,23 +1577,55 @@ class Game extends \Bga\GameFramework\Table
      * derived — a sweater broken after its claim loses those and keeps only the Fad. Placement onto a
      * locked build is refused outright, so only Tina Can Tink can reach this case.
      */
-    public function bankedFadVp(int $playerId): int
+    public function bankedFadVpByBuild(int $playerId): array
     {
-        $total = 0;
+        $out    = [];
+        $builds = null;
         foreach ($this->fadClaims() as $fadId => $claim) {
             if ((int) $claim['playerId'] !== $playerId) {
                 continue;
             }
+            $buildNo = (int) $claim['buildNo'];
             $vp = $claim['vp'] ?? null;
             if ($vp === null) {
                 // A claim recorded before the VP was banked (a table already in progress across this
                 // deploy): fall back to the old derived value so an upgraded game still scores sanely.
-                $bySlot  = $this->playerBuilds($playerId)[(int) $claim['buildNo']] ?? null;
+                $builds ??= $this->playerBuilds($playerId);
+                $bySlot  = $builds[$buildNo] ?? null;
                 $fadCard = $this->gameplayCards->getCard((int) $fadId);
                 $fad     = $fadCard ? (Material::fads()[(int) $fadCard['type_arg']] ?? null) : null;
                 $vp      = ($bySlot !== null && $fad !== null) ? $this->fadSweaterScore($bySlot, $fad) : 0;
             }
-            $total += (int) $vp;
+            $out[$buildNo] = ($out[$buildNo] ?? 0) + (int) $vp;
+        }
+        return $out;
+    }
+
+    /**
+     * Express: a player's total Fad VP — for each build holding claimed Fad(s), the GREATER of the VP
+     * banked at claim time and the VP that sweater derives right now. Both directions are needed:
+     *  - banked is a FLOOR. A claimed Fad is retained and scored even once the sweater under it is broken
+     *    or altered — only Tina Can Tink can do that, since placing onto a claimed build is refused.
+     *  - the derived value may EXCEED it. A sweater that claims while its Patch is still wild banks only
+     *    the colour/clash part; the icon part lands when that Patch is finally assigned (see
+     *    fadSweaterScore). Freezing the claim at its banked value would silently delete those +3.
+     * Everything else a sweater scores (+2 build, run, non-Fad) stays purely derived.
+     */
+    public function expressFadVp(int $playerId): int
+    {
+        $banked  = $this->bankedFadVpByBuild($playerId);
+        $byBuild = $this->claimedFadByBuild($playerId);
+        $builds  = $this->playerBuilds($playerId);
+        $total   = 0;
+        foreach ($banked as $buildNo => $bankedVp) {
+            $derived = 0;
+            $bySlot  = $builds[$buildNo] ?? null;
+            if ($bySlot !== null) {
+                foreach ($byBuild[$buildNo] ?? [] as $fad) {
+                    $derived += $this->fadSweaterScore($bySlot, $fad);
+                }
+            }
+            $total += max($bankedVp, $derived);
         }
         return $total;
     }
@@ -1609,6 +1641,40 @@ class Game extends \Bga\GameFramework\Table
         foreach ($this->playerBuilds($playerId) as $bySlot) {
             if (!self::isComplete($bySlot)) {
                 continue; // incomplete sweater → never scored, so its patch is never assigned
+            }
+            foreach ($bySlot as $c) {
+                if (self::isUnresolvedPatch($c)) {
+                    $ids[] = (int) $c['id'];
+                }
+            }
+        }
+        return $ids;
+    }
+
+    /**
+     * EXPRESS ONLY: the Patch card ids this player may pin down RIGHT NOW, mid-draft, rather than waiting
+     * for the round-end AssignPatches pass. Everywhere else a Patch stays wild until scoring and there is
+     * no reason to commit early; in Express a Fad is claimed the instant a sweater satisfies it, and a
+     * wild Patch has no icon, so such a sweater can only ever claim on its (fixed) colour — the icon Fad
+     * it was one choice away from is gone by round end. See States/ExpressPatchAssign.
+     *
+     * Offered for a build that is COMPLETE and not already locked by a claim (evaluateFadClaims skips
+     * locked builds, so committing early buys those nothing), and only while a Fad is still on display to
+     * claim. Anything not taken up here still gets the round-end pass.
+     */
+    public function expressAssignablePatches(int $playerId): array
+    {
+        if (!$this->isExpress()) {
+            return [];
+        }
+        if (empty($this->gameplayCards->getCardsInLocation(self::LOC_FAD_DISPLAY))) {
+            return []; // nothing left to claim → no reason to commit a Patch early
+        }
+        $locked = $this->lockedBuildsFor($playerId);
+        $ids = [];
+        foreach ($this->playerBuilds($playerId) as $buildNo => $bySlot) {
+            if (!self::isComplete($bySlot) || in_array((int) $buildNo, $locked, true)) {
+                continue;
             }
             foreach ($bySlot as $c) {
                 if (self::isUnresolvedPatch($c)) {
@@ -1712,14 +1778,15 @@ class Game extends \Bga\GameFramework\Table
         foreach ($this->playerBuilds($playerId) as $buildNo => $bySlot) {
             $fads  = $express ? ($claimedByBuild[(int) $buildNo] ?? []) : $roundFads;
             $parts = $this->sweaterParts($bySlot, $fads);
-            // Express pays the Fad from the banked claim (bankedFadVp) rather than this derived value, so
-            // a sweater Tinked apart after its claim keeps the Fad and loses everything else. The claimed
-            // Fads are still passed in above, because they drive the +3-vs-+1 non-Fad exclusivity.
+            // Express resolves the Fad through expressFadVp (banked floor, derived value if higher) rather
+            // than taking this per-sweater derive, so a sweater Tinked apart after its claim keeps the Fad
+            // and loses everything else. The claimed Fads are still passed in above, because they drive
+            // the +3-vs-+1 non-Fad exclusivity.
             $total += $parts['build'] + $parts['run'] + $parts['nonfad']
                 + ($express ? 0 : $parts['fad']);
         }
         if ($express) {
-            $total += $this->bankedFadVp($playerId);
+            $total += $this->expressFadVp($playerId);
         }
         return $total;
     }
@@ -1867,9 +1934,9 @@ class Game extends \Bga\GameFramework\Table
 
             $byBuild = $this->playerBuildsStarted($pid);
 
-            // Express banks each claimed Fad's VP at claim time (see bankedFadVp), so it is seeded here
+            // Express resolves claimed Fads through expressFadVp (banked floor, derived if higher), so it is seeded
             // rather than accumulated per sweater — a Tinked-apart sweater still owes its claimed Fad.
-            $fadVp = $express ? $this->bankedFadVp($pid) : 0;
+            $fadVp = $express ? $this->expressFadVp($pid) : 0;
             $unbuilt = 0;
             $started = count($byBuild);
             $completed = 0;
@@ -2222,9 +2289,9 @@ class Game extends \Bga\GameFramework\Table
 
             $built = $run = $nonfad = 0;
             $unfinished = 0;
-            // Express: the Fad row is the banked claim total (see bankedFadVp), not a per-sweater derive,
+            // Express: the Fad row is the expressFadVp total (banked floor, derived if higher), not a per-sweater derive,
             // so a sweater Tinked apart after claiming still shows its Fad on the pad.
-            $fad = $express ? $this->bankedFadVp($pid) : 0;
+            $fad = $express ? $this->expressFadVp($pid) : 0;
             foreach ($this->playerBuildsStarted($pid) as $buildNo => $bySlot) {
                 if (!self::isComplete($bySlot)) {
                     $unfinished++;

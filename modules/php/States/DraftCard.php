@@ -18,6 +18,8 @@ use Bga\Games\UglyChristmasSweaters\Material;
  */
 class DraftCard extends GameState
 {
+    use FinishesDraftPlacement;
+
     function __construct(protected Game $game)
     {
         parent::__construct($game,
@@ -142,39 +144,22 @@ class DraftCard extends GameState
         // immediately; a "place over" may also change/break an already-scored sweater).
         $this->game->afterKnittingChanged($activePlayerId);
 
-        // Express: evaluated between each draft — the active player claims any displayed Fad their tableau
-        // now satisfies (locking that sweater). Only they can claim now, so there's never a tie. Re-score
-        // afterwards so the claimed Fad's points land immediately.
-        foreach ($this->game->evaluateFadClaims($activePlayerId) as $claim) {
-            $fad = Material::fads()[$claim['type_arg']] ?? null;
-            $this->notify->all('fadClaimed', clienttranslate('${player_name} claims the Fad: ${fad_label}'), [
-                'player_id'   => $activePlayerId,
-                'player_name' => $this->game->getPlayerNameById($activePlayerId),
-                'fad_id'      => $claim['fad_id'],
-                'fad_type'    => $claim['type_arg'],
-                // Fallback label; the client re-translates it from its own material in bgaFormatText.
-                'fad_label'   => $fad['title'] ?? '',
-                'build_no'    => $claim['build_no'],
-                'gameplay'    => $this->game->getGameplayState(),
-            ]);
-            $this->game->afterKnittingChanged($activePlayerId);
+        // Express: if this placement completed a sweater that still holds a WILD patch, the player gets
+        // the option to pin that patch down before any Fad is claimed — a wild patch can only match a Fad
+        // on colour, and claiming locks the sweater for good. See States/ExpressPatchAssign. The claim
+        // resolution then happens on the way out of that state instead of here.
+        if (!empty($this->game->expressAssignablePatches($activePlayerId))) {
+            return ExpressPatchAssign::class;
         }
 
-        // If this placement just triggered the end of the hand (someone completed their Nth sweater —
-        // Casual 3 / Express 4), announce it ONCE so every client shows the "last trick & draft phase"
-        // banner for the remaining drafts. It's cleared when the next round is dealt (setupRound).
-        if ($this->game->isRoundOver()
-            && (int) $this->game->globals->get('handEndAnnounced') !== 1
-        ) {
-            $this->game->globals->set('handEndAnnounced', 1);
-            $this->notify->all('handEnding', '', []);
-        }
-
+        // Nothing to offer (every Casual/Avid draft, and most Express ones): resolve the claims and the
+        // hand-end announcement this placement owes, then advance.
+        //
         // Each draft-order entry is exactly ONE pick. The order ranks the CARDS played this trick (one
         // entry per card, owner = who played it — see Game::resolveTrickToDraftOrder), so a player who
         // played 2 cards in a 2-player trick simply appears twice: they may end up drafting twice in a
         // row, first-and-last, or split, purely by where their two cards ranked. So always advance.
-        return NextDrafter::class;
+        return $this->finishDraftPlacement($activePlayerId);
     }
 
     function zombie(int $playerId)

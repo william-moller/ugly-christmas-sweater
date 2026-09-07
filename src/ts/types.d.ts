@@ -221,6 +221,10 @@ interface AssignPatchesArgs {
     assignable: { [playerId: number]: number[] }; // unassigned-patch card ids per player (round-end)
 }
 
+interface ExpressPatchAssignArgs {
+    assignable: number[]; // Express mid-draft: MY patch ids that may be set now, before Fads are claimed
+}
+
 /*
  * Notification payload types
  */
