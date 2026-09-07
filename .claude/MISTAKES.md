@@ -20,6 +20,29 @@ nothing.
 
 ---
 
+## I answered a rules question from the code instead of from the designer's published ruling
+
+- **What happened** — Will asked whether a Fad-locked sweater could be altered in Express. I traced the
+  code, found `sweaterParts` returns all-zeros for an incomplete build, and told him scoring was
+  "self-correcting"; when he asked what should happen to the claimed Fad I said re-deriving it was "the
+  more defensible default". A BGG forum review the same session turned up the designer answering that
+  exact question in [thread 3193045](https://boardgamegeek.com/thread/3193045): the claimed Fad is
+  RETAINED and scored even when the sweater under it is broken — "it won't score any point other than
+  the claimed Fad card". The opposite of what I had implemented and defended. The same review found a
+  second one ([thread 3626318](https://boardgamegeek.com/thread/3626318)): a patch in hand is
+  "must follow" only by COLOUR, while `getPlayableCardIds` was forcing it by inherited icon too.
+- **Root cause** — I treated the implementation as evidence of what the rules ARE. The code only records
+  what we built; it cannot confirm itself. I had `.claude/game-rules.md` (which already cited a BGG
+  designer ruling, so I knew the forums were authoritative here) and I still reasoned from `Game.php`
+  alone, then dressed the guess up as a "defensible default" instead of naming it as unverified.
+- **Consequence** — a wrong answer to a direct rules question, and two real scoring/legality bugs left
+  standing that a rules review found within the hour. The Express Fad bug silently destroyed VP the
+  designer says a player keeps; the patch bug wrongly restricted legal plays in every variant.
+- **Rule** — for any question of what UCS *should* do, the authority order is: the rulebook PDF →
+  designer rulings on BGG (run `/bgg-rules`) → `.claude/game-rules.md` → the code, LAST. Never state
+  what the rules require from a code trace alone. If the authoritative source has not been checked, say
+  "the code does X; I have not verified that's correct" rather than offering a default.
+
 ## A derived read-out was refreshed by whichever handler happened to redraw the whole board
 
 - **What happened** — alpha testers reported that the player-panel tally's patch **P** only appeared once

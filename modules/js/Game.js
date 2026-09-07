@@ -1961,6 +1961,20 @@ class Game {
         }
         return out;
     }
+    /** Express: the VP banked on a build's claimed Fad(s) at claim time. Mirrors Game::bankedFadVp — a
+     *  claimed Fad is retained and scored even after Tina Can Tink breaks the sweater under it (designer
+     *  ruling, https://boardgamegeek.com/thread/3193045), so it is NOT re-derived from the pieces. */
+    bankedFadVpForBuild(playerId, buildNo) {
+        const claims = this.expressClaims();
+        let total = 0;
+        for (const fadId of Object.keys(claims)) {
+            const c = claims[Number(fadId)];
+            if (Number(c.playerId) === playerId && Number(c.buildNo) === buildNo) {
+                total += Number(c.vp ?? 0);
+            }
+        }
+        return total;
+    }
     /** The Fad definitions scoring a build: Casual's active round Fad (a list of ≤1), or Express's claimed
      *  Fads (a build may have claimed several). Empty = no active Fad for this build. */
     fadsForBuild(playerId, buildNo) {
@@ -1995,13 +2009,17 @@ class Game {
             if (slot)
                 bySlot[slot] = c;
         });
+        // Express: a claimed Fad's VP is banked and survives whatever later happens to the sweater, so it
+        // rides along every early return below (a build Tinked apart still shows its Fad, and nothing else).
+        const express = !!this.gamedatas.express;
+        const banked = express ? this.bankedFadVpForBuild(playerId, buildNo) : 0;
         if (!bySlot.L || !bySlot.R || !bySlot.B)
-            return 0; // not a completed L+R+B sweater
+            return banked; // not a completed L+R+B sweater
         const trio = [bySlot.L, bySlot.R, bySlot.B];
         // A completed sweater with an unresolved patch scores only the +2 build for now.
         for (const c of trio) {
             if (isPatch(c, this.material) && (wildValueOf(c) == null || wildIconOf(c) == null)) {
-                return VP.sweater;
+                return VP.sweater + banked;
             }
         }
         const values = trio.map((c) => this.effValue(c)).sort((a, b) => a - b);
@@ -2020,19 +2038,23 @@ class Game {
         const allDiffColor = new Set(colors).size === 3;
         const allDiffIcon = !icons.includes(null) && new Set(icons).size === 3;
         let colorIsFad = false, iconIsFad = false;
+        // In Express the +3s come from `banked`, not from this walk — but the walk still runs, because the
+        // objectives it matches are what suppress the +1 non-Fad bonus for that attribute.
         for (const f of fads) {
             if (f.clash) {
-                if (allDiffColor && allDiffIcon)
+                if (allDiffColor && allDiffIcon && !express)
                     vp += VP.fad;
                 continue;
             }
             (f.objectives ?? []).forEach((o) => {
                 if (o.match === 'color' && allSameColor && colors[0] === o.value) {
-                    vp += VP.fad;
+                    if (!express)
+                        vp += VP.fad;
                     colorIsFad = true;
                 }
                 if (o.match === 'icon' && allSameIcon && icons[0] === o.value) {
-                    vp += VP.fad;
+                    if (!express)
+                        vp += VP.fad;
                     iconIsFad = true;
                 }
             });
@@ -2041,7 +2063,7 @@ class Game {
             vp += VP.nonfad;
         if (allSameIcon && !iconIsFad)
             vp += VP.nonfad;
-        return vp;
+        return vp + banked;
     }
     /**
      * Render a player's knitting area: builds laid out in the sweater silhouette (L top-left, R
@@ -2188,6 +2210,11 @@ class Game {
             if (playerId === this.myId && !targetEl && this.onAssignPatch) {
                 const current = this.assignPending[0];
                 if (builds[buildNo].some((card) => Number(card.id) === current)) {
+                    // Raise the whole build above its siblings while it hosts the picker. The pop's own
+                    // z-index is not enough: a Fad-locked build carries `filter`, which makes it a
+                    // stacking context, trapping the pop inside it — later sibling builds then paint
+                    // over it (see .ucs-build-assigning).
+                    build.classList.add('ucs-build-assigning');
                     build.appendChild(this.makeAssignPicker(current));
                 }
             }

@@ -2652,10 +2652,21 @@ $santa-column-floors: (medium: 1450px, large: 1610px);
 }
 
 // A sweater that has claimed a Fad is locked: it can't be altered, so we tint it and badge the Fad.
+// NB `filter` makes this build a STACKING CONTEXT, which traps any absolutely-positioned child (the
+// round-end .ucs-assign-pop) inside it however high that child's z-index — see .ucs-build-assigning.
 .ucs-build-locked {
     outline: 3px solid #c9a227;
     outline-offset: 1px;
     filter: saturate(1.05);
+}
+
+// The build currently hosting the round-end value/icon picker. .ucs-assign-pop overhangs to the right,
+// across whatever sweater sits next in the row, and its own z-index cannot lift it out of a locked
+// build's stacking context (above) — so raise the BUILD above its siblings instead, which works whether
+// or not this one is locked. Without it the picker renders behind the neighbouring sweater and the
+// player cannot click it.
+.ucs-build.ucs-build-assigning {
+    z-index: 903; // above .ucs-assign-pop's 902, so the pop stays above this build's own cards
 }
 .ucs-build-fad {
     grid-column: 1 / -1;
@@ -2760,9 +2771,11 @@ $santa-column-floors: (medium: 1450px, large: 1610px);
     flex: 0 0 auto;
 }
 
-// Avid: a Secret Santa of mine that's been completed. This tick is the entire completion read-out for my
-// own objectives — the knitting-area "Completed Secret Santas" block is opponents-only, where it's the
-// only way to see their progress; on mine it just repeated these very cards and cost a row of space.
+// A Secret Santa of mine that's been completed — drawn in EVERY variant, the moment my knitting
+// satisfies it (Game.ts::renderSecretSanta, off the server's live santaDone). This tick is the entire
+// completion read-out for my own objectives: the knitting-area "Completed Secret Santas" block is
+// opponents-only, where it's the only way to see their progress; on mine it just repeated these very
+// cards and cost a row of space.
 .ucs-santa-done {
     position: absolute;
     top: 50%;

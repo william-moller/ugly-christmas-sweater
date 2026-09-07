@@ -2622,6 +2622,10 @@ table.ucs-scorepad th, table.ucs-scorepad td {
   filter: saturate(1.05);
 }
 
+.ucs-build.ucs-build-assigning {
+  z-index: 903;
+}
+
 .ucs-build-fad {
   grid-column: 1/-1;
   justify-self: center;

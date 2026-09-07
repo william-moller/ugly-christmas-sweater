@@ -1,0 +1,27 @@
+{
+  "bggId": 285071,
+  "slug": "ugly-christmas-sweaters",
+  "designerUsername": "hunterrhennigar",
+  "designerName": "Hunter R. Hennigar",
+  "forums": { "rules": 66, "general": 65 },
+  "lastRun": "2026-09-07",
+  "threads": {
+    "3626318": { "forum": "rules", "title": "Trade phase: can't follow and have patch card", "reviewedOn": "2026-09-07", "verdict": "contradiction: patch must-follow by colour only" },
+    "3625840": { "forum": "rules", "title": "Little Brothers Colour Coordinate scoring", "reviewedOn": "2026-09-07", "verdict": "confirmation: scores once, not per sweater" },
+    "3210360": { "forum": "rules", "title": "Secret Santa sweater pieces", "reviewedOn": "2026-09-07", "verdict": "confirmation: one card cannot fill two needs" },
+    "3206976": { "forum": "rules", "title": "The Knit Phase", "reviewedOn": "2026-09-07", "verdict": "confirmation: no discard; unbuilt-sweater tiebreak" },
+    "3193405": { "forum": "rules", "title": "1 sweater, 2 Secret Santa cards", "reviewedOn": "2026-09-07", "verdict": "confirmation: one Secret Santa per sweater" },
+    "3193045": { "forum": "rules", "title": "Tina Can Tink card and Secret Santa", "reviewedOn": "2026-09-07", "verdict": "CONTRADICTION: claimed Fad retained when sweater broken" },
+    "3192263": { "forum": "rules", "title": "Points for non-Fad colours / icons", "reviewedOn": "2026-09-07", "verdict": "confirmation: +1 each, already cited in game-rules.md" },
+    "3107388": { "forum": "rules", "title": "2P drawing new cards", "reviewedOn": "2026-09-07", "verdict": "confirmation: 2P replenishes two cards" },
+    "2646643": { "forum": "rules", "title": "Express Variant: multiple fads/secrets", "reviewedOn": "2026-09-07", "verdict": "confirmation: one sweater may claim multiple Fads" },
+    "2574147": { "forum": "rules", "title": "Patch card", "reviewedOn": "2026-09-07", "verdict": "confirmation: leading patch copies any draft-pool card" },
+    "2567771": { "forum": "rules", "title": "Secret Santa requirements, minimum?", "reviewedOn": "2026-09-07", "verdict": "confirmation: minimums; each piece counts for colour OR icon" },
+    "2553012": { "forum": "rules", "title": "Multiple sweaters for Fad scoring", "reviewedOn": "2026-09-07", "verdict": "confirmation: unlimited in Casual; scoring stacks" },
+    "2550674": { "forum": "rules", "title": "Two-player trick taking", "reviewedOn": "2026-09-07", "verdict": "confirmation: 4 cards, follow the initial lead" },
+    "2535085": { "forum": "rules", "title": "Why do players get their own draw decks?", "reviewedOn": "2026-09-07", "verdict": "confirmation: value alone wins; later play breaks ties" },
+    "2516190": { "forum": "rules", "title": "Dealing cards in a 2 player game", "reviewedOn": "2026-09-07", "verdict": "confirmation: deal all into two piles, draw as you go" },
+    "2332826": { "forum": "rules", "title": "Question when determining draft order", "reviewedOn": "2026-09-07", "verdict": "confirmation: highest value wins regardless of led colour/icon" },
+    "2460530": { "forum": "general", "title": "Two things to improve for a second edition", "reviewedOn": "2026-09-07", "verdict": "no rules impact; colour-blind art feedback" }
+  }
+}

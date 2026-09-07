@@ -82,6 +82,7 @@ interface GameplayPile {
 interface FadClaim {
     playerId: number;
     buildNo: number;
+    vp?: number; // VP banked when the Fad was claimed — retained even if the sweater is later broken
 }
 
 /** Express-only gameplay state: the claimable Fad display, the claimed Fads, and the claim map. */
