@@ -10,7 +10,6 @@
       "build:icons": "node scripts/build-icons.mjs",
       "clean:remote": "node scripts/clean-remote.mjs",
       "deploy": "node scripts/deploy.mjs",
-      "ship": "npm run build && npm run deploy -- --yes",
       "watch:ts": "rollup -c -w",
       "watch:scss": "sass --watch src/scss/Game.scss uglychristmassweaters.css",
       "watch": "npm run watch:ts & npm run watch:scss",

@@ -324,8 +324,11 @@ TypeScript + SCSS are enabled (`package.json`):
 - `npm run watch` — rebuild both on save during development.
 - `node_modules/` is gitignored; `package-lock.json` is committed.
 
-`npm run ship` = build + deploy in one step, which is the normal way to get a change onto BGA. The two
-generated artifacts are **not** covered by `uploadOnSave`, so a plain build leaves the server stale —
+`npm run build` then `npm run deploy -- --yes` is how a change gets onto BGA — two separate steps on
+purpose. A `ship` script used to chain them; it was removed because rollup can emit the bundle and then
+never exit, so `build:scss` and the deploy were silently skipped while the chain still reported success
+(see the `deploy.md` section on that hang). The two generated artifacts are **not** covered by
+`uploadOnSave`, so a plain build leaves the server stale —
 see [`../../.claude/deploy.md`](../../.claude/deploy.md), and never use the VS Code
 `SFTP: Sync Local → Remote` (its ignore is broken on Windows and uploads `node_modules/`).
 
