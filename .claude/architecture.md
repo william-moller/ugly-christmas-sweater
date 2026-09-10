@@ -67,9 +67,9 @@ zombie-driven one must stay bounded. What matters here is **which helper reaches
 
 Three things about this game specifically shaped those, each of which cost a round-trip:
 
-- **`debug_forceRoundEnd` empties the per-player piles as well as hands.** `EndTrickCleanup` calls
-  `refillHands()` **before** it asks `isRoundOver()`, so emptying hands alone just tops them straight
-  back up from the piles and the round carries on.
+- **`debug_forceRoundEnd` empties the per-player piles as well as hands.** A player refills the moment
+  they play (`Game::refillHand`), so emptying hands alone just tops them straight back up from the
+  piles on the next trick and the round carries on.
 - **`GameStopped` (97) is the terminus on Studio**, not 98/99, because `preventEndGame` is forced on
   there (`Game.php` constructor). Its `zombie()` is a deliberate no-op, so any `playUntil` predicate
   has to treat **97** as terminal or it spins against the move cap.

@@ -9,9 +9,11 @@ use Bga\GameFramework\States\GameState;
 use Bga\Games\UglyChristmasSweaters\Game;
 
 /**
- * End-of-trick cleanup: the trade-area cards become the next draft pool, hands refill to 9, then either
- * the round ends (someone completed their Nth sweater — Casual 3 / Express 4 — or hands are empty) or the
- * leader leads again. In Express, the Trendy Yarn and Perfect Fit parameters may also rotate here.
+ * End-of-trick cleanup: the trade-area cards become the next draft pool, then either the round ends
+ * (someone completed their Nth sweater — Casual 3 / Express 4 — or hands are empty) or the leader leads
+ * again. In Express, the Trendy Yarn and Perfect Fit parameters may also rotate here.
+ *
+ * Hands are refilled at PLAY time now, not here — see Game::refillHand.
  */
 class EndTrickCleanup extends GameState
 {
@@ -22,8 +24,11 @@ class EndTrickCleanup extends GameState
 
     function onEnteringState()
     {
+        // Hands are NOT refilled here any more — each player draws the moment they play into the Trade
+        // Area (see Game::refillHand / States/PlayCard), so by now every hand is already back to 9 or its
+        // owner's pile is spent. That also means isRoundOver()'s "hands are empty" test below reads the
+        // same post-refill state it always did.
         $this->game->rotateTrickToPool();
-        $drawn = $this->game->refillHands();
 
         // Express: advance the trick counter and rotate this trick's round parameters BEFORE the cleanup
         // notify, so the Round Tracker marker (which reads `expressTrickNo`) moves forward every trick.
@@ -59,17 +64,6 @@ class EndTrickCleanup extends GameState
                 'express' => $this->game->isExpress() ? ($this->game->getGameplayState()['express'] ?? null) : null,
             ]
         );
-
-        // Private: each player's refilled hand (card identities are hidden from others). `drawn` carries
-        // only the cards just taken from the pile, so the client animates those into the fan rather than
-        // re-dealing the whole hand; `hand` remains the authoritative full hand for the client's model.
-        foreach (array_keys($this->game->loadPlayersBasicInfos()) as $pid) {
-            $pid = (int) $pid;
-            $this->game->notify->player($pid, 'handUpdate', '', [
-                'hand'  => array_values($this->game->cards->getCardsInLocation(Game::LOC_HAND, $pid)),
-                'drawn' => $drawn[$pid] ?? [],
-            ]);
-        }
 
         // Express: when a parameter card actually changed, announce EXACTLY what it changed to (its own log
         // line) and refresh the revealed Trendy Yarn / Perfect Fit faces. The trick marker already moved via

@@ -233,6 +233,8 @@ interface NotifCardPlayed {
     player_name: string;
     card_id: number;
     card: SweaterCard;
+    // Post-draw hand/pile counts — the player refills the instant they play, so both change together.
+    counts?: { [playerId: number]: PlayerCounts };
 }
 
 interface NotifCardDrafted {

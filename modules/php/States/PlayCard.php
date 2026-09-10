@@ -60,14 +60,32 @@ class PlayCard extends GameState
         // copy_from_card_id only matters for a LEADING patch (the pool card it copies); 0 = not supplied.
         $this->game->moveCardToTrick($card_id, $activePlayerId, $copy_from_card_id > 0 ? $copy_from_card_id : null);
 
+        // Draw back up to 9 IMMEDIATELY, not after the draft — every player count, every variant (see
+        // Game::refillHand). Done before the notifies so the counts they carry are already the post-draw
+        // ones and no seat briefly shows a hand of 8.
+        $drawn = $this->game->refillHand($activePlayerId);
+
         // The card came from a hidden hand, so other clients need its face to render it: send the row.
+        // `counts` rides along because the play AND the draw both moved cards — every seat needs to see
+        // the pile shrink while the hand returns to 9. The drawn card's identity is private, so it goes
+        // in the per-player notify below instead.
         $this->notify->all('cardPlayed', clienttranslate('${player_name} plays ${card_label}'), [
             'player_id'   => $activePlayerId,
             'player_name' => $this->game->getPlayerNameById($activePlayerId),
             'card_id'     => $card_id,
             'card'        => $this->game->cardForNotif($card_id),
             'card_label'  => $this->game->cardLabel($card_id),
+            'counts'      => $this->game->publicCounts(),
         ]);
+
+        // Private: only the drawing player learns what they drew. `drawn` is empty once their pile runs
+        // out, which the client treats as "hand unchanged".
+        if (!empty($drawn)) {
+            $this->game->notify->player($activePlayerId, 'handUpdate', '', [
+                'hand'  => array_values($this->game->cards->getCardsInLocation(Game::LOC_HAND, $activePlayerId)),
+                'drawn' => $drawn,
+            ]);
+        }
 
         // Always hand off to NextInTrick, which advances to the next player or resolves once the trick
         // is full (target = players × cardsPerTurn). In 2-player each player plays 2 cards, but play

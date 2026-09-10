@@ -3745,9 +3745,15 @@ class Game {
             fromMine = this.handCardRect(args.card);
         }
         this.gamedatas.trick[id] = args.card;
-        // If it left my hand, drop it; either way the player's hand count decreases.
         delete this.gamedatas.hand[id];
-        if (this.gamedatas.counts?.[args.player_id]) {
+        // The player draws back up to 9 the instant they play (Game::refillHand), so the play changes
+        // BOTH their hand and their pile. Take the server's post-draw counts when they ride along rather
+        // than guessing locally; the fallback decrement only covers an older payload.
+        if (args.counts) {
+            this.gamedatas.counts = args.counts;
+            this.renderPiles(); // the only renderer reading counts (my own pile's remaining total)
+        }
+        else if (this.gamedatas.counts?.[args.player_id]) {
             this.gamedatas.counts[args.player_id].hand = Math.max(0, this.gamedatas.counts[args.player_id].hand - 1);
         }
         // Only my own hand changes visually; slide the played card out of the fan (other players' plays

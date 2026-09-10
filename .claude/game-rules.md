@@ -87,7 +87,11 @@ Assign Draft Order cards 1→N by this priority:
 
 ### Trick cleanup / pool rotation
 
-After drafting: the Trade Area cards shift over to become the new Draft Pool, the Draft Order cards clear (the "1" player keeps theirs and leads again), everyone **draws back up to 9** (4P), then the next trick begins. Hands begin to deplete once the deck runs out (expected; from the 5th trick in 4P you may not refill to 9).
+After drafting: the Trade Area cards shift over to become the new Draft Pool, the Draft Order cards clear (the "1" player keeps theirs and leads again), then the next trick begins.
+
+**Drawing back up to 9 happens at PLAY time, not here.** The moment you play a card into the Trade Area you draw one from your own pile, in **every player count and every variant** — so a 2-player seat draws after its first card and again after its second, rather than sitting at 7 until the draft resolves. Hands begin to deplete only once your personal pile runs out.
+
+This is a deliberate, designer-approved departure from the physical game, which refills after the draft. Asked whether it should apply everywhere or only at 2P, the designer chose consistency: *"I like the idea of consistency across the board… It will be an ever so slight departure from the physical game, but I think that makes the most sense!"* The strategic consequence is intended — you see your replacement card before you have to draft in that same trick.
 
 ## Knit Phase (set collection / tableau building)
 

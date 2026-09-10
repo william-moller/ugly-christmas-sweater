@@ -1337,22 +1337,22 @@ class Game extends \Bga\GameFramework\Table
     }
 
     /**
-     * Refill every hand up to HAND_SIZE from each player's personal pile.
-     * Returns the cards newly drawn per player ([pid => [card rows]]) so the client can animate just
-     * those (drawing the top of the pile into the hand) instead of re-dealing the whole hand. A player
-     * whose pile is empty draws nothing — their entry is an empty array and their hand is left untouched.
+     * Top ONE player's hand back up to HAND_SIZE from their own pile, returning the rows just drawn (so
+     * the client animates those into the fan instead of re-dealing the whole hand). A player whose pile
+     * is empty draws nothing and their hand is left untouched.
+     *
+     * Called the instant a card is played to the Trade Area — EVERY player count, EVERY variant, so a
+     * 2-player seat draws after each of its two cards rather than sitting at 7 until the draft. The
+     * physical game refills after the draft instead; the designer chose immediate refill for consistency
+     * across player counts, accepting that seeing the replacement before you draft is a slight departure
+     * from the tabletop game (it is a little extra information going into the same trick's draft).
      */
-    public function refillHands(): array
+    public function refillHand(int $playerId): array
     {
-        $drawn = [];
-        foreach (array_keys($this->loadPlayersBasicInfos()) as $pid) {
-            $pid = (int) $pid;
-            $need = self::HAND_SIZE - $this->cards->countCardInLocation(self::LOC_HAND, $pid);
-            $drawn[$pid] = $need > 0
-                ? array_values($this->cards->pickCards($need, $this->pileLoc($pid), $pid))
-                : [];
-        }
-        return $drawn;
+        $need = self::HAND_SIZE - $this->cards->countCardInLocation(self::LOC_HAND, $playerId);
+        return $need > 0
+            ? array_values($this->cards->pickCards($need, $this->pileLoc($playerId), $playerId))
+            : [];
     }
 
     public function allHandsEmpty(): bool
@@ -2467,9 +2467,9 @@ class Game extends \Bga\GameFramework\Table
      * ScoreRound → RoundReview/EndScore — by exhausting the card supply so isRoundOver() is true on
      * its own, then re-entering EndTrickCleanup.
      *
-     * Both hands and piles have to be emptied, not just hands: EndTrickCleanup calls refillHands()
-     * *before* it asks isRoundOver(), so hands alone would simply be topped back up from the piles and
-     * the round would carry on.
+     * Both hands and piles have to be emptied, not just hands: a player refills the moment they play
+     * (Game::refillHand), so hands alone would simply be topped back up from the piles on the next
+     * trick and the round would carry on.
      *
      * The table is doctored afterwards — it can no longer answer "does the round end correctly in
      * normal play?" — so save state before calling this if you want to come back.
