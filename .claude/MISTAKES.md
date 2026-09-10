@@ -20,6 +20,27 @@ nothing.
 
 ---
 
+## A sprite face that only paints inside the table it was written for
+
+- **What happened** — every card drawn into the fan flew in wearing a hugely zoomed-in corner of the
+  green Patch, then snapped to its real art on landing. Will spotted it in a live game and had to point
+  it out with a screenshot.
+- **Root cause** — `.ucs-face` sizes its sprite entirely from `--ucs-card-w/h`, which are declared on
+  `#ucs-table` and refined on `#ucs-my-hand-wrap`. I assumed a hand card always sits inside that subtree.
+  bga-cards does not keep it there: `createCardElement` builds the element under `<body>`, and the slide
+  lifts it out of the stock while it flies. Unresolved vars make every `calc()` invalid, so
+  `background-size` falls back to `auto` (the sheet at its natural 240px cell) and `background-position`
+  to `0 0` — the sheet's top-left cell, which is `green_0`, the green Patch. Both symptoms had one cause;
+  neither was random.
+- **Consequence** — every refill in every game since the art landed animated the wrong card, on the most
+  frequent animation in the game.
+- **Rule** — a CSS custom property is only guaranteed where you can name the ancestor that declares it.
+  Any element a library may reparent (bga-cards cards above all) must carry the vars its own painting
+  depends on, set inline on the element in `setupDiv`. And when art renders at a suspiciously round
+  natural size or lands on cell 0,0, suspect an invalid `calc()` before suspecting the data.
+
+---
+
 ## I fixed a "must follow" bug by deleting "may follow" too
 
 - **What happened** — the earlier fix this session removed the inherited-icon probe from

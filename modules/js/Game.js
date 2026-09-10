@@ -804,6 +804,18 @@ class Game {
             cardHeight: handH, // bridge ratio 0.643 + #ucs-my-hand-wrap's --ucs-card-h
             getId: (c) => `ucs-hand-${c.id}`,
             isCardVisible: () => true,
+            setupDiv: (_c, div) => {
+                // Pin the sprite sizing vars on the card element itself. --ucs-card-w/h are declared on
+                // #ucs-table (and refined on #ucs-my-hand-wrap), but bga-cards does not keep a card inside
+                // that subtree: createCardElement builds it under <body>, and the slide-in lifts it out of
+                // the stock while it flies. With the vars unresolved every calc() in _sweater-sprites.scss
+                // is invalid, so background-size falls back to `auto` (the sheet at its natural 240px cell)
+                // and background-position to `0 0` (green_0, the top-left cell) — that was the zoomed-in
+                // green Patch corner every drawn card wore mid-flight. Inline here, the face paints right
+                // wherever the library parks the element.
+                div.style.setProperty('--ucs-card-w', `${handW}px`);
+                div.style.setProperty('--ucs-card-h', `${handH}px`);
+            },
             setupFrontDiv: (c, div) => {
                 // Note: we deliberately do NOT add the `.ucs-card` sizing class here — the stock's own
                 // card-side element handles sizing/positioning; we only paint color + face.
