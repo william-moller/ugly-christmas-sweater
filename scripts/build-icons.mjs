@@ -2,8 +2,8 @@
  * build-icons.mjs — bakes the four sweater icons (snowman / candy cane / bell / tree) from the
  * publisher art into one transparent sprite (img/icons.png) + a generated SCSS partial.
  *
- * The source PNGs sit each icon on a pale watercolour rectangle (not transparent). We key that
- * background out by colour-distance from the sampled corner colour, feather the edge, trim to the
+ * The source PNGs sit each icon on a pale watercolor rectangle (not transparent). We key that
+ * background out by color-distance from the sampled corner color, feather the edge, trim to the
  * icon, then fit each into a square cell. The icons contain near-white detail (snowman body, candy
  * cane stripes) that keys cleanly on a LIGHT surface but greys on dark — so consumers must show these
  * on a light chip (see .ucs-wild-badge / .ucs-assign-icon).
@@ -35,7 +35,7 @@ const ICONS = [
     { key: 'tree', src: 'treeicon' },
 ];
 const CELL = 128;       // square sprite cell (retina-crisp at the ~20-40px it renders)
-const THRESH = 42;      // colour distance from sampled bg treated as background
+const THRESH = 42;      // color distance from sampled bg treated as background
 
 async function keyed(src, boost, thicken) {
     const { data, info } = await sharp(join(ART_DIR, `${src}.png`)).ensureAlpha().raw()
@@ -66,7 +66,7 @@ async function keyed(src, boost, thicken) {
                 const ny = y + dy, nx = x + dx;
                 if (ny < 0 || ny >= height || nx < 0 || nx >= width) continue;
                 const j = (ny * width + nx) * channels;
-                if (src2[j + 3] < 128) continue; // only pull colour from opaque-ish neighbours
+                if (src2[j + 3] < 128) continue; // only pull color from opaque-ish neighbours
                 if (src2[j] < mr) mr = src2[j];
                 if (src2[j + 1] < mg) mg = src2[j + 1];
                 if (src2[j + 2] < mb) mb = src2[j + 2];

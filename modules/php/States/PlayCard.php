@@ -11,7 +11,7 @@ use Bga\GameFramework\UserException;
 use Bga\Games\UglyChristmasSweaters\Game;
 
 /**
- * Trade phase. The active player plays a card to the trick (must follow the led colour or icon if able).
+ * Trade phase. The active player plays a card to the trick (must follow the led color or icon if able).
  * In a 2-player game each player plays 2 cards, but play ALTERNATES (P1, P2, P1, P2) — see actPlayCard.
  */
 class PlayCard extends GameState

@@ -20,6 +20,24 @@ nothing.
 
 ---
 
+## I fixed a "must follow" bug by deleting "may follow" too
+
+- **What happened** — the earlier fix this session removed the inherited-icon probe from
+  `getPlayableCardIds` outright. That correctly stopped a patch from *obliging* you to follow on icon,
+  but it also stopped a patch from being *playable* as a follow at all. Two days later Will hit it in a
+  live game: green 12 (Tree) led, the second player's green patch resolved to a green 12 Tree, and his
+  red patch — which would have copied that Tree and followed cleanly — was greyed out.
+- **Root cause** — the designer's sentence ("The patches are only 'must follow' if the led card's color
+  matches it") answers *whether a patch obliges you*. I applied it to *whether a patch follows*, which
+  is a different question. The original code had conflated the two into one set of ids; rather than
+  splitting the set, I flipped the conflation to the opposite extreme and called it a fix.
+- **Consequence** — a second, opposite bug shipped on the same rule inside one session, and it blocked
+  a legal play in a live playtest. The rules digest was written up wrong too, so the wrong model was
+  recorded as fact in `game-rules.md` and in the in-game help Will had already pasted to BGA.
+- **Rule** — a follow rule has a MAY side and a MUST side; model them as two sets, never one. Before
+  changing a legality check, write the truth table for both questions and check each ruling against the
+  one it actually answers. When a quote settles one side, say out loud what it does *not* settle.
+
 ## I answered a rules question from the code instead of from the designer's published ruling
 
 - **What happened** — Will asked whether a Fad-locked sweater could be altered in Express. I traced the
@@ -30,7 +48,7 @@ nothing.
   RETAINED and scored even when the sweater under it is broken — "it won't score any point other than
   the claimed Fad card". The opposite of what I had implemented and defended. The same review found a
   second one ([thread 3626318](https://boardgamegeek.com/thread/3626318)): a patch in hand is
-  "must follow" only by COLOUR, while `getPlayableCardIds` was forcing it by inherited icon too.
+  "must follow" only by COLOR, while `getPlayableCardIds` was forcing it by inherited icon too.
 - **Root cause** — I treated the implementation as evidence of what the rules ARE. The code only records
   what we built; it cannot confirm itself. I had `.claude/game-rules.md` (which already cited a BGG
   designer ruling, so I knew the forums were authoritative here) and I still reasoned from `Game.php`

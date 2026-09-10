@@ -7,13 +7,13 @@
  * Inputs : the publisher PNGs (750x1125) in ART_DIR. Every card->file mapping below was transcribed
  *          by reading each printed face and cross-checked against Material.php (fads(), secretSantas(),
  *          PERFECT_FIT, TRENDY_YARN, bonusCards()). NOTE (2026-07-15): the Fad faces are NOT "2x of 5
- *          types" — each colour appears on two cards with a DIFFERENT icon; see Material::fads().
+ *          types" — each color appears on two cards with a DIFFERENT icon; see Material::fads().
  * Outputs: img/secondary.jpg              — grid of all Stage-2 faces (+ deck backs)
  *          src/scss/_secondary-sprites.scss — GENERATED .ucs-<key> background-position classes
  *
  * Keys match how the client looks each card up:
  *   perfectfit -> card value 1..6            (type_arg = value)
- *   trendyyarn -> colour name                (type_arg = index into Material::COLORS)
+ *   trendyyarn -> color name                (type_arg = index into Material::COLORS)
  *   fad        -> fad id 1..10               (type_arg = id; ids 9 & 10 share the Clash art)
  *   santa      -> secret-santa id 1..16      (type_arg = id)
  *   bonus      -> bonus id 1..4              (type_arg = id)
@@ -55,13 +55,13 @@ const FACES = [
     ['gp-perfectfit-5', 'perfectfit-5'],
     ['gp-perfectfit-6', 'perfectfit-6'],
     ['gp-perfectfit-back', 'perfectfit-back'],
-    // --- Trendy Yarn (one sweater per colour) + back ("2" corner tag) ---
+    // --- Trendy Yarn (one sweater per color) + back ("2" corner tag) ---
     ['gp-trendyyarn-yellow', 'trendyyarn-yellow'],
     ['gp-trendyyarn-green', 'trendyyarn-green'],
     ['gp-trendyyarn-red', 'trendyyarn-red'],
     ['gp-trendyyarn-purple', 'trendyyarn-purple'],
     ['gp-trendyyarn-back', 'trendyyarn-back'],
-    // --- Fads (ids 1..10; each is colour-obj + icon-obj). ids 9 & 10 are the two identical Clash cards. ---
+    // --- Fads (ids 1..10; each is color-obj + icon-obj). ids 9 & 10 are the two identical Clash cards. ---
     ['gp-fad-1', 'fad-01-yellow-bells'],
     ['gp-fad-2', 'fad-02-yellow-snowmen'],
     ['gp-fad-3', 'fad-03-purple-snowmen'],

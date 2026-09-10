@@ -2,30 +2,30 @@
  * CardView — builds the DOM for a sweater card.
  *
  * Card faces are the real publisher art, painted from a CSS sprite sheet (img/sweaters.jpg) via the
- * per-card `.ucs-face-<colour>_<value>` classes (see applyCardFace / faceSpriteClass). The printed art
+ * per-card `.ucs-face-<color>_<value>` classes (see applyCardFace / faceSpriteClass). The printed art
  * already carries value, icon and orientation, so the only DOM overlay is a wild-value badge for a
  * patch that has taken on an identity. The icon glyphs below are still used for that badge, for the
  * game log chips, and for pickers/read-outs.
  */
 
-// Translated display names for the data-driven colour / icon / orientation values. Each `_()` call
+// Translated display names for the data-driven color / icon / orientation values. Each `_()` call
 // takes a literal so BGA's translation scanner picks it up; the lookup runs at render time. Falls
 // back to the raw value for anything unexpected. These are the single source of truth for turning a
-// card's colour/icon/slot into player-facing text (tooltips, read-outs).
-export function colourName(colour: string): string {
-    switch (colour) {
+// card's color/icon/slot into player-facing text (tooltips, read-outs).
+export function colorName(color: string): string {
+    switch (color) {
         case 'green': return _('Green');
         case 'red': return _('Red');
         case 'yellow': return _('Yellow');
         case 'purple': return _('Purple');
-        default: return colour;
+        default: return color;
     }
 }
-// A colour-tinted Trendy-Yarn name for a game-log line ("New Trendy Yarn: Purple"). Tinted via the
-// .ucs-log-trendy-<colour> classes (same $colors hexes as the cards — see Game.scss); the visible text
-// is the translated colour name from colourName().
-export function trendyLogChip(colour: string): string {
-    return `<span class="ucs-log-trendy-${colour}">${colourName(colour)}</span>`;
+// A color-tinted Trendy-Yarn name for a game-log line ("New Trendy Yarn: Purple"). Tinted via the
+// .ucs-log-trendy-<color> classes (same $colors hexes as the cards — see Game.scss); the visible text
+// is the translated color name from colorName().
+export function trendyLogChip(color: string): string {
+    return `<span class="ucs-log-trendy-${color}">${colorName(color)}</span>`;
 }
 export function iconName(icon: string): string {
     switch (icon) {
@@ -51,20 +51,20 @@ export const SLOTS = ['L', 'R', 'B'] as const;
 /**
  * HTML tooltip for a Fad round-parameter card: its printed title plus the concrete scoring every player
  * can earn this round. `fad` is a Material::fads() entry — either { title, objectives:[{match,value}×2] }
- * (one colour + one icon objective, each scored independently) or { title, clash:true } (the "Clash Is In"
+ * (one color + one icon objective, each scored independently) or { title, clash:true } (the "Clash Is In"
  * card, which instead scores an all-different sweater). VP comes from the server (material.vp).
  */
 export function fadTooltip(fad: any, vp: UcsVp): string {
     const title = fad?.title ? _(fad.title) : _('Fad');
     let lines: string;
     if (fad?.clash) {
-        lines = `<li>${_('Three pieces all different colours and all different icons')} — <b>+${vp.fad} ${_('VP')}</b></li>`;
+        lines = `<li>${_('Three pieces all different colors and all different icons')} — <b>+${vp.fad} ${_('VP')}</b></li>`;
     } else {
         lines = (fad?.objectives ?? []).map((o: any) => {
-            // colourName/iconName are the single source of truth for the player-facing value text.
+            // colorName/iconName are the single source of truth for the player-facing value text.
             const what = o.match === 'icon'
                 ? `${_('All')} ${iconName(o.value)} ${_('icons')}`
-                : `${_('All')} ${colourName(o.value)}`;
+                : `${_('All')} ${colorName(o.value)}`;
             return `<li>${what} — <b>+${vp.fad} ${_('VP')}</b></li>`;
         }).join('');
     }
@@ -77,7 +77,7 @@ export function fadTooltip(fad: any, vp: UcsVp): string {
 /**
  * HTML tooltip for a Secret Santa objective: the family member's name plus the three pieces the completed
  * sweater must cover. `ss` is a Material::secretSantas() entry — { name, needs:['<color|icon>:<value>'×3] };
- * each piece counts toward EITHER its colour or its icon (orientation ignored), so the needs are shown as
+ * each piece counts toward EITHER its color or its icon (orientation ignored), so the needs are shown as
  * a plain checklist. The same entry shape arrives on a REVEALED card, so opponents' cards render here too:
  * `owner` switches the wording from my own private objective to theirs, and `done`, when the verdict is
  * known, replaces the "when satisfied" line with what actually happened.
@@ -86,7 +86,7 @@ export function secretSantaTooltip(ss: any, vp: UcsVp, owner?: string, done?: bo
     const name = ss?.name ? _(ss.name) : _('Secret Santa');
     const needs = (ss?.needs ?? []).map((n: string) => {
         const [kind, value] = String(n).split(':');
-        return `<li>${kind === 'icon' ? iconName(value) : colourName(value)}</li>`;
+        return `<li>${kind === 'icon' ? iconName(value) : colorName(value)}</li>`;
     }).join('');
     const sub = owner
         ? _('${player_name}\'s objective — one sweater covering all three:').replace('${player_name}', owner)
@@ -128,7 +128,7 @@ export function isPatch(card: SweaterCard, material: UcsMaterial): boolean {
 
 /**
  * The CSS class that paints a card's face from the sprite sheet (img/sweaters.jpg). Keyed exactly
- * like faceOf() — `<colour>_<value>`, value 0 = patch — so it resolves the same cell for all 52
+ * like faceOf() — `<color>_<value>`, value 0 = patch — so it resolves the same cell for all 52
  * cards. Generated positions live in src/scss/_sweater-sprites.scss (scripts/build-sprites.mjs).
  */
 export function faceSpriteClass(card: SweaterCard): string {
@@ -180,8 +180,8 @@ export function createCardElement(card: SweaterCard, material: UcsMaterial): HTM
 }
 
 /**
- * A compact inline card "chip" for the game log: a colour-coded box showing the card's value
- * (colour + value is enough to identify the exact card in play). Built client-side from the card
+ * A compact inline card "chip" for the game log: a color-coded box showing the card's value
+ * (color + value is enough to identify the exact card in play). Built client-side from the card
  * row carried in the notification, so historical logs / replays stay valid.
  *
  * A **Patch** is shown as its own wild-star chip so it's never confused with the real card it copies:
@@ -211,7 +211,7 @@ export function cardLogChip(card: SweaterCard, material: UcsMaterial): string {
 }
 
 /**
- * Plain-text description of a card for a log chip's native `title` tooltip (colour + value · icon ·
+ * Plain-text description of a card for a log chip's native `title` tooltip (color + value · icon ·
  * orientation; a patch reads as its wild identity). Kept plain — unlike the BGA HTML tooltips elsewhere —
  * because the framework injects log HTML with no node we can bind gameui.addTooltipHtml to.
  *
@@ -220,13 +220,13 @@ export function cardLogChip(card: SweaterCard, material: UcsMaterial): string {
  */
 function cardLogTitle(card: SweaterCard, material: UcsMaterial): string {
     const face = faceOf(card, material);
-    const colour = colourName(face?.color ?? String(card.type));
+    const color = colorName(face?.color ?? String(card.type));
     const wildValue = wildValueOf(card);
     if (face?.patch) {
-        const base = `${colour} ${_('Patch')} (${_('wild')})`;
+        const base = `${color} ${_('Patch')} (${_('wild')})`;
         return wildValue != null ? `${base} ${_('as')} ${wildValue}` : base;
     }
-    const parts = [`${colour} ${wildValue != null ? wildValue : (face?.value ?? '?')}`];
+    const parts = [`${color} ${wildValue != null ? wildValue : (face?.value ?? '?')}`];
     if (face?.icon) parts.push(iconName(face.icon));
     if (face?.slot) parts.push(orientationName(face.slot));
     return parts.join(' · ');
@@ -239,15 +239,15 @@ function cardLogTitle(card: SweaterCard, material: UcsMaterial): string {
  */
 export const cardAriaLabel = cardLogTitle;
 
-/** Tooltip HTML describing a card (colour + value; icon/orientation once known). */
+/** Tooltip HTML describing a card (color + value; icon/orientation once known). */
 export function cardTooltip(card: SweaterCard, material: UcsMaterial): string {
     const face = faceOf(card, material);
-    const colour = colourName(face.color);
+    const color = colorName(face.color);
     if (face.patch) {
-        return `<strong>${colour} ${_('Patch')}</strong><br>`
+        return `<strong>${color} ${_('Patch')}</strong><br>`
             + _('Wild. Starting a new sweater it "floats" (no orientation) until a second card joins; its value & icon are chosen at round-end scoring.');
     }
     const icon = face.icon ? iconName(face.icon) : '?';
     const slot = face.slot ? orientationName(face.slot) : '?';
-    return `<strong>${colour} ${face.value}</strong><br>${_('Icon:')} ${icon}<br>${_('Orientation:')} ${slot}`;
+    return `<strong>${color} ${face.value}</strong><br>${_('Icon:')} ${icon}<br>${_('Orientation:')} ${slot}`;
 }

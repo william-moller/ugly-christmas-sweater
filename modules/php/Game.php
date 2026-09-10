@@ -173,7 +173,7 @@ class Game extends \Bga\GameFramework\Table
 
     protected function setupNewGame($players, $options = [])
     {
-        // --- Create players with their colours (skeleton boilerplate) -------------------------
+        // --- Create players with their colors (skeleton boilerplate) -------------------------
         $gameinfos = $this->getGameinfos();
         $default_colors = $gameinfos['player_colors'];
 
@@ -273,7 +273,7 @@ class Game extends \Bga\GameFramework\Table
             $byType['perfectfit'][] = ['type' => 'perfectfit', 'type_arg' => $value, 'nbr' => 1];
         }
         foreach (Material::TRENDY_YARN as $color) {
-            // store colour as an index so type_arg stays int
+            // store color as an index so type_arg stays int
             $byType['trendyyarn'][] = ['type' => 'trendyyarn', 'type_arg' => array_search($color, Material::COLORS), 'nbr' => 1];
         }
         foreach (Material::fads() as $fad) {
@@ -379,16 +379,16 @@ class Game extends \Bga\GameFramework\Table
     }
 
     /**
-     * The Little Brothers Colour Coordinate objective: satisfied when the player has TWO distinct COMPLETED
+     * The Little Brothers Color Coordinate objective: satisfied when the player has TWO distinct COMPLETED
      * sweaters this round — one of {1 green, 2 red} and another of {1 red, 2 green} (orientation and
-     * value/icon ignored; a patch counts as its fixed colour). Worth VP_SECRET_SANTA (3 VP), once per game.
+     * value/icon ignored; a patch counts as its fixed color). Worth VP_SECRET_SANTA (3 VP), once per game.
      */
     public function littleBrothersSatisfied(int $playerId): bool
     {
         $reqA = [Material::COLOR_GREEN, Material::COLOR_RED,   Material::COLOR_RED];   sort($reqA);
         $reqB = [Material::COLOR_RED,   Material::COLOR_GREEN, Material::COLOR_GREEN]; sort($reqB);
 
-        $sweaters = []; // sorted colour triple for each completed sweater
+        $sweaters = []; // sorted color triple for each completed sweater
         foreach ($this->playerBuilds($playerId) as $bySlot) {
             if (!self::isComplete($bySlot)) {
                 continue;
@@ -763,14 +763,14 @@ class Game extends \Bga\GameFramework\Table
     }
 
     /**
-     * Short public label identifying a card by colour + value, e.g. "Purple 9" — enough to identify
+     * Short public label identifying a card by color + value, e.g. "Purple 9" — enough to identify
      * the exact card in play (icon + orientation can be inferred). A resolved patch shows its copied
-     * value; an unresolved one falls back to "<Colour> Patch".
+     * value; an unresolved one falls back to "<Color> Patch".
      *
-     * i18n: this composes the colour word server-side, so it is English-only — but it is NOT what the
+     * i18n: this composes the color word server-side, so it is English-only — but it is NOT what the
      * player sees. Every notification that carries a `card_label` also carries the `card` row, and the
-     * client's bgaFormatText swaps `card_label` for a translation-safe colour chip (see cardLogChip /
-     * cardLogTitle, which use colourName()). This string is only the non-displayed fallback for the rare
+     * client's bgaFormatText swaps `card_label` for a translation-safe color chip (see cardLogChip /
+     * cardLogTitle, which use colorName()). This string is only the non-displayed fallback for the rare
      * case the client formatter doesn't run; keep any future notification's `card_label` paired with `card`.
      */
     public function cardLabel(int $cardId): string
@@ -819,17 +819,26 @@ class Game extends \Bga\GameFramework\Table
     }
 
     /**
-     * Whether a card may legally follow the led card: same COLOUR or same ICON (rules), else any card
-     * is allowed only if the player can't follow. Returns the set of legally-playable card ids in hand.
+     * The cards in $playerId's hand that may legally be played into the current trick. A normal card
+     * follows the led COLOR or ICON — either satisfies it — and "must follow if able" applies.
      *
-     * A PATCH in hand can only ever follow by its own COLOUR. It has no icon until it is put into play
-     * (only then does it copy the previously played card's icon), so it can never create a "must follow"
-     * obligation by icon — designer ruling, https://boardgamegeek.com/thread/3626318:
-     *   "The patches are only 'must follow' if the led card's *colour* matches it. [...] you are not
-     *    obligated to play the Green patch as it only copies the previously played card's Icon *once it
-     *    is put into play*."
-     * cardFollows already gives exactly this (Material::sweaters() has 'icon' => null for a patch, so
-     * effectiveIcon returns null and the icon branch can't match) — so probe the hand card as it is.
+     * A PATCH is the subtle case, and the two halves of the rule pull apart. Keep them separate:
+     *
+     *  - OBLIGATION. A patch can only make you "able to follow" by its own COLOR. It has no icon while
+     *    it sits in your hand, so it can never force you to follow on icon — designer ruling,
+     *    https://boardgamegeek.com/thread/3626318: "The patches are only 'must follow' if the led card's
+     *    color matches it. [...] you are not obligated to play the Green patch as it only copies the
+     *    previously played card's Icon *once it is put into play*. Therefore you could play any card."
+     *  - PERMISSION. Playing one is nevertheless a legal follow whenever the icon it is about to copy —
+     *    that of the card played immediately before it, which is face up and already resolved — matches
+     *    the led icon. It really does follow the moment it lands, so it must stay playable even when you
+     *    are otherwise obliged to follow. (A patch played earlier in this trick has itself resolved, so
+     *    it passes the icon it copied along to the next player.)
+     *
+     * So an icon-matching patch joins the legal set WITHOUT joining the set that decides whether you were
+     * obliged in the first place. Collapsing the two is wrong in both directions: treat the patch as
+     * obliging and a player holding only an off-color patch is forced to play it; treat it as never
+     * following and they cannot play it at all even when its copied icon plainly matches the lead.
      */
     public function getPlayableCardIds(int $playerId): array
     {
@@ -838,17 +847,27 @@ class Game extends \Bga\GameFramework\Table
         if (empty($trick)) {
             return array_map(fn($c) => (int) $c['id'], array_values($hand)); // leader: anything
         }
-        $led = $this->getLedCard();
-        $matching = [];
+        $led     = $this->getLedCard();
+        $ledIcon = $led !== null ? $this->effectiveIcon($led) : null;
+        // The icon a patch would inherit on play: that of the card played immediately before it.
+        $prev          = $this->getLastPlayedCard();
+        $inheritedIcon = $prev !== null ? $this->effectiveIcon($prev) : null;
+        $patchWouldFollow = $inheritedIcon !== null && $ledIcon !== null && $inheritedIcon === $ledIcon;
+
+        $obliging = []; // cards that make "you can follow" true (patches here only ever by color)
+        $extra    = []; // legal to play, but never the reason you were obliged: icon-matching patches
         foreach ($hand as $c) {
             if ($this->cardFollows($c, $led)) {
-                $matching[] = (int) $c['id'];
+                $obliging[] = (int) $c['id'];
+            } elseif ($patchWouldFollow && Material::isPatch((int) $c['type_arg'])) {
+                $extra[] = (int) $c['id'];
             }
         }
-        // If the player can follow, they must; otherwise they may play anything.
-        if (!empty($matching)) {
-            return $matching;
+        // Able to follow → must follow, but an icon-matching patch is one of the ways to do it.
+        if (!empty($obliging)) {
+            return array_merge($obliging, $extra);
         }
+        // Not able to follow → play anything (the patch is in there too, unobliged either way).
         return array_map(fn($c) => (int) $c['id'], array_values($hand));
     }
 
@@ -858,7 +877,7 @@ class Game extends \Bga\GameFramework\Table
      * last card can be played for them with no hidden-information leak. Returns that card id, else null.
      *
      * We deliberately never auto-play a single *legal* card outside this case: doing so would reveal
-     * that the player could not otherwise follow the led colour/icon, leaking their hand and removing
+     * that the player could not otherwise follow the led color/icon, leaking their hand and removing
      * the bluff that they still had a choice between cards.
      */
     public function forcedFinalPlay(int $playerId): ?int
@@ -901,14 +920,14 @@ class Game extends \Bga\GameFramework\Table
         return $led;
     }
 
-    /** Does $card follow $led by colour OR icon (either satisfies the follow requirement)? */
+    /** Does $card follow $led by color OR icon (either satisfies the follow requirement)? */
     public function cardFollows(array $card, ?array $led): bool
     {
         if ($led === null) return true;
-        // Colour never changes, even for a patch (card_type is the colour).
+        // Color never changes, even for a patch (card_type is the color).
         if ($card['type'] === $led['type']) return true;
         // Icon match. A patch in hand has no icon yet (it stays undetermined until played), so it can
-        // only ever follow by colour — handled above. A patch that LED carries a resolved wild_icon.
+        // only ever follow by color — handled above. A patch that LED carries a resolved wild_icon.
         $ci = $this->effectiveIcon($card);
         $li = $this->effectiveIcon($led);
         return $ci !== null && $li !== null && $ci === $li;
@@ -945,13 +964,13 @@ class Game extends \Bga\GameFramework\Table
      * The full ranking honours the round's trump cards (these rules apply to draft order, not just a
      * single winner), best → worst:
      *   1. Perfect Fit (super-trump): any card whose value == the Perfect Fit number outranks everything.
-     *      Within it, an "Ultimate Trump" (also the Trendy Yarn colour) beats a plain Perfect Fit
+     *      Within it, an "Ultimate Trump" (also the Trendy Yarn color) beats a plain Perfect Fit
      *      regardless of play order; otherwise later-played wins.
-     *   2. Trendy Yarn colour: any card of the trump colour outranks all non-trump-colour cards
+     *   2. Trendy Yarn color: any card of the trump color outranks all non-trump-color cards
      *      regardless of value; among them, higher value wins.
      *   3. Otherwise: higher value wins.
      * Ties at any tier are broken by play order — the later-played card ranks higher.
-     * A card's COLOUR is always its own (a patch's wild only affects value/icon, never colour). When a
+     * A card's COLOR is always its own (a patch's wild only affects value/icon, never color). When a
      * deck isn't active this round (difficulty), its trump simply doesn't apply.
      */
     public function resolveTrickToDraftOrder(): array
@@ -959,12 +978,12 @@ class Game extends \Bga\GameFramework\Table
         $trick = $this->getCardsWithExtras(self::LOC_TRICK);
 
         $pf = $this->activePerfectFit();   // ?int  — the super-trump value, or null
-        $ty = $this->activeTrendyYarn();   // ?string — the trump colour, or null
+        $ty = $this->activeTrendyYarn();   // ?string — the trump color, or null
 
         // Ranking key per card (compared descending): [tier, secondary, trickOrder].
         $rank = function (array $c) use ($pf, $ty): array {
             $value = $this->effectiveValue($c);
-            $color = $c['type']; // a patch keeps its own colour
+            $color = $c['type']; // a patch keeps its own color
             $isPF  = $pf !== null && $value === $pf;
             $isTY  = $ty !== null && $color === $ty;
             if ($isPF) {
@@ -1452,11 +1471,11 @@ class Game extends \Bga\GameFramework\Table
         return $c ? (int) $c['type_arg'] : null; // type_arg holds the Perfect Fit value
     }
 
-    /** The active Trendy Yarn colour (trump colour) this round, or null if that deck isn't revealed. */
+    /** The active Trendy Yarn color (trump color) this round, or null if that deck isn't revealed. */
     public function activeTrendyYarn(): ?string
     {
         $c = $this->activeGameplayCard('trendyyarn');
-        // type_arg holds the colour's index into Material::COLORS (kept as an int so type_arg stays int).
+        // type_arg holds the color's index into Material::COLORS (kept as an int so type_arg stays int).
         return $c ? (Material::COLORS[(int) $c['type_arg']] ?? null) : null;
     }
 
@@ -1465,10 +1484,10 @@ class Game extends \Bga\GameFramework\Table
     // ===========================================================================================
 
     /**
-     * VP a completed sweater earns for a given Fad, +3 per objective met: a colour objective when all
-     * three pieces share the Fad colour, an icon objective when all three share the Fad icon; a "Clash
-     * Is In" Fad awards +3 when all three colours AND icons are distinct. Icons use effectiveIcon, so a
-     * sweater with an unassigned patch scores its colour/clash part now and gains the icon part once the
+     * VP a completed sweater earns for a given Fad, +3 per objective met: a color objective when all
+     * three pieces share the Fad color, an icon objective when all three share the Fad icon; a "Clash
+     * Is In" Fad awards +3 when all three colors AND icons are distinct. Icons use effectiveIcon, so a
+     * sweater with an unassigned patch scores its color/clash part now and gains the icon part once the
      * patch is assigned at round-end. Returns 0 for an incomplete build or no match.
      */
     public function fadSweaterScore(array $bySlot, array $fad): int
@@ -1607,7 +1626,7 @@ class Game extends \Bga\GameFramework\Table
      *  - banked is a FLOOR. A claimed Fad is retained and scored even once the sweater under it is broken
      *    or altered — only Tina Can Tink can do that, since placing onto a claimed build is refused.
      *  - the derived value may EXCEED it. A sweater that claims while its Patch is still wild banks only
-     *    the colour/clash part; the icon part lands when that Patch is finally assigned (see
+     *    the color/clash part; the icon part lands when that Patch is finally assigned (see
      *    fadSweaterScore). Freezing the claim at its banked value would silently delete those +3.
      * Everything else a sweater scores (+2 build, run, non-Fad) stays purely derived.
      */
@@ -1655,7 +1674,7 @@ class Game extends \Bga\GameFramework\Table
      * EXPRESS ONLY: the Patch card ids this player may pin down RIGHT NOW, mid-draft, rather than waiting
      * for the round-end AssignPatches pass. Everywhere else a Patch stays wild until scoring and there is
      * no reason to commit early; in Express a Fad is claimed the instant a sweater satisfies it, and a
-     * wild Patch has no icon, so such a sweater can only ever claim on its (fixed) colour — the icon Fad
+     * wild Patch has no icon, so such a sweater can only ever claim on its (fixed) color — the icon Fad
      * it was one choice away from is gone by round end. See States/ExpressPatchAssign.
      *
      * Offered for a build that is COMPLETE and not already locked by a claim (evaluateFadClaims skips
@@ -1714,12 +1733,12 @@ class Game extends \Bga\GameFramework\Table
     }
 
     /**
-     * Fad + non-Fad VP breakdown for a COMPLETED sweater, given its colours/icons and the list of active
+     * Fad + non-Fad VP breakdown for a COMPLETED sweater, given its colors/icons and the list of active
      * Fads. Casual passes the single round Fad wrapped in a one-element list; Express passes every Fad the
      * sweater has CLAIMED — a sweater can claim (and score) more than one. Each Fad objective met is +3
-     * (summed across all Fads); an attribute (colour / icon) that is all-one AND matched by NO Fad earns
-     * the +1 non-Fad bonus, independently for colour and icon. A "Clash Is In" Fad scores +3 for all-
-     * different colour+icon and matches no single attribute, so an all-one attribute under Clash still
+     * (summed across all Fads); an attribute (color / icon) that is all-one AND matched by NO Fad earns
+     * the +1 non-Fad bonus, independently for color and icon. A "Clash Is In" Fad scores +3 for all-
+     * different color+icon and matches no single attribute, so an all-one attribute under Clash still
      * earns the non-Fad +1. An empty list = no active Fad (every all-one attribute is a non-Fad match).
      * @return array{fad:int, nonfad_color:int, nonfad_icon:int}
      */
@@ -1731,12 +1750,12 @@ class Game extends \Bga\GameFramework\Table
         $allDiffIcon  = !in_array(null, $icons, true) && count(array_unique($icons)) === 3;
 
         $fad = 0;
-        $colorIsFad = false; // this sweater's (all-one) colour is claimed by a Fad → not a non-Fad match
+        $colorIsFad = false; // this sweater's (all-one) color is claimed by a Fad → not a non-Fad match
         $iconIsFad  = false;
         foreach ($fads as $f) {
             if (!empty($f['clash'])) {
                 if ($allDiffColor && $allDiffIcon) $fad += Material::VP_FAD;
-                continue; // a Clash Fad matches no single colour/icon attribute
+                continue; // a Clash Fad matches no single color/icon attribute
             }
             foreach ($f['objectives'] ?? [] as $obj) {
                 if ($obj['match'] === 'color' && $allSameColor && $colors[0] === $obj['value']) { $fad += Material::VP_FAD; $colorIsFad = true; }
@@ -1843,7 +1862,7 @@ class Game extends \Bga\GameFramework\Table
         // wipes it next). Secret-Santa points are added in the Secret Santa loop just below.
         $this->tableStats->inc('rounds', 1);
 
-        // Secret Santa: +VP_SECRET_SANTA per Secret Santa card whose colour+icon request is met by at
+        // Secret Santa: +VP_SECRET_SANTA per Secret Santa card whose color+icon request is met by at
         // least one COMPLETED sweater (scores once per card, not per sweater). Hidden all round; revealed
         // and applied now (the summary shows the yes/no + which sweater satisfied it).
         //   Casual/Express — each card is fresh this round (re-dealt/claimed), so "once" means once this
@@ -1922,7 +1941,7 @@ class Game extends \Bga\GameFramework\Table
         //                         (final tie-break #1 = fewest unbuilt sweaters). An "unbuilt sweater"
         //                         is any build a player started but did not complete (incl. a lone patch).
         //   - statistics        : sweaters started/completed, patches scored, and points by source
-        //                         (build, run, Fad, non-Fad colour, non-Fad icon). Secret-Santa points
+        //                         (build, run, Fad, non-Fad color, non-Fad icon). Secret-Santa points
         //                         are handled in the Secret Santa loop above; runs/Fad/non-Fad are read
         //                         straight off sweaterParts so the stats match the scored VP exactly.
         $express   = $this->isExpress();
@@ -1992,8 +2011,8 @@ class Game extends \Bga\GameFramework\Table
             if ($ptsNonfadIcon > 0)  $this->playerStats->inc('points_nonfad_icon', $ptsNonfadIcon, $pid);
         }
 
-        // Bonus objective — The Little Brothers Colour Coordinate (+3 VP, once per game). Awarded the first
-        // round its two-sweater colour requirement is met by completed sweaters, then the card is spent.
+        // Bonus objective — The Little Brothers Color Coordinate (+3 VP, once per game). Awarded the first
+        // round its two-sweater color requirement is met by completed sweaters, then the card is spent.
         if ($this->bonusEnabled()) {
             $lbOwner = $this->bonusOwner(Material::BONUS_LITTLE_BROTHERS);
             if ($lbOwner !== null && $this->littleBrothersSatisfied($lbOwner)) {
@@ -2117,7 +2136,7 @@ class Game extends \Bga\GameFramework\Table
 
     /**
      * True when a completed sweater's 3 pieces cover all 3 Secret Santa needs — a perfect matching where
-     * each distinct piece satisfies one distinct need (each piece may count toward EITHER its colour or
+     * each distinct piece satisfies one distinct need (each piece may count toward EITHER its color or
      * its icon). Brute-forces the 3! assignments.
      */
     public function sweaterMatchesNeeds(array $three, array $needs): bool
@@ -2194,14 +2213,14 @@ class Game extends \Bga\GameFramework\Table
     /**
      * THE public (non-Secret-Santa) scorer for one sweater, decomposed into its components:
      * ['build'=>+2, 'run'=>+2 consecutive, 'fad'=>+3 per Fad objective met, 'nonfad_color'=>+1 all-one-
-     * non-Fad colour, 'nonfad_icon'=>+1 all-one-non-Fad icon, 'nonfad'=> their sum]. $fads is the list of
+     * non-Fad color, 'nonfad_icon'=>+1 all-one-non-Fad icon, 'nonfad'=> their sum]. $fads is the list of
      * active Fads (see fadParts) — one for Casual, the sweater's claimed Fads for Express. All zeros if
      * incomplete. publicSweaterScore is build+run+fad+nonfad over this, so the scorepad's per-component
      * rows and the applied VP cannot drift.
      */
     public function sweaterParts(array $bySlot, array $fads): array
     {
-        // 'nonfad' stays as the combined colour+icon total (the scorepad shows one non-Fad row);
+        // 'nonfad' stays as the combined color+icon total (the scorepad shows one non-Fad row);
         // 'nonfad_color' / 'nonfad_icon' split it for the per-source statistics.
         $parts = ['build' => 0, 'run' => 0, 'fad' => 0, 'nonfad' => 0, 'nonfad_color' => 0, 'nonfad_icon' => 0];
         if (!self::isComplete($bySlot)) {
@@ -2244,7 +2263,7 @@ class Game extends \Bga\GameFramework\Table
      * refresh) and returns the full accumulated grid.
      *
      * Category rows mirror the pad: Each Sweater Built (+2 each), Three Consecutive Numbers (+2), Fads
-     * (+3 each), All Matching Non-Fad Colours & Icons (+1 each), Secret Santa (+3 each). A `bonus` delta
+     * (+3 each), All Matching Non-Fad Colors & Icons (+1 each), Secret Santa (+3 each). A `bonus` delta
      * per player absorbs anything not captured by those rows (e.g. the Little Brothers bonus objective)
      * so each round's TOTAL always reconciles cumulatively to player_score. Two informational footer
      * counts travel too: unfinished sweaters and Fads completed.

@@ -5,7 +5,7 @@ import { AssignPatches } from "./States/AssignPatches";
 import { ExpressPatchAssign } from "./States/ExpressPatchAssign";
 import { BillyChoice } from "./States/BillyChoice";
 import { TinaTink } from "./States/TinaTink";
-import { createCardElement, cardTooltip, cardLogChip, cardAriaLabel, faceOf, isPatch, cardFaceInner, faceSpriteClass, colourName, iconName, orientationName, trendyLogChip, fadTooltip, secretSantaTooltip, wildValueOf, wildIconOf, SLOTS } from "./CardView";
+import { createCardElement, cardTooltip, cardLogChip, cardAriaLabel, faceOf, isPatch, cardFaceInner, faceSpriteClass, colorName, iconName, orientationName, trendyLogChip, fadTooltip, secretSantaTooltip, wildValueOf, wildIconOf, SLOTS } from "./CardView";
 import { BgaAnimations, BgaCards, BgaHelp } from "./libs";
 
 type CardMapT = { [cardId: number]: SweaterCard };
@@ -421,7 +421,7 @@ export class Game {
             isCardVisible: () => true,
             setupFrontDiv: (c: SweaterCard, div: HTMLElement) => {
                 // Note: we deliberately do NOT add the `.ucs-card` sizing class here — the stock's own
-                // card-side element handles sizing/positioning; we only paint colour + face.
+                // card-side element handles sizing/positioning; we only paint color + face.
                 const face = faceOf(c, this.material);
                 div.classList.add('ucs-card-face', 'ucs-face', faceSpriteClass(c));
                 if (face.patch) div.classList.add('ucs-patch');
@@ -458,7 +458,7 @@ export class Game {
             // ones (see handCardWidth). The buttons are cleared vertically, by fanLift.
             floatLeftMargin: 0,
             floatRightMargin: 0,
-            // Keep the fan sorted (colour then value) so a card drawn on refill slides into its correct
+            // Keep the fan sorted (color then value) so a card drawn on refill slides into its correct
             // position rather than tacking onto the end — see notif_handUpdate's incremental addCards.
             sort: this.handSort.bind(this),
         });
@@ -643,7 +643,7 @@ export class Game {
         zone.appendChild(row);
     }
 
-    /** The green "completed" tick laid over a Secret Santa card (or, recoloured, over a headshot). */
+    /** The green "completed" tick laid over a Secret Santa card (or, recolored, over a headshot). */
     private santaDoneTick(): HTMLElement {
         const tick = document.createElement('div');
         tick.className = 'ucs-santa-done';
@@ -1134,7 +1134,7 @@ export class Game {
         } else if (type === 'trendyyarn') {
             const color = this.material.colors[arg] ?? String(arg);
             el.classList.add(`ucs-gp-trendyyarn-${color}`);
-            this.addTip(this.gpId(el), `<strong>${_('Trendy Yarn')}: ${colourName(color)}</strong><br>${_('This colour is the trump colour this round.')}`);
+            this.addTip(this.gpId(el), `<strong>${_('Trendy Yarn')}: ${colorName(color)}</strong><br>${_('This color is the trump color this round.')}`);
         } else {
             const fad = this.material.fads[arg];
             el.classList.add('ucs-gp-fad', `ucs-gp-fad-${arg}`); // ucs-gp-fad = styling/hook; -${arg} = sprite face
@@ -1271,11 +1271,11 @@ export class Game {
 
     /**
      * Per-player knitting tally injected into the BGA player board (playerPanels.getElement): one
-     * valueless swatch for each sweater colour, then one chip for each icon, each carrying a running
-     * count of how many cards that player currently has in their knitting area of that colour / icon.
-     * A numbered card contributes +1 to its colour AND +1 to its icon. A patch has a colour but no
-     * printed icon, so it contributes +1 to its colour only, and flags that colour's swatch with a
-     * capital 'P' so everyone can see at a glance who has knitted which patches. All colours / icons
+     * valueless swatch for each sweater color, then one chip for each icon, each carrying a running
+     * count of how many cards that player currently has in their knitting area of that color / icon.
+     * A numbered card contributes +1 to its color AND +1 to its icon. A patch has a color but no
+     * printed icon, so it contributes +1 to its color only, and flags that color's swatch with a
+     * capital 'P' so everyone can see at a glance who has knitted which patches. All colors / icons
      * always show (0 when none), so the panel reads as a stable grid. Rebuilt from gamedatas.knitting
      * each render pass, so it stays live as cards are knitted (renderPlayers runs on setup and after
      * every knitting change).
@@ -1293,21 +1293,21 @@ export class Game {
         }
         const colorCounts: { [c: string]: number } = {};
         const iconCounts: { [i: string]: number } = {};
-        const patchColors = new Set<string>(); // colours this player holds at least one patch of
+        const patchColors = new Set<string>(); // colors this player holds at least one patch of
         this.cardArray(this.gamedatas.knitting)
             .filter((c) => Number(c.location_arg) === playerId)
             .forEach((c) => {
                 const face = faceOf(c, this.material);
                 if (!face || !face.color) return;
                 colorCounts[face.color] = (colorCounts[face.color] ?? 0) + 1;
-                if (face.patch) { patchColors.add(face.color); return; } // patch: colour only, no icon
+                if (face.patch) { patchColors.add(face.color); return; } // patch: color only, no icon
                 if (face.icon) iconCounts[face.icon] = (iconCounts[face.icon] ?? 0) + 1;
             });
         const colorRow = this.material.colors.map((col) => {
             const n = colorCounts[col] ?? 0;
             const hasPatch = patchColors.has(col);
-            const title = hasPatch ? `${colourName(col)}: ${n} (${_('includes Patch')})` : `${colourName(col)}: ${n}`;
-            // The swatch is a bare colour block and the count sits beside it — as separate nodes a reader
+            const title = hasPatch ? `${colorName(col)}: ${n} (${_('includes Patch')})` : `${colorName(col)}: ${n}`;
+            // The swatch is a bare color block and the count sits beside it — as separate nodes a reader
             // announces "4" with no idea what of. Name the whole chip and hide its parts.
             return `<span class="ucs-tally-chip" title="${title}" role="img" aria-label="${title}">`
                 + `<span class="ucs-tally-swatch ucs-color-${col}" aria-hidden="true">${hasPatch ? '<span class="ucs-tally-patch">P</span>' : ''}</span>`
@@ -1681,7 +1681,7 @@ export class Game {
         const allSameIcon = !icons.includes(null) && new Set(icons).size === 1;
 
         // Mirrors the server's fadParts: +3 per Fad objective met (summed across every Fad the sweater
-        // has claimed), and +1 for an all-one colour / icon that NO Fad matched — independently for colour
+        // has claimed), and +1 for an all-one color / icon that NO Fad matched — independently for color
         // and icon (designer's BGG ruling). A Clash Fad scores +3 for all-different and matches no single
         // attribute. Keep in sync with the PHP.
         const fads = this.fadsForBuild(playerId, buildNo);
@@ -1725,7 +1725,7 @@ export class Game {
             (c) => Number(c.location_arg) === playerId
         );
 
-        // Opponents' inline area: a compact read-out — each card is just a small colour+number chip (no
+        // Opponents' inline area: a compact read-out — each card is just a small color+number chip (no
         // orientation letter / icon), each sweater a little cluster, all sweaters in a single left-to-
         // right row. (The click-to-enlarge popin — targetEl set — and my own area keep the full silhouette.)
         if (!targetEl && playerId !== this.myId) {
@@ -1882,7 +1882,7 @@ export class Game {
     }
 
     /**
-     * Compact opponent read-out of a knitting area: each card is a small colour+number chip (no
+     * Compact opponent read-out of a knitting area: each card is a small color+number chip (no
      * orientation letter / icon), laid out in the same L-R-over-B sweater silhouette as the full
      * area — a started sweater keeps its whole footprint, with still-empty L/R/B slots drawn as
      * dotted placeholders (matching `renderKnitting`), so an incomplete sweater reads as gaps in
@@ -1936,7 +1936,7 @@ export class Game {
         return cell;
     }
 
-    /** A tiny colour+number chip (log-card style) for the compact opponent view; a patch shows ★/value. */
+    /** A tiny color+number chip (log-card style) for the compact opponent view; a patch shows ★/value. */
     private miniCardEl(card: SweaterCard): HTMLElement {
         const face = faceOf(card, this.material);
         const color = face?.color ?? String(card.type);
@@ -2226,10 +2226,10 @@ export class Game {
     private handSortMode(): 1 | 2 | 3 {
         try {
             const raw = Number(this.bga.userPreferences?.get?.(102));
-            return (raw === 1 || raw === 3) ? raw : 2; // default: by colour
+            return (raw === 1 || raw === 3) ? raw : 2; // default: by color
         } catch (e) {
             // Reading the preference can throw if it isn't loaded for this table; fall back to the
-            // classic colour sort rather than leaving the hand unordered.
+            // classic color sort rather than leaving the hand unordered.
             return 2;
         }
     }
@@ -2237,8 +2237,8 @@ export class Game {
     /**
      * Comparator for the fanned hand, honouring the "Hand sort order" preference (102):
      *   1 Draw order — by card id (deal/draw order); the fan doesn't regroup as you draw;
-     *   2 By colour  — colour (type) then ascending value (type_arg); the tidy default;
-     *   3 By icon    — printed icon, then colour, then value; patches (no icon) sort last.
+     *   2 By color  — color (type) then ascending value (type_arg); the tidy default;
+     *   3 By icon    — printed icon, then color, then value; patches (no icon) sort last.
      * Total & stable in every mode, so a card drawn on refill drops into a deterministic slot
      * rather than tacking onto the end (see notif_handUpdate's incremental addCards).
      */
@@ -2254,7 +2254,7 @@ export class Game {
                 if (!ib) return -1;
                 return ia < ib ? -1 : 1;
             }
-            // same icon — fall through to the colour/value tail-break below.
+            // same icon — fall through to the color/value tail-break below.
         }
         if (a.type !== b.type) return a.type < b.type ? -1 : 1;
         return Number(a.type_arg) - Number(b.type_arg);
@@ -3212,7 +3212,7 @@ export class Game {
             { key: 'built', label: _('Each Sweater Built'), vp: '+2 VP' },
             { key: 'run', label: _('Three Consecutive Numbers'), vp: '+2 VP' },
             { key: 'fad', label: _('Fads'), vp: '+? VP' },
-            { key: 'nonfad', label: _("All Matching 'Non-Fad' Colours and Icons"), vp: '+1 VP each' },
+            { key: 'nonfad', label: _("All Matching 'Non-Fad' Colors and Icons"), vp: '+1 VP each' },
             { key: 'ss', label: _('Secret Santa'), vp: '+3 VP' },
         ];
         if (detail.bonus) cats.push({ key: 'bonus', label: _('Bonus'), vp: '+3 VP' });
@@ -3330,7 +3330,7 @@ export class Game {
 
     /**
      * Replay-safe client-side log injection: the framework calls this for every log line. We swap the
-     * `card_label` argument for an inline colour-coded card chip built from the `card` row carried in
+     * `card_label` argument for an inline color-coded card chip built from the `card` row carried in
      * the notification (cardPlayed / cardDrafted). Per BGA guidance we only mutate `args` — never the
      * `${...}` keys in the log string — so translations and historical logs keep working.
      */
@@ -3341,7 +3341,7 @@ export class Game {
                 if (args.card_label && args.card) {
                     args.card_label = cardLogChip(args.card, this.material);
                 }
-                // Express: tint the new Trendy Yarn colour name in the log ("New Trendy Yarn: Purple").
+                // Express: tint the new Trendy Yarn color name in the log ("New Trendy Yarn: Purple").
                 if (args.trendy_color) {
                     args.trendy_color = trendyLogChip(args.trendy_color);
                 }

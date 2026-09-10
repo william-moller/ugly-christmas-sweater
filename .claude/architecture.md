@@ -101,7 +101,7 @@ A Deck-backed table takes its NAME from `createDeck()`, but its **columns must a
 `card_*` ones** — the component's own SQL selects them by those names regardless of table name. So
 per-card dynamic extras live in a **separate `card_meta` table**.
 
-- `card` — the 52-card sweater deck via `Deck`. `card_type` = colour, `card_type_arg` = value 1..12 (0 = patch), `card_location_arg` = player_id or pool slot. Locations (the `Game::LOC_*` constants): `deck` is the transient shuffle source used while dealing, **not** a per-player pile — each player's own face-down pile is `pile_<player_id>` (`Game::pileLoc`). The rest are `hand`, `draftpool`, `trick`, `knitting`, `discard`.
+- `card` — the 52-card sweater deck via `Deck`. `card_type` = color, `card_type_arg` = value 1..12 (0 = patch), `card_location_arg` = player_id or pool slot. Locations (the `Game::LOC_*` constants): `deck` is the transient shuffle source used while dealing, **not** a per-player pile — each player's own face-down pile is `pile_<player_id>` (`Game::pileLoc`). The rest are `hand`, `draftpool`, `trick`, `knitting`, `discard`.
 - `card_meta` — one row per card for what Deck doesn't manage: `trick_order` (play order for resolution tie-breaks), `build_no` (which sweater), `slot` (`L|R|B`, NULL = floating patch), `wild_value`/`wild_icon` (patch resolution). Read back via `Game::getCardsWithExtras`, which LEFT JOINs it onto `card`. Cleared at round start so stale wild data can't bleed into a re-dealt card.
 - `gameplay_card` — a second Deck: Perfect Fit / Trendy Yarn / Fad cards. Locations are `deck_<type>` (face-down pile) and `seen_<type>` (revealed stack, `location_arg` = stack index — the **highest** arg is the active card, see `Game::activeGameplayCard`); Express adds `claimed_fad`, and reuses `seen_fad` as the Fad display.
 - `secret_santa` — Deck of the 16 hidden objectives (`box|hand|discard`, arg = owner). Spent cards go to `discard`, never back to `box`, so a card someone has held can't be re-dealt.
@@ -132,7 +132,7 @@ so a scoring bug shows up as a stat that doesn't sum to `player_score`.
 | `tricks_won` | player | `States/ResolveTrick.php` | Credited to `$order[0]` — **the top of the resolved Draft Order**. No one "wins" a trick in this game, hence the label "Tricks won (led the draft)". |
 | `sweaters_started` / `sweaters_built` / `patches_scored` | player | `Game.php::scoreRound` | Completed-sweater counts; patches counted only in *completed* sweaters, matching the rule that patches in incomplete sweaters never score. |
 | `sweaters_unbuilt` | player | `Game.php::scoreRound` | Tie-break #1 in readable form. Incremented from the **same `$unbuilt`** that feeds `player_score_aux`, in the same loop, so the stat and the tie-break cannot drift. Exists because the aux composite is unreadable on the results screen. |
-| `points_sweaters` · `points_runs` · `points_fad` · `points_secret_santa` · `points_nonfad_color` · `points_nonfad_icon` | player | `Game.php::scoreRound` | Computed off the same `sweaterParts` walk that awards the VP, deliberately, so the stats and the scored VP cannot drift. Colour and icon are separate stats because non-Fad matches score independently (+1 each) — see the scoring table. |
+| `points_sweaters` · `points_runs` · `points_fad` · `points_secret_santa` · `points_nonfad_color` · `points_nonfad_icon` | player | `Game.php::scoreRound` | Computed off the same `sweaterParts` walk that awards the VP, deliberately, so the stats and the scored VP cannot drift. Color and icon are separate stats because non-Fad matches score independently (+1 each) — see the scoring table. |
 
 ⚠️ **Mixed stat APIs.** Setup initialises with the **deprecated** `initStat()` (`Game.php:219-232`);
 every increment uses the **current** `$this->tableStats->inc()` / `$this->playerStats->inc()`. Both work,
@@ -147,7 +147,7 @@ TypeScript + SCSS. **Edit `src/`, never the generated `modules/js/Game.js` or `u
 
 - `src/ts/Game.ts` — the client entry (rollup `input`); holds selection state and all rendering.
 - `src/ts/States/*.ts` — one handler per interactive state (`PlayCard`, `DraftCard`, `RoundReview`, `AssignPatches`, `ExpressPatchAssign`, `BillyChoice`, `TinaTink`), imported and registered in `Game.ts`.
-- `src/ts/CardView.ts` — card element/tooltip/log-chip/icon-glyph helpers. Faces are painted from the CSS sprite sheet via `.ucs-face-<colour>_<value>` (see `faceSpriteClass`); the printed art carries value/icon/orientation, so the only DOM overlay is a patch's wild-value badge.
+- `src/ts/CardView.ts` — card element/tooltip/log-chip/icon-glyph helpers. Faces are painted from the CSS sprite sheet via `.ucs-face-<color>_<value>` (see `faceSpriteClass`); the printed art carries value/icon/orientation, so the only DOM overlay is a patch's wild-value badge.
 - `src/ts/libs.ts` — `BgaAnimations` / `BgaCards` (loaded from BGA at runtime; not bundled).
 - `src/ts/types.d.ts` — gamedatas / notif / args types.
 - `src/scss/Game.scss` — the single stylesheet.
@@ -161,7 +161,7 @@ mistake for bugs during a testing sweep, which is why they're listed here rather
 |---|-----------|---------|---------|
 | **100** | Confirm before acting — `0` Off / `1` auto-confirm / `2` manual | `Game.ts::confirmMode` → `confirmAction` | live |
 | **101** | Card size — Small / Medium / Large → `--ucs-card-scale` | `<html>` `cssPref` class + `Game.ts::setupHandStock` | **needs reload** |
-| **102** | Hand sort — draw order / by colour / by icon | `Game.ts::handSortMode` → `handSort` | live, via `userPreferences.onChange` |
+| **102** | Hand sort — draw order / by color / by icon | `Game.ts::handSortMode` → `handSort` | live, via `userPreferences.onChange` |
 
 **100 is the game's undo.** `confirmAction` wraps *every* interactive action (`PlayCard`, `DraftCard`,
 `AssignPatches`, `BillyChoice`, `TinaTink`): it puts a Confirm / **Reset turn** step in the action bar
@@ -183,10 +183,10 @@ render). Patches have no printed icon, so they sort last in *by icon*.
 Each BGA player board carries a per-player read-out of what that player has knitted, injected into the
 game-specific div from `this.bga.playerPanels.getElement(playerId)` (`renderPanelTally` in `Game.ts`,
 called from `renderPlayers` so it refreshes on setup and after every knitting change). Row 1 is one
-valueless swatch per sweater colour, row 2 one chip per icon, each with a running count. A numbered
-card counts toward **both** its colour and its icon; a **patch** has a colour but no printed icon, so
-it counts toward its colour only and marks that colour's swatch with a capital **P** (there is exactly
-one patch per colour, so the P is a boolean flag, not a count). Colours/icons come from
+valueless swatch per sweater color, row 2 one chip per icon, each with a running count. A numbered
+card counts toward **both** its color and its icon; a **patch** has a color but no printed icon, so
+it counts toward its color only and marks that color's swatch with a capital **P** (there is exactly
+one patch per color, so the P is a boolean flag, not a count). Colors/icons come from
 `material.colors` / `material.icons` (server-canonical, `Material::COLORS`/`ICONS`) and all always
 render, 0 included, so the grid is stable. Icons sit on a light chip because the icon sprite art has
 near-white detail that greys out on a dark panel.
@@ -339,8 +339,8 @@ see [`../../.claude/deploy.md`](../../.claude/deploy.md), and never use the VS C
 ### Card-face sprites (`scripts/build-sprites.mjs`, `npm run build:sprites`)
 
 The 52 sweater/patch faces are packed into one CSS sprite (`img/sweaters.jpg`, a 4×13 grid: row =
-colour, col = value 0..12 with 0 = patch) plus a shared `img/card-back.jpg`; the script also emits the
-GENERATED `src/scss/_sweater-sprites.scss` (one `.ucs-face-<colour>_<value>` position class per card).
+color, col = value 0..12 with 0 = patch) plus a shared `img/card-back.jpg`; the script also emits the
+GENERATED `src/scss/_sweater-sprites.scss` (one `.ucs-face-<color>_<value>` position class per card).
 Its input is the publisher PNGs (path hard-coded in the script) mapped by the card→file table verified
 against `Material::FACES`. The emitted SCSS partial *is* committed, so the CSS builds on a fresh
 checkout even though the art doesn't ship — see **Regenerating the art** below. Uses the `sharp`
@@ -351,7 +351,7 @@ art reaches the card edge; all six `--ucs-card-w/h` contexts in `Game.scss` are 
 The Stage-2 (non-sweater) cards are packed the same way by `scripts/build-secondary-sprites.mjs` into
 `img/secondary.jpg` (8×7 grid) + the GENERATED `src/scss/_secondary-sprites.scss` (one `.ucs-<key>`
 position class per face; base class `.ucs-art2`). Covers Perfect Fit (`ucs-gp-perfectfit-<1..6>`),
-Trendy Yarn (`ucs-gp-trendyyarn-<colour>`), Fad (`ucs-gp-fad-<1..10>`), Secret Santa (`ucs-santa-<1..16>`),
+Trendy Yarn (`ucs-gp-trendyyarn-<color>`), Fad (`ucs-gp-fad-<1..10>`), Secret Santa (`ucs-santa-<1..16>`),
 Bonus (`ucs-bonus-<1..4>`), Draft Order (`ucs-draftorder-<1..4>`), Score Reference, Round Tracker, plus each
 deck's back. Consumers (`Game.ts`) add `.ucs-art2` + the
 face class to a `.ucs-card`-sized element; Secret Santa cards are turned `rotate(90deg)` (the art is drawn
@@ -366,8 +366,8 @@ variable, `--ucs-head-size`; the partial derives `--ucs-card-w/h` from it so the
 any size, and turns the element `rotate(90deg)` for the same reason the full card is turned. A square's
 layout footprint survives the turn, so unlike `.ucs-santa-card` it needs no `.ucs-santa-slot` around it.
 
-**Fad deck (verified from art):** 10 physical cards = 8 distinct colour+icon fads + "Clash Is In" ×2. Each
-colour appears on two cards paired with a *different* icon (NOT one tidy colour⇄icon pair ×2). See
+**Fad deck (verified from art):** 10 physical cards = 8 distinct color+icon fads + "Clash Is In" ×2. Each
+color appears on two cards paired with a *different* icon (NOT one tidy color⇄icon pair ×2). See
 `Material::fads()`.
 
 ### Sweater-icon sprites (`scripts/build-icons.mjs`, `npm run build:icons`)
@@ -379,8 +379,8 @@ wild-value badge, the `AssignPatches` picker, the player-panel tally.
 
 Two constraints that are baked into the script and must not be undone in CSS:
 
-- The source PNGs sit each icon on a pale watercolour rectangle, which the script keys out by
-  colour-distance from the sampled corner. What survives has **near-white detail** (snowman body, candy
+- The source PNGs sit each icon on a pale watercolor rectangle, which the script keys out by
+  color-distance from the sampled corner. What survives has **near-white detail** (snowman body, candy
   cane stripes), so these must be shown on a **light** chip — on a dark surface they grey out. This is
   the same constraint the panel tally notes above.
 - The snowman's linework is thin enough to anti-alias back to light grey at the ~20–40px it renders, so

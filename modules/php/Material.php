@@ -13,8 +13,8 @@ namespace Bga\Games\UglyChristmasSweaters;
 
 class Material
 {
-    // ---- Colours (= card_type for sweater cards) -------------------------------------------------
-    // Each colour also has a distinct on-card pattern for colour-blind accessibility — mirror in CSS.
+    // ---- Colors (= card_type for sweater cards) -------------------------------------------------
+    // Each color also has a distinct on-card pattern for color-blind accessibility — mirror in CSS.
     const COLOR_PURPLE = 'purple';
     const COLOR_RED    = 'red';
     const COLOR_GREEN  = 'green';
@@ -43,9 +43,9 @@ class Material
     const VP_SWEATER       = 2; // each completed sweater (L + R + B)
     const VP_RUN           = 2; // three consecutive numbers (no wrap)
     const VP_FAD           = 3; // per Fad objective met (a sweater can meet both objectives)
-    const VP_NONFAD_MATCH  = 1; // sweater all-one-colour or all-one-icon that is NOT the active Fad
+    const VP_NONFAD_MATCH  = 1; // sweater all-one-color or all-one-icon that is NOT the active Fad
     const VP_SECRET_SANTA  = 3; // a completed sweater satisfying your Secret Santa
-    const VP_BONUS_OBJECTIVE = 3; // The Little Brothers Colour Coordinate bonus objective (once per game)
+    const VP_BONUS_OBJECTIVE = 3; // The Little Brothers Color Coordinate bonus objective (once per game)
 
     // ==============================================================================================
     //  SWEATER DECK (52 cards = 48 numbered + 4 patches)
@@ -57,9 +57,9 @@ class Material
      *
      * Orientation is a PRINTED property of the card (not player-chosen) — only Patches let the player
      * pick the slot. Note the deck's regular structure (a useful integrity check):
-     *   - Orientation by value 1..12 is the same for every colour: L R B  B R L  L R B  B R L
-     *     (so each colour has exactly 4 of each slot, and 3 cards of each icon).
-     *   - Icons run in blocks of three (values 1-3, 4-6, 7-9, 10-12); the block order rotates per colour:
+     *   - Orientation by value 1..12 is the same for every color: L R B  B R L  L R B  B R L
+     *     (so each color has exactly 4 of each slot, and 3 cards of each icon).
+     *   - Icons run in blocks of three (values 1-3, 4-6, 7-9, 10-12); the block order rotates per color:
      *     green = bell, snowman, candycane, tree | red = tree, bell, snowman, candycane
      *     yellow = snowman, candycane, tree, bell | purple = candycane, tree, bell, snowman.
      * Anything absent from this map resolves to icon=null / slot=null in sweaters() (flags a gap).
@@ -128,7 +128,7 @@ class Material
     {
         $cards = [];
         foreach (self::COLORS as $color) {
-            // One patch per colour — colour is fixed; value/icon/orientation are wild (resolved in DB).
+            // One patch per color — color is fixed; value/icon/orientation are wild (resolved in DB).
             $cards["{$color}_0"] = [
                 'color' => $color, 'value' => self::PATCH_VALUE,
                 'icon' => null, 'slot' => null, 'patch' => true,
@@ -149,7 +149,7 @@ class Material
 
     /**
      * Deck setup rows for $this->cards->createCards(self::sweaterDeckRows(), 'deck').
-     * Each physical card is unique → nbr 1. card_type = colour, card_type_arg = value (0 = patch).
+     * Each physical card is unique → nbr 1. card_type = color, card_type_arg = value (0 = patch).
      * @return list<array{type:string,type_arg:int,nbr:int}>
      */
     public static function sweaterDeckRows(): array
@@ -173,25 +173,25 @@ class Material
     const PERFECT_FIT = [1, 2, 3, 4, 5, 6];
 
     /**
-     * TRENDY YARN (4 cards) — trump colour for the round. One card per colour.
-     * Exactly one card for each of the four sweater colours.
+     * TRENDY YARN (4 cards) — trump color for the round. One card per color.
+     * Exactly one card for each of the four sweater colors.
      * @var string[]
      */
     const TRENDY_YARN = self::COLORS;
 
     /**
-     * FADS (10 cards) — round bonus scoring. Each fad lists two objectives (one colour, one icon),
-     * each worth VP_FAD: a completed sweater scores +3 if it is entirely that colour, and +3 if it is
+     * FADS (10 cards) — round bonus scoring. Each fad lists two objectives (one color, one icon),
+     * each worth VP_FAD: a completed sweater scores +3 if it is entirely that color, and +3 if it is
      * entirely that icon (a single sweater can score both). The special "Clash Is In" fad instead
-     * scores VP_FAD when the sweater's three pieces are all different colours AND all different icons.
+     * scores VP_FAD when the sweater's three pieces are all different colors AND all different icons.
      *
      * Format per fad:
      *   ['id'=>int, 'title'=>clienttranslate('...'),
      *    'objectives' => [ ['match'=>'color','value'=>COLOR_*], ['match'=>'icon','value'=>ICON_*] ]]
      *   or ['id'=>int, 'title'=>clienttranslate('...'), 'clash'=>true]
      *
-     * DECK (confirmed against the publisher art): 10 physical cards = 8 distinct colour+icon fads +
-     * "Clash Is In" ×2. Each colour appears on TWO cards, each paired with a DIFFERENT icon:
+     * DECK (confirmed against the publisher art): 10 physical cards = 8 distinct color+icon fads +
+     * "Clash Is In" ×2. Each color appears on TWO cards, each paired with a DIFFERENT icon:
      *   yellow+bell, yellow+snowman, purple+snowman, purple+bell,
      *   red+candycane, red+tree, green+tree, green+candycane  (+ clash ×2).
      * createGameplayCards() makes one card per entry (type_arg = id), so this returns all 10 physical
@@ -216,7 +216,7 @@ class Material
                    'objectives'=>[['match'=>'color','value'=>self::COLOR_GREEN],  ['match'=>'icon','value'=>self::ICON_TREE]]],
             8  => ['id'=>8,  'title'=>clienttranslate('All Green / All Candy Canes'),
                    'objectives'=>[['match'=>'color','value'=>self::COLOR_GREEN],  ['match'=>'icon','value'=>self::ICON_CANDY_CANE]]],
-            9  => ['id'=>9,  'title'=>clienttranslate('Clash Is In'), 'clash'=>true], // no matching colours or icons
+            9  => ['id'=>9,  'title'=>clienttranslate('Clash Is In'), 'clash'=>true], // no matching colors or icons
             10 => ['id'=>10, 'title'=>clienttranslate('Clash Is In'), 'clash'=>true],
         ];
     }
@@ -228,15 +228,15 @@ class Material
     /**
      * Each Secret Santa is a family member requesting a specific 3-piece build, worth VP_SECRET_SANTA.
      * Requirement = exactly 3 tokens the completed sweater must satisfy; each card may count toward
-     * EITHER its colour or its icon (orientation is ignored).
+     * EITHER its color or its icon (orientation is ignored).
      *
      * Format: ['id'=>int, 'name'=>clienttranslate('...'), 'needs'=>['<kind>:<value>', x3]]
      *   where <kind> is 'color' or 'icon'.  e.g. ['icon:candycane','icon:candycane','color:purple'].
      *   'needs' is an unordered multiset of exactly 3 requirements (a completed sweater's 3 pieces
-     *   must cover them; each piece counts toward EITHER its colour or its icon, orientation ignored).
+     *   must cover them; each piece counts toward EITHER its color or its icon, orientation ignored).
      *
      * All 16 cards transcribed from the publisher art, names and requirements both. The 16 multisets
-     * cover every (colour, icon) pair. 'id' also keys the Secret Santa card art sprite.
+     * cover every (color, icon) pair. 'id' also keys the Secret Santa card art sprite.
      */
     public static function secretSantas(): array
     {
@@ -287,7 +287,7 @@ class Material
      *
      * Where each effect lives: Little Brothers in Game::scoreRound (littleBrothersSatisfied), Maria in
      * placeDraftedCard / actDraftCard, Tina in the TinaTink state, Billy in the BillyChoice state. The
-     * Little Brothers colour requirement is encoded directly in littleBrothersSatisfied (two sweaters:
+     * Little Brothers color requirement is encoded directly in littleBrothersSatisfied (two sweaters:
      * {1 green,2 red} + {1 red,2 green}), so 'objectiveNeeds' stays null here.
      *
      * Format: ['id'=>int, 'key'=>string, 'name'=>clienttranslate('...'), 'kind'=>'objective'|'oneshot',
@@ -303,7 +303,7 @@ class Material
         return [
             self::BONUS_LITTLE_BROTHERS => [
                 'id' => self::BONUS_LITTLE_BROTHERS, 'key' => 'littlebrothers', 'kind' => 'objective',
-                'name' => clienttranslate('The Little Brothers Colour Coordinate'),
+                'name' => clienttranslate('The Little Brothers Color Coordinate'),
                 'text' => clienttranslate('Objective (3 VP): build one sweater of 1 green + 2 red cards and another of 1 red + 2 green cards.'),
                 'objectiveNeeds' => null, // condition encoded in Game::littleBrothersSatisfied
             ],
@@ -329,13 +329,13 @@ class Material
     //  Helpers
     // ==============================================================================================
 
-    /** Look up a sweater card's static face by colour + value (value 0 = patch). */
+    /** Look up a sweater card's static face by color + value (value 0 = patch). */
     public static function sweater(string $color, int $value): ?array
     {
         return self::sweaters()["{$color}_{$value}"] ?? null;
     }
 
-    /** True if (colour,value) is a patch card. */
+    /** True if (color,value) is a patch card. */
     public static function isPatch(int $value): bool
     {
         return $value === self::PATCH_VALUE;

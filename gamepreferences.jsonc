@@ -51,8 +51,8 @@
   // Order the cards are laid out in your fanned hand (read in Game.ts::handSort; the stock re-sorts
   // whenever the hand is rendered). Applied live via userPreferences.onChange — no reload needed.
   //   Draw order — the id order cards were dealt/drawn in (no reshuffle as you draw).
-  //   By colour  — grouped by sweater colour, then ascending value (the classic tidy layout).
-  //   By icon    — grouped by printed icon, then colour, then value; patches (no icon) sort last.
+  //   By color  — grouped by sweater color, then ascending value (the classic tidy layout).
+  //   By icon    — grouped by printed icon, then color, then value; patches (no icon) sort last.
   "102": {
     "name": "Hand sort order",
     "values": {
@@ -60,7 +60,7 @@
         "name": "Draw order"
       },
       "2": {
-        "name": "By colour"
+        "name": "By color"
       },
       "3": {
         "name": "By icon"

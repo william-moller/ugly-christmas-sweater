@@ -29,7 +29,7 @@ const WORK = process.env.BANNER_WORK ?? OUT_DIR;
 // Mid-banner that crop reads as a sliced sweater, which is what this rebuild exists to fix.
 //
 // The PDF cannot be read as pixels directly: one page of 18 stacked DeviceCMYK JPEG layers with ZERO
-// ICC profiles, and each layer is a flat colour field shaped by a soft mask — layer 0 alone is a
+// ICC profiles, and each layer is a flat color field shaped by a soft mask — layer 0 alone is a
 // silhouette (its sweater interior is a single CMYK value where the printed cover carries all the
 // knit detail). Compositing that by hand is a prepress job, not a scripting one. So we let Windows'
 // own PDF renderer do it: `Windows.Data.Pdf` ships with the OS, handles the masks and transparency,
@@ -74,7 +74,7 @@ const BANNER = { width: 1386, height: 400 };
 
 // The two flat greens. COVER_BG is the published cover's, measured at eight points across
 // `Jpeg/boxcoverfrombgg.jpg` and identical at every one. REN_BG is what the Windows renderer makes of
-// the same ink. They are two renderings of one CMYK colour, and the banner uses the published one.
+// the same ink. They are two renderings of one CMYK color, and the banner uses the published one.
 const COVER_BG = [103, 135, 59];
 const REN_BG = [117, 131, 68];
 
@@ -82,7 +82,7 @@ const REN_BG = [117, 131, 68];
 // the published green. Deliberately NOT a fitted model — fitting needs pixel-to-pixel pairs between
 // the render and the cover, and the two are different compositions (the cover enlarges and overlaps
 // the sweaters, the box front spaces them out), so no single transform registers them: the best
-// silhouette alignment found was IoU 0.79, and colour models fitted on those pairs came back at
+// silhouette alignment found was IoU 0.79, and color models fitted on those pairs came back at
 // RMS dE 78 and mapped white to green. Two measured anchors and a straight line beat a fitted lie.
 const GAIN = [0, 1, 2].map(k => (255 - COVER_BG[k]) / (255 - REN_BG[k]));
 const OFF = [0, 1, 2].map(k => 255 - GAIN[k] * 255);
@@ -97,8 +97,8 @@ const ROW = { x0: 623, x1: 2569, y0: 2420, y1: 3120 };
 /**
  * Lift the sweater row off the render's flat background and remap it to the cover's palette.
  *
- * A plain colour test is enough here — no flood fill needed, unlike the old cover-crop pipeline. The
- * sweaters on the box front are drawn against one uniform colour and none of their own knit comes
+ * A plain color test is enough here — no flood fill needed, unlike the old cover-crop pipeline. The
+ * sweaters on the box front are drawn against one uniform color and none of their own knit comes
  * near it, so there are no trapped pockets to chase and no dark green to protect.
  */
 async function cutout() {

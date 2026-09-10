@@ -59,7 +59,7 @@
         },
         "points_nonfad_color": {
             "id": 18,
-            "name": "Points from non-Fad matching colours",
+            "name": "Points from non-Fad matching colors",
             "type": "int"
         },
         "points_nonfad_icon": {

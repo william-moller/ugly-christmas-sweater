@@ -67,8 +67,8 @@ class EndTrickCleanup extends GameState
 
         // Express: when a parameter card actually changed, announce EXACTLY what it changed to (its own log
         // line) and refresh the revealed Trendy Yarn / Perfect Fit faces. The trick marker already moved via
-        // the trickCleanup notify above. The Trendy Yarn colour is tinted in the log client-side (see
-        // Game::bgaFormatText / the .ucs-log-trendy-* classes); the raw colour string rides in `trendy_color`.
+        // the trickCleanup notify above. The Trendy Yarn color is tinted in the log client-side (see
+        // Game::bgaFormatText / the .ucs-log-trendy-* classes); the raw color string rides in `trendy_color`.
         if ($trendyRotated) {
             $this->notify->all('gameplayRevealed', clienttranslate('New Trendy Yarn: ${trendy_color}'), [
                 'trendy_color' => $this->game->activeTrendyYarn(),

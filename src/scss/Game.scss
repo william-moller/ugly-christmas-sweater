@@ -57,10 +57,10 @@ $card-h: 125px; // bridge-card ratio 0.643 (675x1050 after bleed trim); every --
 $order-badge-w: 30px;
 $order-badge-h: 47px;
 
-// Per-colour palette + a distinct pattern direction for colour-blind accessibility
-// (the rules require each colour to also carry a unique pattern).
-// Keys are quoted because red/green/yellow are CSS colour keywords (unquoted they'd be parsed
-// as colour values and break the class-name interpolation below).
+// Per-color palette + a distinct pattern direction for color-blind accessibility
+// (the rules require each color to also carry a unique pattern).
+// Keys are quoted because red/green/yellow are CSS color keywords (unquoted they'd be parsed
+// as color values and break the class-name interpolation below).
 $colors: (
     "purple": (#6b3fa0, 45deg),
     "red":    (#c0392b, -45deg),
@@ -71,9 +71,9 @@ $colors: (
 // ---- Whole play-area backdrop: the knitted felt table --------------------------------------------
 // A muted sage felt with a fine knit weave over it. NOT the box-cover green any more, and the rename
 // is the point: the public-alpha review called the old #4c8c2b "a bit visually strong", and it was —
-// a saturated near-flat colour is what guideline C.5 rules out ("do not use pure flat colors";
+// a saturated near-flat color is what guideline C.5 rules out ("do not use pure flat colors";
 // "add slight texture"; "prioritize contrast against the game's components"). Sage is lighter and far
-// less saturated, so the watercolour card art stops competing with the table it sits on.
+// less saturated, so the watercolor card art stops competing with the table it sits on.
 //
 // Measured, not eyeballed: a zone label is 65% black composited over whatever is behind it, which on
 // #4c8c2b came to 3.76:1 — under the 4.5:1 WCAG AA floor for 12px text. Sage lifts that to 4.04, and
@@ -138,11 +138,11 @@ html.ucs-cards-large  { --ucs-card-scale: 1.5; }
 // =====================================================================================
 //  Dark-mode theme tokens
 //  BGA adds html[data-theme="dark"] when the player picks dark mode (and flips its OWN
-//  default text colour to light). Our custom surfaces assume a light backdrop, so the
+//  default text color to light). Our custom surfaces assume a light backdrop, so the
 //  theme-sensitive fills / borders / muted ink are driven through variables and re-pointed
 //  here. Key off [data-theme] rather than @media prefers-color-scheme so the in-game toggle
-//  wins over the OS setting (per BGA's stylesheet docs). Fully self-coloured bits — the
-//  colour cards, the dark pop-ins, the player-colour accents — need no override.
+//  wins over the OS setting (per BGA's stylesheet docs). Fully self-colored bits — the
+//  color cards, the dark pop-ins, the player-color accents — need no override.
 // =====================================================================================
 :root {
     // OPAQUE, not a translucent darkening. Two jobs, and only an opaque fill does either: it stops the
@@ -189,7 +189,7 @@ html[data-theme="dark"] {
     --ucs-oppo-ink: #e8f0dd;
 
     // Deepen the felt so the toggle actually darkens the table, weave and all (same mixin, so the two
-    // themes cannot drift apart in texture — only in colour).
+    // themes cannot drift apart in texture — only in color).
     @include knit-felt(#232e1c, #354427);
 }
 
@@ -224,7 +224,7 @@ html[data-theme="dark"] {
     border-radius: 8px;
     padding: 6px 8px;
     // A shallow drop shadow to seat the panel on the felt. The opaque fill above already separates
-    // them; this is what makes the separation read as depth rather than as a colour change.
+    // them; this is what makes the separation read as depth rather than as a color change.
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.18);
 }
 
@@ -274,7 +274,7 @@ html[data-theme="dark"] {
 }
 
 // The bga-cards hand paints its front face with `.ucs-card-face` (not `.ucs-card`, whose fixed sizing
-// would fight the stock's own card-side layout). It only needs colour + white text + clipping; the
+// would fight the stock's own card-side layout). It only needs color + white text + clipping; the
 // absolute face children position against the stock's positioned card-side.
 .ucs-card-face {
     color: #fff;
@@ -289,8 +289,8 @@ html[data-theme="dark"] {
     pointer-events: none;
 }
 
-// Colour-tinted Trendy-Yarn name in the game log ("New Trendy Yarn: Purple") — same $colors hexes as
-// the cards, so the log word matches the trump colour.
+// Color-tinted Trendy-Yarn name in the game log ("New Trendy Yarn: Purple") — same $colors hexes as
+// the cards, so the log word matches the trump color.
 @each $name, $spec in $colors {
     .ucs-log-trendy-#{$name} { color: list.nth($spec, 1); font-weight: 700; }
 }
@@ -360,7 +360,7 @@ html[data-theme="dark"] {
 }
 
 // Inline card chip shown in the game log (injected client-side via bgaFormatText). Reuses the
-// per-colour .ucs-color-* background so a played/drafted card is identifiable by colour + value.
+// per-color .ucs-color-* background so a played/drafted card is identifiable by color + value.
 .ucs-log-card {
     display: inline-flex;
     align-items: center;
@@ -393,7 +393,7 @@ html[data-theme="dark"] {
 // When a patch has TAKEN ON a value/icon (copied in a trick, or assigned at scoring), we overlay a
 // centred badge on top of the patch art so its current identity is legible at a glance.
 // The value + icon a patch has taken on, shown as a solid high-contrast chip centred on the card so
-// it reads clearly over the busy watercolour patch art (a bare overlay was hard to make out).
+// it reads clearly over the busy watercolor patch art (a bare overlay was hard to make out).
 .ucs-wild-badge {
     position: absolute;
     top: 50%;
@@ -723,7 +723,7 @@ html[data-theme="dark"] {
     border: 1px solid var(--ucs-btn-border);
     border-radius: 5px;
     background: var(--ucs-btn-bg);
-    color: var(--ucs-btn-ink); // explicit — BGA flips its default text colour in dark mode
+    color: var(--ucs-btn-ink); // explicit — BGA flips its default text color in dark mode
     padding: 3px 8px;
     font-size: 13px;
     &:hover { background: var(--ucs-btn-bg-hover); }
@@ -890,7 +890,7 @@ $param-ratio: math.div($card-h, $card-w);  // the pool card's own ratio, so the 
     --ucs-card-h: calc(#{$card-h} * var(--ucs-card-scale, 1));
     // Takes the standard opaque panel fill (inherited from .ucs-zone) and adds a frame. It used to
     // hard-code #3f7424 — a shade of the old box green — to read as a distinct workspace; against the
-    // sage felt that reads as a dark blob, and a table-coloured literal here silently rots every time
+    // sage felt that reads as a dark blob, and a table-colored literal here silently rots every time
     // the backdrop is retuned. The frame is what makes it a workspace; the fill can stay standard.
     border: 2px solid rgba(0, 0, 0, 0.3);
     border-radius: 8px;
@@ -989,8 +989,8 @@ $param-ratio: math.div($card-h, $card-w);  // the pool card's own ratio, so the 
 .ucs-oppo {
     cursor: pointer;
     // An opaque fill (as the zone panels now are too) so the felt backdrop can't bleed through
-    // and clash with green cards / a green player's colour. Explicit ink because BGA flips its default
-    // text colour in dark mode, which would otherwise leave light text on this light panel.
+    // and clash with green cards / a green player's color. Explicit ink because BGA flips its default
+    // text color in dark mode, which would otherwise leave light text on this light panel.
     background: var(--ucs-oppo-bg);
     color: var(--ucs-oppo-ink);
     transition: box-shadow 0.12s ease, transform 0.12s ease;
@@ -1024,7 +1024,7 @@ $param-ratio: math.div($card-h, $card-w);  // the pool card's own ratio, so the 
     color: var(--player-color, inherit);
 }
 
-// My own "Your Knitting Area" heading reads in plain ink (not my player colour), flipping to a
+// My own "Your Knitting Area" heading reads in plain ink (not my player color), flipping to a
 // light ink under the dark theme so it doesn't vanish against the deepened table.
 .ucs-me .ucs-player-name {
     color: var(--ucs-heading-ink);
@@ -1103,8 +1103,8 @@ $param-ratio: math.div($card-h, $card-w);  // the pool card's own ratio, so the 
     --ucs-card-h: calc(var(--ucs-card-w) * 1.556);
 }
 
-// ---- Player-panel knitting tally: per-colour + per-icon counts of cards knitted -----------------
-// Injected into each BGA player board (playerPanels.getElement). Row 1 is the four sweater colours
+// ---- Player-panel knitting tally: per-color + per-icon counts of cards knitted -----------------
+// Injected into each BGA player board (playerPanels.getElement). Row 1 is the four sweater colors
 // as valueless swatches, row 2 the four icons; each carries a running count of that player's knitted
 // cards. Swatches/icons match the 20x28 game-log card chip (.ucs-log-card); four per row still fit
 // the narrow (~200px) panel. The count text inherits the panel's own ink so it stays legible
@@ -1129,7 +1129,7 @@ $param-ratio: math.div($card-h, $card-w);  // the pool card's own ratio, so the 
     font-weight: 700;
     line-height: 1;
 }
-// The valueless colour swatch — a mini card face carrying only the sweater colour (reuses the
+// The valueless color swatch — a mini card face carrying only the sweater color (reuses the
 // .ucs-color-* background; no .ucs-card-pattern child, so it reads as a solid swatch). Sized to the
 // 20x28 game-log card chip (.ucs-log-card) so the panel read-out matches the icons in the turn log.
 .ucs-tally-swatch {
@@ -1143,8 +1143,8 @@ $param-ratio: math.div($card-h, $card-w);  // the pool card's own ratio, so the 
     box-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
     flex: 0 0 auto;
 }
-// Capital 'P' overlaid on a colour swatch when the player has knitted at least one patch of that
-// colour — a glanceable "who holds which patches" marker (the count already reflects how many cards).
+// Capital 'P' overlaid on a color swatch when the player has knitted at least one patch of that
+// color — a glanceable "who holds which patches" marker (the count already reflects how many cards).
 .ucs-tally-patch {
     font-size: 16px;
     font-weight: 800;
@@ -1152,7 +1152,7 @@ $param-ratio: math.div($card-h, $card-w);  // the pool card's own ratio, so the 
     line-height: 1;
     text-shadow: 0 1px 1px rgba(0, 0, 0, 0.75);
 }
-// The icon sits on a light chip (same 20x28 card footprint as the colour swatch and the log chip):
+// The icon sits on a light chip (same 20x28 card footprint as the color swatch and the log chip):
 // the icon art has near-white detail that greys on a dark surface, so it must not sit directly on a
 // (possibly dark) player panel.
 .ucs-tally-icon {
@@ -1163,7 +1163,7 @@ $param-ratio: math.div($card-h, $card-w);  // the pool card's own ratio, so the 
     height: 28px;
     border-radius: 4px;
     background: #f3ede1;
-    // Matches the colour swatch's 1px border so both chips share the same 22px footprint (default
+    // Matches the color swatch's 1px border so both chips share the same 22px footprint (default
     // content-box): without it the borderless icon chips render 2px narrower and the columns drift
     // progressively out of line. A soft neutral hairline (white would vanish on the light chip).
     border: 1px solid rgba(0, 0, 0, 0.12);
@@ -1196,7 +1196,7 @@ $param-ratio: math.div($card-h, $card-w);  // the pool card's own ratio, so the 
     box-shadow: 0 0 8px rgba(46, 134, 222, 0.7);
 }
 
-// ---- Opponents' compact knitting: small colour+number chips, wrapped to the panel width ---------
+// ---- Opponents' compact knitting: small color+number chips, wrapped to the panel width ---------
 .ucs-knitting-compact {
     // Inherit the base `wrap` from .ucs-knitting. Tighter gap than the full area, and no min-height so a
     // short area doesn't reserve a full card of vertical space.
@@ -1327,7 +1327,7 @@ $param-ratio: math.div($card-h, $card-w);  // the pool card's own ratio, so the 
     outline-offset: -2px;
     box-shadow: 0 0 9px rgba(46, 204, 113, 0.75);
 }
-// An empty target slot placeholder (the outline colour comes from the option/selected class above).
+// An empty target slot placeholder (the outline color comes from the option/selected class above).
 .ucs-ghost {
     display: flex;
     align-items: center;
@@ -2623,12 +2623,12 @@ $santa-column-floors: (medium: 1450px, large: 1610px);
 .ucs-fad-card {
     position: relative;
 }
-// (Removed: .ucs-fad-chip, an abstracted "[colour] / [icon]" read-out rendered into every Fad card as a
+// (Removed: .ucs-fad-chip, an abstracted "[color] / [icon]" read-out rendered into every Fad card as a
 // stand-in for the art in the 120px reference rail. The rail was retired, no rule ever unset its
 // display: none, and it never rendered. Only Express 2P narrow drives Fad art below the ~72px it was
 // meant to rescue — (100cqi - 24)/5 is ~64px at 360px — and the fix there is to fold the five-card row
 // the way 3-4P already do, per responsive.md's "never below the floors, reflow instead".)
-// A claimed Fad is dimmed and tagged with its owner's colour + name.
+// A claimed Fad is dimmed and tagged with its owner's color + name.
 .ucs-fad-claimed {
     opacity: 0.85;
     outline: 3px solid var(--player-color, #2ecc71);

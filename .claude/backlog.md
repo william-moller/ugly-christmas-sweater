@@ -84,12 +84,12 @@ not of the code.
     three buttons, which is also A.2's *"do not replace board-component actions with Action Bar
     buttons"*. Only reachable at Casual + Expert + Bonus cards **On** while holding that bonus card, so
     it will not turn up in ordinary testing — reproduce it deliberately.
-  - **Button colour is being used to mean "selected".** Guideline C.3 makes the palette a shared
+  - **Button color is being used to mean "selected".** Guideline C.3 makes the palette a shared
     language across BGA — blue advances, red cancels, grey is unavailable — and forbids reassigning it
     per game. The placement panels toggle `primary`/`secondary` to show which option is currently
     chosen, so grey reads as "disabled" where it means "not picked". The instance that matters is
     `Patch L/R/B`, reachable in a *normal* game when drafting onto a sweater that already holds a
-    floating patch; the Maria/Tina panels do the same. Selection wants a channel that is not colour — a
+    floating patch; the Maria/Tina panels do the same. Selection wants a channel that is not color — a
     checkmark in the label, or the chosen slot highlighted on the board instead. Separately `Reset turn`
     is grey while `Cancel` is red, though both go backwards; C.3 puts both in red.
   - **The patch keypad's number buttons are 30px tall.** Checklist item: every tap target ≥ 32px (E.3,
@@ -190,8 +190,8 @@ not of the code.
   drawn at a slightly different horizontal position on each card face, so an assembled sweater built
   from mismatched cards (the normal case) doesn't tile cleanly: the L/R/B pieces jog left/right of
   each other. Verified by extracting the B faces and mocking assemblies from the real sprite — a
-  matched-colour set tiles, mixed sets don't, and the per-card offset varies in both directions, so
+  matched-color set tiles, mixed sets don't, and the per-card offset varies in both directions, so
   no single CSS nudge fixes it. Real fix is in `scripts/build-sprites.mjs`: segment the sweater from
-  the watercolour background per card and shift each cell to a consistent registration (L body to its
+  the watercolor background per card and shift each cell to a consistent registration (L body to its
   right edge, R to its left, B centred), so any L+R+B tiles. Heuristic; verify across all 52 cards by
   eye. The layout itself (rotate B, centre, butt) is already correct.

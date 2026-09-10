@@ -16,7 +16,7 @@ use Bga\Games\UglyChristmasSweaters\Game;
  *
  * Why it exists: in Express a Fad is claimed the instant a sweater satisfies it, and claiming LOCKS that
  * sweater. A sweater completed with a wild Patch has no icon yet, so it can only ever match a Fad on its
- * (fixed) colour — it auto-claims the colour Fad and can never afterwards take the icon Fad it was one
+ * (fixed) color — it auto-claims the color Fad and can never afterwards take the icon Fad it was one
  * choice away from, because evaluateFadClaims skips locked builds and the display has moved on by the
  * time round-end assignment comes round. Assigning here is what lets the player take that Fad.
  *

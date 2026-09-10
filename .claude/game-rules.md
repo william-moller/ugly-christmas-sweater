@@ -17,10 +17,10 @@ working digest; when they disagree, the PDF wins.
 | Count | Card | Notes |
 |------:|------|-------|
 | 52 | **Sweater Cards** | Main deck (48 numbered + 4 patches). See composition below. |
-| 16 | **Secret Santa** | Hidden per-player objectives (colour + icon). Worth **3 VP**. |
+| 16 | **Secret Santa** | Hidden per-player objectives (color + icon). Worth **3 VP**. |
 | 10 | **Fad** | Round-wide bonus-scoring parameter (gameplay card #3). |
 | 6 | **Perfect Fit** | "Super trump" number (gameplay card #1). |
-| 4 | **Trendy Yarn** | Trump colour (gameplay card #2). |
+| 4 | **Trendy Yarn** | Trump color (gameplay card #2). |
 | 4 | **Special Ability / Bonus** | Optional Kickstarter mini-expansion (see Bonus Cards). |
 | 4 | **Score Reference** | Player aid (UI only). |
 | 4 | **Draft Order** | Numbered 1–4; mark turn/draft order. |
@@ -29,7 +29,7 @@ working digest; when they disagree, the PDF wins.
 ### Sweater Card anatomy — four attributes
 
 - **Value:** 1–12, ranked high→low (**12 strongest, 1 weakest**), unless modified by Perfect Fit / Trendy Yarn.
-- **Colour:** Purple, Red, Green, or Yellow (each colour also has a distinct pattern for colour-blind accessibility — replicate in the UI).
+- **Color:** Purple, Red, Green, or Yellow (each color also has a distinct pattern for color-blind accessibility — replicate in the UI).
 - **Icon:** Snowmen, Candy Canes, Bells, or Trees.
 - **Orientation:** Left / Right / Bottom (L/R/B) — which third of a sweater this piece is. Shown on the "Christmas light" under the number.
 
@@ -46,16 +46,20 @@ Each card depicts one third of a knitted sweater so the three orientations assem
 
 ### Deck composition (transcribed into `Material::FACES`)
 
-48 numbered cards = 12 values × 4 colours, plus **4 Patches** (one per colour) = 52. The icon +
+48 numbered cards = 12 values × 4 colors, plus **4 Patches** (one per color) = 52. The icon +
 orientation of the 48 numbered cards is transcribed into `Material::FACES`. The data has a regular
 structure (a useful integrity check):
-- **Orientation** by value 1..12 is identical for every colour — `L R B · B R L · L R B · B R L` (4 of each slot per colour).
-- **Icons** run in blocks of three (1-3, 4-6, 7-9, 10-12) whose order rotates per colour: green = bell, snowman, candycane, tree · red = tree, bell, snowman, candycane · yellow = snowman, candycane, tree, bell · purple = candycane, tree, bell, snowman.
+- **Orientation** by value 1..12 is identical for every color — `L R B · B R L · L R B · B R L` (4 of each slot per color).
+- **Icons** run in blocks of three (1-3, 4-6, 7-9, 10-12) whose order rotates per color: green = bell, snowman, candycane, tree · red = tree, bell, snowman, candycane · yellow = snowman, candycane, tree, bell · purple = candycane, tree, bell, snowman.
 
-### Patches (wild Sweater Cards — colour fixed, value/icon/orientation wild)
+### Patches (wild Sweater Cards — color fixed, value/icon/orientation wild)
 
-- *Trade Phase:* a patch copies the **value and icon of the card played immediately before it**. If a patch *leads*, the player chooses any value/icon from a card currently in the Draft Pool. A patch in hand follows **only by its own colour** — it has no icon until it is put into play, so it can **never** create a "must follow if able" obligation by icon, in any seat (per the designer's ruling on the BGG forums, [thread 3626318](https://boardgamegeek.com/thread/3626318): *"The patches are only 'must follow' if the led card's colour matches it … you are not obligated to play the Green patch as it only copies the previously played card's Icon once it is put into play."*). A player holding only an off-colour patch is therefore free to play anything.
-- *Knit Phase:* a placed patch's **value and icon stay wild until round-end scoring** — not chosen at placement. **Orientation:** a patch *added to an existing sweater* takes an open orientation (L/R/B) immediately; a patch that *starts a new sweater* "floats" (no orientation) until a second card is added, at which point the player assigns the patch's orientation (an open slot, distinct from the card being added). Once placed, a patch can't move to another sweater (only be added to). At **round-end scoring**, every player with patch(es) in **completed** sweaters assigns each a value (1–12) + icon **simultaneously** (order doesn't matter); patches in *incomplete* sweaters never score. Colour is always fixed.
+- *Trade Phase:* a patch copies the **value and icon of the card played immediately before it**. If a patch *leads*, the player chooses any value/icon from a card currently in the Draft Pool. Following with a patch has **two halves that must be kept apart**:
+  - **Obligation** — a patch in hand can only make you *able to follow* by its own **color**. It has no icon until it is put into play, so it can **never** oblige you to follow on icon, in any seat (per the designer's ruling on the BGG forums, [thread 3626318](https://boardgamegeek.com/thread/3626318): *"The patches are only 'must follow' if the led card's color matches it … you are not obligated to play the Green patch as it only copies the previously played card's Icon once it is put into play."*). A player holding only an off-color patch is free to play anything.
+  - **Permission** — playing it is nevertheless a **legal follow** whenever the icon it is about to copy (that of the card played immediately before it, which is face up and already resolved) matches the led icon. It genuinely does follow the moment it lands, so it stays playable even when you are otherwise obliged to follow. A patch played earlier in the same trick has itself resolved, and passes the icon it copied along to the next player.
+
+  Collapsing these two is wrong in both directions: treat the patch as obliging and a player holding only an off-color patch is **forced** to play it; treat it as never following and they **cannot** play it even when its copied icon plainly matches the lead. Both bugs have shipped.
+- *Knit Phase:* a placed patch's **value and icon stay wild until round-end scoring** — not chosen at placement. **Orientation:** a patch *added to an existing sweater* takes an open orientation (L/R/B) immediately; a patch that *starts a new sweater* "floats" (no orientation) until a second card is added, at which point the player assigns the patch's orientation (an open slot, distinct from the card being added). Once placed, a patch can't move to another sweater (only be added to). At **round-end scoring**, every player with patch(es) in **completed** sweaters assigns each a value (1–12) + icon **simultaneously** (order doesn't matter); patches in *incomplete* sweaters never score. Color is always fixed.
 
 ## Round setup
 
@@ -67,17 +71,17 @@ structure (a useful integrity check):
 ## Trade Phase (trick-taking)
 
 - The lead player plays any 1 card face-up to the **Trade Area**. (2P variant: each player plays **2** cards per trick.)
-- Going clockwise, each other player **must follow** by playing a card matching the led card's **Colour OR Icon** (either satisfies the requirement). If they can do neither, they may play any card.
+- Going clockwise, each other player **must follow** by playing a card matching the led card's **Color OR Icon** (either satisfies the requirement). If they can do neither, they may play any card.
 - Once everyone has played, resolve the trick into a **Draft Order** (it does not "win" cards — it sets pick order).
 
 ### Trick resolution → Draft Order (priority)
 
 Assign Draft Order cards 1→N by this priority:
-1. **Perfect Fit (super trump):** a card whose value equals the Perfect Fit number takes the top spot. Multiple Perfect-Fit-value cards → the one played **later** in turn order wins. *Ultimate Trump exception:* a card matching **both** the Perfect Fit number **and** the Trendy Yarn colour beats a later-played Perfect Fit card that does **not** match the Trendy Yarn colour.
-2. **Trendy Yarn (trump colour):** absent a Perfect Fit, any Trendy-Yarn-colour card beats all other colours regardless of value. Multiple → highest value wins.
+1. **Perfect Fit (super trump):** a card whose value equals the Perfect Fit number takes the top spot. Multiple Perfect-Fit-value cards → the one played **later** in turn order wins. *Ultimate Trump exception:* a card matching **both** the Perfect Fit number **and** the Trendy Yarn color beats a later-played Perfect Fit card that does **not** match the Trendy Yarn color.
+2. **Trendy Yarn (trump color):** absent a Perfect Fit, any Trendy-Yarn-color card beats all other colors regardless of value. Multiple → highest value wins.
 3. **Card value:** otherwise rank by value high→low.
 - **Ties:** the player who played **later** in turn order takes priority.
-- Following colour/icon is required to *play* legally but confers **no** advantage in resolution — the highest number wins regardless of whether it followed. Off-suit high cards can top the draft order.
+- Following color/icon is required to *play* legally but confers **no** advantage in resolution — the highest number wins regardless of whether it followed. Off-suit high cards can top the draft order.
 
 ## Draft Phase
 
@@ -109,9 +113,9 @@ For **completed** sweaters only:
 |-------|---:|-----------|
 | Sweater Build | **+2** | Each completed sweater (L+R+B). |
 | Three Consecutive Numbers | **+2** | The sweater's 3 values form a run of 3 consecutive numbers. **No wrap** (11-12-1 invalid). |
-| Fad | **+3** per Fad objective | Sweater entirely matches the Fad **colour** *or* the Fad **icon**. Fad cards list two objectives (e.g. "All Green / All Trees"); each scores independently. *Clash Is In* Fad: sweater must be all **different** colours and icons. |
-| All-Matching Non-Fad | **+1 each** | Scored **independently** for colour and for icon: +1 if the sweater is all one colour that is **not** the active Fad, **and** +1 if it is all one icon that is not the active Fad — so a sweater matching both a non-Fad colour and a non-Fad icon scores **+2** (per the designer's ruling on the BGG forums; the printed rulebook's "colour *or* icon" wording is misleading). (Under *Clash Is In*, all-one-colour and all-one-icon each count as a non-Fad match.) |
-| Secret Santa | **+3** | A completed sweater satisfies your Secret Santa's colour + icon request. Each card counts toward **either** its icon or colour (not both); orientation ignored. Scores **once**. |
+| Fad | **+3** per Fad objective | Sweater entirely matches the Fad **color** *or* the Fad **icon**. Fad cards list two objectives (e.g. "All Green / All Trees"); each scores independently. *Clash Is In* Fad: sweater must be all **different** colors and icons. |
+| All-Matching Non-Fad | **+1 each** | Scored **independently** for color and for icon: +1 if the sweater is all one color that is **not** the active Fad, **and** +1 if it is all one icon that is not the active Fad — so a sweater matching both a non-Fad color and a non-Fad icon scores **+2** (per the designer's ruling on the BGG forums; the printed rulebook's "color *or* icon" wording is misleading). (Under *Clash Is In*, all-one-color and all-one-icon each count as a non-Fad match.) |
+| Secret Santa | **+3** | A completed sweater satisfies your Secret Santa's color + icon request. Each card counts toward **either** its icon or color (not both); orientation ignored. Scores **once**. |
 
 ## Between rounds & game end
 
@@ -143,7 +147,7 @@ require Difficulty = Expert, so they're available in Express/Avid and in Casual-
     claims **every** displayed Fad it satisfies, including two Fads sharing an objective — a sweater
     claiming both is legal and scores both ([thread 2646643](https://boardgamegeek.com/thread/2646643)).
   - *Patches may be set early, to claim with.* A wild Patch has no icon, so a sweater completed with one
-    can only ever match a Fad on its (fixed) **colour** — it would auto-claim the colour Fad, lock, and
+    can only ever match a Fad on its (fixed) **color** — it would auto-claim the color Fad, lock, and
     never be able to take the icon Fad it was one choice away from. So in Express **only**, whenever a
     placement completes an unlocked sweater holding a wild Patch and a Fad is still on display, the
     drafter is offered the chance to set that Patch's value + icon **immediately**, before claims are
@@ -157,7 +161,7 @@ require Difficulty = Expert, so they're available in Express/Avid and in Casual-
     bonuses but still pays the Fad: *"it won't score any point other than the claimed Fad card"* (per the
     designer's ruling on the BGG forums, [thread 3193045](https://boardgamegeek.com/thread/3193045)).
     The banked value is a **floor, not a freeze**: a sweater that claimed while its Patch was still wild
-    banked only the colour part, and picks the icon part up if that Patch is assigned later.
+    banked only the color part, and picks the icon part up if that Patch is assigned later.
 - **Avid:** the full 3-round base game, but **3** Secret Santas are dealt to each player **once at game
   start** and persist all game. Satisfaction is tracked **cumulatively** across rounds; each satisfied
   Secret Santa still scores **+3 VP**, and each is **revealed publicly** in that player's area the round
@@ -167,7 +171,7 @@ require Difficulty = Expert, so they're available in Express/Avid and in Casual-
 ## Bonus Cards (optional Kickstarter expansion — the 4 "Special Ability" cards)
 
 Deal 1 each, revealed. One-time cards are discarded after use.
-- **The Little Brothers Colour Coordinate** — objective, **+3 VP**: two distinct completed sweaters, one of {1 green, 2 red} and another of {1 red, 2 green} (colour multisets; patches count as their fixed colour; orientation/value ignored).
+- **The Little Brothers Color Coordinate** — objective, **+3 VP**: two distinct completed sweaters, one of {1 green, 2 red} and another of {1 red, 2 green} (color multisets; patches count as their fixed color; orientation/value ignored).
 - **Tina Can Tink** — one-time, at round end pre-scoring: move/swap a placed piece. It **may** move or swap a piece in an Express Fad-locked sweater — the one way a claimed sweater can change — and the claimed Fad is kept and scored regardless (see *Express* above, [thread 3193045](https://boardgamegeek.com/thread/3193045)). Because it resolves before scoring, a sweater left incomplete by the move scores nothing beyond any Fad it had already claimed.
 - **Mixed-up Maria** — one-time: break the orientation rule when placing a card.
 - **Billy's a Brute** — one-time: when another player leads the draft, jump to the front and draft first, but the contested card is **discarded** instead of kept.

@@ -18,7 +18,7 @@
 -- =====================================================================
 -- card : the 52-card sweater deck (48 numbered + 4 patches)
 -- Managed by the BGA "Deck" component:  $this->cards = $this->deckFactory->createDeck('card');
---   card_type      = colour ('purple' | 'red' | 'green' | 'yellow')         [static, see Material::COLORS]
+--   card_type      = color ('purple' | 'red' | 'green' | 'yellow')         [static, see Material::COLORS]
 --   card_type_arg  = value 1..12  (0 = patch / wild)                        [static]
 --   card_location  = see the Game::LOC_* constants:
 --                      'deck'       transient shuffle source while dealing  (Game::LOC_SOURCE)

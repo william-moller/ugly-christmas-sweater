@@ -71,7 +71,7 @@ class DraftCard extends GameState
         $billyDiscardIndex = (int) $this->game->globals->get('billyDiscardIndex');
         if ($billyDiscardIndex >= 0 && (int) $this->game->globals->get('draftIndex') === $billyDiscardIndex) {
             // Capture the card row + label BEFORE the discard move clears its meta — the client renders a
-            // translation-safe colour chip from `card` (card_label is only the non-displayed fallback).
+            // translation-safe color chip from `card` (card_label is only the non-displayed fallback).
             $card  = $this->game->cardForNotif($card_id);
             $label = $this->game->cardLabel($card_id);
             $this->game->cards->moveCard($card_id, Game::LOC_DISCARD, 0);
@@ -146,7 +146,7 @@ class DraftCard extends GameState
 
         // Express: if this placement completed a sweater that still holds a WILD patch, the player gets
         // the option to pin that patch down before any Fad is claimed — a wild patch can only match a Fad
-        // on colour, and claiming locks the sweater for good. See States/ExpressPatchAssign. The claim
+        // on color, and claiming locks the sweater for good. See States/ExpressPatchAssign. The claim
         // resolution then happens on the way out of that state instead of here.
         if (!empty($this->game->expressAssignablePatches($activePlayerId))) {
             return ExpressPatchAssign::class;

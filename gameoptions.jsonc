@@ -38,7 +38,7 @@
   },
 
   // Difficulty controls which round-parameter decks are revealed each round (read in
-  // Game::revealableGameplayTypes). Beginner = Fads only; Novice adds Trendy Yarn (trump colour);
+  // Game::revealableGameplayTypes). Beginner = Fads only; Novice adds Trendy Yarn (trump color);
   // Expert adds Perfect Fit (super-trump) = the full base game.
   // Only selectable in Casual mode (displaycondition on option 101 = 0). In Express and Avid the
   // selector is hidden, so this option keeps its Expert default (2) — which is exactly what those
@@ -48,12 +48,12 @@
     "values": {
       "0": {
         "name": "Beginner",
-        "description": "Fads only — no trump colour or super-trump.",
+        "description": "Fads only — no trump color or super-trump.",
         "tmdisplay": "Beginner"
       },
       "1": {
         "name": "Novice",
-        "description": "Fads + Trendy Yarn (trump colour).",
+        "description": "Fads + Trendy Yarn (trump color).",
         "tmdisplay": "Novice"
       },
       "2": {

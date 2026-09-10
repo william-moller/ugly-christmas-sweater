@@ -36,7 +36,7 @@ const ROWS = COLORS.length;
 
 // --- Card -> source-file naming -------------------------------------------------------------------
 // The source art was renamed to systematic names (scripts/rename-art.mjs), so the file for each face
-// is computed, not looked up: value 0 = the colour's Patch card, 1..12 zero-padded. The card->art
+// is computed, not looked up: value 0 = the color's Patch card, 1..12 zero-padded. The card->art
 // decode itself was cross-checked against Material::FACES (icon+slot) when the map was first built.
 const faceSrc = (color, v) => `sweater-${color}-${v === 0 ? 'patch' : String(v).padStart(2, '0')}`;
 const BACK_SRC = 'sweater-back';

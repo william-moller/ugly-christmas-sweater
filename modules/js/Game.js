@@ -192,29 +192,29 @@ class TinaTink {
  * CardView — builds the DOM for a sweater card.
  *
  * Card faces are the real publisher art, painted from a CSS sprite sheet (img/sweaters.jpg) via the
- * per-card `.ucs-face-<colour>_<value>` classes (see applyCardFace / faceSpriteClass). The printed art
+ * per-card `.ucs-face-<color>_<value>` classes (see applyCardFace / faceSpriteClass). The printed art
  * already carries value, icon and orientation, so the only DOM overlay is a wild-value badge for a
  * patch that has taken on an identity. The icon glyphs below are still used for that badge, for the
  * game log chips, and for pickers/read-outs.
  */
-// Translated display names for the data-driven colour / icon / orientation values. Each `_()` call
+// Translated display names for the data-driven color / icon / orientation values. Each `_()` call
 // takes a literal so BGA's translation scanner picks it up; the lookup runs at render time. Falls
 // back to the raw value for anything unexpected. These are the single source of truth for turning a
-// card's colour/icon/slot into player-facing text (tooltips, read-outs).
-function colourName(colour) {
-    switch (colour) {
+// card's color/icon/slot into player-facing text (tooltips, read-outs).
+function colorName(color) {
+    switch (color) {
         case 'green': return _('Green');
         case 'red': return _('Red');
         case 'yellow': return _('Yellow');
         case 'purple': return _('Purple');
-        default: return colour;
+        default: return color;
     }
 }
-// A colour-tinted Trendy-Yarn name for a game-log line ("New Trendy Yarn: Purple"). Tinted via the
-// .ucs-log-trendy-<colour> classes (same $colors hexes as the cards — see Game.scss); the visible text
-// is the translated colour name from colourName().
-function trendyLogChip(colour) {
-    return `<span class="ucs-log-trendy-${colour}">${colourName(colour)}</span>`;
+// A color-tinted Trendy-Yarn name for a game-log line ("New Trendy Yarn: Purple"). Tinted via the
+// .ucs-log-trendy-<color> classes (same $colors hexes as the cards — see Game.scss); the visible text
+// is the translated color name from colorName().
+function trendyLogChip(color) {
+    return `<span class="ucs-log-trendy-${color}">${colorName(color)}</span>`;
 }
 function iconName(icon) {
     switch (icon) {
@@ -238,21 +238,21 @@ const SLOTS = ['L', 'R', 'B'];
 /**
  * HTML tooltip for a Fad round-parameter card: its printed title plus the concrete scoring every player
  * can earn this round. `fad` is a Material::fads() entry — either { title, objectives:[{match,value}×2] }
- * (one colour + one icon objective, each scored independently) or { title, clash:true } (the "Clash Is In"
+ * (one color + one icon objective, each scored independently) or { title, clash:true } (the "Clash Is In"
  * card, which instead scores an all-different sweater). VP comes from the server (material.vp).
  */
 function fadTooltip(fad, vp) {
     const title = fad?.title ? _(fad.title) : _('Fad');
     let lines;
     if (fad?.clash) {
-        lines = `<li>${_('Three pieces all different colours and all different icons')} — <b>+${vp.fad} ${_('VP')}</b></li>`;
+        lines = `<li>${_('Three pieces all different colors and all different icons')} — <b>+${vp.fad} ${_('VP')}</b></li>`;
     }
     else {
         lines = (fad?.objectives ?? []).map((o) => {
-            // colourName/iconName are the single source of truth for the player-facing value text.
+            // colorName/iconName are the single source of truth for the player-facing value text.
             const what = o.match === 'icon'
                 ? `${_('All')} ${iconName(o.value)} ${_('icons')}`
-                : `${_('All')} ${colourName(o.value)}`;
+                : `${_('All')} ${colorName(o.value)}`;
             return `<li>${what} — <b>+${vp.fad} ${_('VP')}</b></li>`;
         }).join('');
     }
@@ -264,7 +264,7 @@ function fadTooltip(fad, vp) {
 /**
  * HTML tooltip for a Secret Santa objective: the family member's name plus the three pieces the completed
  * sweater must cover. `ss` is a Material::secretSantas() entry — { name, needs:['<color|icon>:<value>'×3] };
- * each piece counts toward EITHER its colour or its icon (orientation ignored), so the needs are shown as
+ * each piece counts toward EITHER its color or its icon (orientation ignored), so the needs are shown as
  * a plain checklist. The same entry shape arrives on a REVEALED card, so opponents' cards render here too:
  * `owner` switches the wording from my own private objective to theirs, and `done`, when the verdict is
  * known, replaces the "when satisfied" line with what actually happened.
@@ -273,7 +273,7 @@ function secretSantaTooltip(ss, vp, owner, done) {
     const name = ss?.name ? _(ss.name) : _('Secret Santa');
     const needs = (ss?.needs ?? []).map((n) => {
         const [kind, value] = String(n).split(':');
-        return `<li>${kind === 'icon' ? iconName(value) : colourName(value)}</li>`;
+        return `<li>${kind === 'icon' ? iconName(value) : colorName(value)}</li>`;
     }).join('');
     const sub = owner
         ? _('${player_name}\'s objective — one sweater covering all three:').replace('${player_name}', owner)
@@ -311,7 +311,7 @@ function isPatch(card, material) {
 }
 /**
  * The CSS class that paints a card's face from the sprite sheet (img/sweaters.jpg). Keyed exactly
- * like faceOf() — `<colour>_<value>`, value 0 = patch — so it resolves the same cell for all 52
+ * like faceOf() — `<color>_<value>`, value 0 = patch — so it resolves the same cell for all 52
  * cards. Generated positions live in src/scss/_sweater-sprites.scss (scripts/build-sprites.mjs).
  */
 function faceSpriteClass(card) {
@@ -359,8 +359,8 @@ function createCardElement(card, material) {
     return el;
 }
 /**
- * A compact inline card "chip" for the game log: a colour-coded box showing the card's value
- * (colour + value is enough to identify the exact card in play). Built client-side from the card
+ * A compact inline card "chip" for the game log: a color-coded box showing the card's value
+ * (color + value is enough to identify the exact card in play). Built client-side from the card
  * row carried in the notification, so historical logs / replays stay valid.
  *
  * A **Patch** is shown as its own wild-star chip so it's never confused with the real card it copies:
@@ -387,7 +387,7 @@ function cardLogChip(card, material) {
     return `<span class="ucs-log-card ucs-color-${color}"${t}>${valueLabel}</span>`;
 }
 /**
- * Plain-text description of a card for a log chip's native `title` tooltip (colour + value · icon ·
+ * Plain-text description of a card for a log chip's native `title` tooltip (color + value · icon ·
  * orientation; a patch reads as its wild identity). Kept plain — unlike the BGA HTML tooltips elsewhere —
  * because the framework injects log HTML with no node we can bind gameui.addTooltipHtml to.
  *
@@ -396,13 +396,13 @@ function cardLogChip(card, material) {
  */
 function cardLogTitle(card, material) {
     const face = faceOf(card, material);
-    const colour = colourName(face?.color ?? String(card.type));
+    const color = colorName(face?.color ?? String(card.type));
     const wildValue = wildValueOf(card);
     if (face?.patch) {
-        const base = `${colour} ${_('Patch')} (${_('wild')})`;
+        const base = `${color} ${_('Patch')} (${_('wild')})`;
         return wildValue != null ? `${base} ${_('as')} ${wildValue}` : base;
     }
-    const parts = [`${colour} ${wildValue != null ? wildValue : (face?.value ?? '?')}`];
+    const parts = [`${color} ${wildValue != null ? wildValue : (face?.value ?? '?')}`];
     if (face?.icon)
         parts.push(iconName(face.icon));
     if (face?.slot)
@@ -415,17 +415,17 @@ function cardLogTitle(card, material) {
  * deliberate alias, not a copy that could drift.
  */
 const cardAriaLabel = cardLogTitle;
-/** Tooltip HTML describing a card (colour + value; icon/orientation once known). */
+/** Tooltip HTML describing a card (color + value; icon/orientation once known). */
 function cardTooltip(card, material) {
     const face = faceOf(card, material);
-    const colour = colourName(face.color);
+    const color = colorName(face.color);
     if (face.patch) {
-        return `<strong>${colour} ${_('Patch')}</strong><br>`
+        return `<strong>${color} ${_('Patch')}</strong><br>`
             + _('Wild. Starting a new sweater it "floats" (no orientation) until a second card joins; its value & icon are chosen at round-end scoring.');
     }
     const icon = face.icon ? iconName(face.icon) : '?';
     const slot = face.slot ? orientationName(face.slot) : '?';
-    return `<strong>${colour} ${face.value}</strong><br>${_('Icon:')} ${icon}<br>${_('Orientation:')} ${slot}`;
+    return `<strong>${color} ${face.value}</strong><br>${_('Icon:')} ${icon}<br>${_('Orientation:')} ${slot}`;
 }
 
 /*
@@ -806,7 +806,7 @@ class Game {
             isCardVisible: () => true,
             setupFrontDiv: (c, div) => {
                 // Note: we deliberately do NOT add the `.ucs-card` sizing class here — the stock's own
-                // card-side element handles sizing/positioning; we only paint colour + face.
+                // card-side element handles sizing/positioning; we only paint color + face.
                 const face = faceOf(c, this.material);
                 div.classList.add('ucs-card-face', 'ucs-face', faceSpriteClass(c));
                 if (face.patch)
@@ -844,7 +844,7 @@ class Game {
             // ones (see handCardWidth). The buttons are cleared vertically, by fanLift.
             floatLeftMargin: 0,
             floatRightMargin: 0,
-            // Keep the fan sorted (colour then value) so a card drawn on refill slides into its correct
+            // Keep the fan sorted (color then value) so a card drawn on refill slides into its correct
             // position rather than tacking onto the end — see notif_handUpdate's incremental addCards.
             sort: this.handSort.bind(this),
         });
@@ -1030,7 +1030,7 @@ class Game {
         });
         zone.appendChild(row);
     }
-    /** The green "completed" tick laid over a Secret Santa card (or, recoloured, over a headshot). */
+    /** The green "completed" tick laid over a Secret Santa card (or, recolored, over a headshot). */
     santaDoneTick() {
         const tick = document.createElement('div');
         tick.className = 'ucs-santa-done';
@@ -1527,7 +1527,7 @@ class Game {
         else if (type === 'trendyyarn') {
             const color = this.material.colors[arg] ?? String(arg);
             el.classList.add(`ucs-gp-trendyyarn-${color}`);
-            this.addTip(this.gpId(el), `<strong>${_('Trendy Yarn')}: ${colourName(color)}</strong><br>${_('This colour is the trump colour this round.')}`);
+            this.addTip(this.gpId(el), `<strong>${_('Trendy Yarn')}: ${colorName(color)}</strong><br>${_('This color is the trump color this round.')}`);
         }
         else {
             const fad = this.material.fads[arg];
@@ -1659,11 +1659,11 @@ class Game {
     }
     /**
      * Per-player knitting tally injected into the BGA player board (playerPanels.getElement): one
-     * valueless swatch for each sweater colour, then one chip for each icon, each carrying a running
-     * count of how many cards that player currently has in their knitting area of that colour / icon.
-     * A numbered card contributes +1 to its colour AND +1 to its icon. A patch has a colour but no
-     * printed icon, so it contributes +1 to its colour only, and flags that colour's swatch with a
-     * capital 'P' so everyone can see at a glance who has knitted which patches. All colours / icons
+     * valueless swatch for each sweater color, then one chip for each icon, each carrying a running
+     * count of how many cards that player currently has in their knitting area of that color / icon.
+     * A numbered card contributes +1 to its color AND +1 to its icon. A patch has a color but no
+     * printed icon, so it contributes +1 to its color only, and flags that color's swatch with a
+     * capital 'P' so everyone can see at a glance who has knitted which patches. All colors / icons
      * always show (0 when none), so the panel reads as a stable grid. Rebuilt from gamedatas.knitting
      * each render pass, so it stays live as cards are knitted (renderPlayers runs on setup and after
      * every knitting change).
@@ -1682,7 +1682,7 @@ class Game {
         }
         const colorCounts = {};
         const iconCounts = {};
-        const patchColors = new Set(); // colours this player holds at least one patch of
+        const patchColors = new Set(); // colors this player holds at least one patch of
         this.cardArray(this.gamedatas.knitting)
             .filter((c) => Number(c.location_arg) === playerId)
             .forEach((c) => {
@@ -1693,15 +1693,15 @@ class Game {
             if (face.patch) {
                 patchColors.add(face.color);
                 return;
-            } // patch: colour only, no icon
+            } // patch: color only, no icon
             if (face.icon)
                 iconCounts[face.icon] = (iconCounts[face.icon] ?? 0) + 1;
         });
         const colorRow = this.material.colors.map((col) => {
             const n = colorCounts[col] ?? 0;
             const hasPatch = patchColors.has(col);
-            const title = hasPatch ? `${colourName(col)}: ${n} (${_('includes Patch')})` : `${colourName(col)}: ${n}`;
-            // The swatch is a bare colour block and the count sits beside it — as separate nodes a reader
+            const title = hasPatch ? `${colorName(col)}: ${n} (${_('includes Patch')})` : `${colorName(col)}: ${n}`;
+            // The swatch is a bare color block and the count sits beside it — as separate nodes a reader
             // announces "4" with no idea what of. Name the whole chip and hide its parts.
             return `<span class="ucs-tally-chip" title="${title}" role="img" aria-label="${title}">`
                 + `<span class="ucs-tally-swatch ucs-color-${col}" aria-hidden="true">${hasPatch ? '<span class="ucs-tally-patch">P</span>' : ''}</span>`
@@ -2060,7 +2060,7 @@ class Game {
         const allSameColor = new Set(colors).size === 1;
         const allSameIcon = !icons.includes(null) && new Set(icons).size === 1;
         // Mirrors the server's fadParts: +3 per Fad objective met (summed across every Fad the sweater
-        // has claimed), and +1 for an all-one colour / icon that NO Fad matched — independently for colour
+        // has claimed), and +1 for an all-one color / icon that NO Fad matched — independently for color
         // and icon (designer's BGG ruling). A Clash Fad scores +3 for all-different and matches no single
         // attribute. Keep in sync with the PHP.
         const fads = this.fadsForBuild(playerId, buildNo);
@@ -2109,7 +2109,7 @@ class Game {
             return;
         zone.innerHTML = '';
         const cards = this.cardArray(this.gamedatas.knitting).filter((c) => Number(c.location_arg) === playerId);
-        // Opponents' inline area: a compact read-out — each card is just a small colour+number chip (no
+        // Opponents' inline area: a compact read-out — each card is just a small color+number chip (no
         // orientation letter / icon), each sweater a little cluster, all sweaters in a single left-to-
         // right row. (The click-to-enlarge popin — targetEl set — and my own area keep the full silhouette.)
         if (!targetEl && playerId !== this.myId) {
@@ -2271,7 +2271,7 @@ class Game {
         }
     }
     /**
-     * Compact opponent read-out of a knitting area: each card is a small colour+number chip (no
+     * Compact opponent read-out of a knitting area: each card is a small color+number chip (no
      * orientation letter / icon), laid out in the same L-R-over-B sweater silhouette as the full
      * area — a started sweater keeps its whole footprint, with still-empty L/R/B slots drawn as
      * dotted placeholders (matching `renderKnitting`), so an incomplete sweater reads as gaps in
@@ -2326,7 +2326,7 @@ class Game {
         cell.style.gridArea = slot;
         return cell;
     }
-    /** A tiny colour+number chip (log-card style) for the compact opponent view; a patch shows ★/value. */
+    /** A tiny color+number chip (log-card style) for the compact opponent view; a patch shows ★/value. */
     miniCardEl(card) {
         const face = faceOf(card, this.material);
         const color = face?.color ?? String(card.type);
@@ -2614,19 +2614,19 @@ class Game {
     handSortMode() {
         try {
             const raw = Number(this.bga.userPreferences?.get?.(102));
-            return (raw === 1 || raw === 3) ? raw : 2; // default: by colour
+            return (raw === 1 || raw === 3) ? raw : 2; // default: by color
         }
         catch (e) {
             // Reading the preference can throw if it isn't loaded for this table; fall back to the
-            // classic colour sort rather than leaving the hand unordered.
+            // classic color sort rather than leaving the hand unordered.
             return 2;
         }
     }
     /**
      * Comparator for the fanned hand, honouring the "Hand sort order" preference (102):
      *   1 Draw order — by card id (deal/draw order); the fan doesn't regroup as you draw;
-     *   2 By colour  — colour (type) then ascending value (type_arg); the tidy default;
-     *   3 By icon    — printed icon, then colour, then value; patches (no icon) sort last.
+     *   2 By color  — color (type) then ascending value (type_arg); the tidy default;
+     *   3 By icon    — printed icon, then color, then value; patches (no icon) sort last.
      * Total & stable in every mode, so a card drawn on refill drops into a deterministic slot
      * rather than tacking onto the end (see notif_handUpdate's incremental addCards).
      */
@@ -2645,7 +2645,7 @@ class Game {
                     return -1;
                 return ia < ib ? -1 : 1;
             }
-            // same icon — fall through to the colour/value tail-break below.
+            // same icon — fall through to the color/value tail-break below.
         }
         if (a.type !== b.type)
             return a.type < b.type ? -1 : 1;
@@ -3581,7 +3581,7 @@ class Game {
             { key: 'built', label: _('Each Sweater Built'), vp: '+2 VP' },
             { key: 'run', label: _('Three Consecutive Numbers'), vp: '+2 VP' },
             { key: 'fad', label: _('Fads'), vp: '+? VP' },
-            { key: 'nonfad', label: _("All Matching 'Non-Fad' Colours and Icons"), vp: '+1 VP each' },
+            { key: 'nonfad', label: _("All Matching 'Non-Fad' Colors and Icons"), vp: '+1 VP each' },
             { key: 'ss', label: _('Secret Santa'), vp: '+3 VP' },
         ];
         if (detail.bonus)
@@ -3692,7 +3692,7 @@ class Game {
     // ===================================================================================
     /**
      * Replay-safe client-side log injection: the framework calls this for every log line. We swap the
-     * `card_label` argument for an inline colour-coded card chip built from the `card` row carried in
+     * `card_label` argument for an inline color-coded card chip built from the `card` row carried in
      * the notification (cardPlayed / cardDrafted). Per BGA guidance we only mutate `args` — never the
      * `${...}` keys in the log string — so translations and historical logs keep working.
      */
@@ -3703,7 +3703,7 @@ class Game {
                 if (args.card_label && args.card) {
                     args.card_label = cardLogChip(args.card, this.material);
                 }
-                // Express: tint the new Trendy Yarn colour name in the log ("New Trendy Yarn: Purple").
+                // Express: tint the new Trendy Yarn color name in the log ("New Trendy Yarn: Purple").
                 if (args.trendy_color) {
                     args.trendy_color = trendyLogChip(args.trendy_color);
                 }

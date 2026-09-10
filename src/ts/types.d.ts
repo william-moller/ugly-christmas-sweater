@@ -6,7 +6,7 @@
 /** A sweater card row as returned by the Deck component (+ card_meta extras for trick/knitting). */
 interface SweaterCard {
     id: number | string;
-    type: string;                 // card_type = colour
+    type: string;                 // card_type = color
     type_arg: number | string;    // card_type_arg = value (0 = patch)
     location: string;
     location_arg: number | string;
@@ -18,7 +18,7 @@ interface SweaterCard {
     wildIcon?: string | null;
 }
 
-/** Static per-card face from Material::sweaters(), keyed by "<colour>_<value>". */
+/** Static per-card face from Material::sweaters(), keyed by "<color>_<value>". */
 interface CardFace {
     color: string;
     value: number;
@@ -42,7 +42,7 @@ interface UcsVp {
     sweater: number;      // VP_SWEATER      — each completed L+R+B sweater
     run: number;          // VP_RUN          — three consecutive numbers
     fad: number;          // VP_FAD          — per Fad objective met
-    nonfad: number;       // VP_NONFAD_MATCH — all-one colour/icon that no Fad matched
+    nonfad: number;       // VP_NONFAD_MATCH — all-one color/icon that no Fad matched
     secretSanta: number;  // VP_SECRET_SANTA — a completed sweater satisfying a Secret Santa
 }
 
@@ -66,7 +66,7 @@ interface UglyChristmasSweaterPlayer extends Player {
 interface GameplayCard {
     id: number | string;
     type: string;               // 'perfectfit' | 'trendyyarn' | 'fad'
-    type_arg: number | string;  // value / colour index / fad id
+    type_arg: number | string;  // value / color index / fad id
     location: string;
     location_arg: number | string;
 }
@@ -158,7 +158,7 @@ interface ScorepadCell {
     built: number;         // Each Sweater Built  (+2 each)
     run: number;           // Three Consecutive Numbers (+2 each)
     fad: number;           // Fads (+3 each)
-    nonfad: number;        // All Matching Non-Fad Colours & Icons (+1 each)
+    nonfad: number;        // All Matching Non-Fad Colors & Icons (+1 each)
     ss: number;            // Secret Santa (+3 each)
     bonus: number;         // remainder absorbed here (e.g. Little Brothers bonus objective)
     total: number;         // this round's contribution to the player's score
@@ -270,7 +270,7 @@ interface NotifHandUpdate {
 
 interface NotifGameplayRevealed {
     gameplay: GameplayState; // the round-parameter decks after revealing the new round's cards
-    trendy_color?: string;   // Express: the new Trendy Yarn colour (tinted in the log via bgaFormatText)
+    trendy_color?: string;   // Express: the new Trendy Yarn color (tinted in the log via bgaFormatText)
     pf_value?: number;       // Express: the new Perfect Fit value
 }
 
