@@ -2327,6 +2327,11 @@ table.ucs-scorepad th, table.ucs-scorepad td {
 #ucs-table.ucs-narrow #ucs-my-hand-wrap {
   z-index: auto;
 }
+#ucs-table.ucs-narrow #ucs-my-hand > .hand-stock.floating {
+  left: 0;
+  right: auto;
+  width: var(--ucs-hand-float-w, auto);
+}
 #ucs-table.ucs-narrow #ucs-opponents {
   flex-direction: row;
   flex-wrap: wrap;

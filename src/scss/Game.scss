@@ -2135,6 +2135,17 @@ $narrow-santa-cap: 192px; // 128 x 1.5 — Secret Santa cards
     //     spread, with the "?" covering the leftmost card and BGA's pair the two rightmost.
     #ucs-my-hand-wrap { z-index: auto; }
 
+    // The floating fan spreads exactly as wide as the attached one. The library pins the floating box
+    // with a hardcoded right reserve (130px / zoom on mobile_version, ~260 layout px on a phone) and
+    // derives the overlap from that box's width, so the hand squeezed whenever it floated. Sized from
+    // the holder instead (--ucs-hand-float-w, kept current by Game.ts::setupHandStock); placeFan still
+    // centres it horizontally and fanLift still raises it, both via the transform on this element.
+    #ucs-my-hand > .hand-stock.floating {
+        left: 0;
+        right: auto;
+        width: var(--ucs-hand-float-w, auto);
+    }
+
     // Opponents run across as a wrapping row of chips (mini sweaters hidden, pip summary shown) rather
     // than a tall side column.
     #ucs-opponents {

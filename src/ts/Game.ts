@@ -490,6 +490,23 @@ export class Game {
             stock.updateCardPositions = () => { original(); this.applySymmetricFan(); this.refreshSelectable(); };
             stock.__ucsFanPatched = true;
         }
+
+        // Give the FLOATING stock the holder's width, so the fan spreads exactly as it does attached.
+        // The library sizes the overlap off the stock's clientWidth, and while floating it pins that box
+        // at `left: 20px; right: calc(130px / zoom)` on mobile_version (240px on desktop) — hardcoded,
+        // not the floatLeft/RightMargin options. Under a phone's ~0.5 scale-to-fit zoom that right
+        // reserve is ~260 layout px, so the fan squeezed noticeably the moment it floated (page near the
+        // top) and widened again once scrolled far enough to reattach. Consumed by the .ucs-narrow rule
+        // on `.hand-stock.floating` in Game.scss. Both widths are layout px in the same zoomed subtree,
+        // and handCardWidth already derives the card from this holder, so the step it was designed for
+        // is the one both states now get. Setting the var resizes the stock, which fires the library's
+        // own ResizeObserver and re-lays the fan — no extra call needed.
+        const holder = document.getElementById('ucs-my-hand');
+        if (holder && stock.element) {
+            new ResizeObserver(() => {
+                stock.element.style.setProperty('--ucs-hand-float-w', `${holder.offsetWidth}px`);
+            }).observe(holder);
+        }
     }
 
     // ===================================================================================
