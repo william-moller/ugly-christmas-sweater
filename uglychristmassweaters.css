@@ -920,6 +920,10 @@ html[data-theme=dark] {
   height: 73px;
 }
 
+.ucs-round-label {
+  text-align: center;
+}
+
 .ucs-gameplay-row {
   display: flex;
   flex-direction: row;

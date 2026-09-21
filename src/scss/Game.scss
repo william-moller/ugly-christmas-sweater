@@ -478,6 +478,19 @@ html[data-theme="dark"] {
 }
 
 // ---- Gameplay decks (Perfect Fit / Trendy Yarn / Fad — public round parameters) -----------------
+// "ROUND 2/3" over the parameter row (Casual/Avid; Express has no counter — see renderGameplay).
+// Centred to agree with .ucs-gameplay-row's justify-content below, so the caption sits over the cards
+// rather than against the strip's left edge in Avid, where the Santa row is the wider term.
+//
+// Deliberately NOT one of the rotated left-edge labels (#ucs-draft-pool / #ucs-trade-area /
+// #ucs-secret-santa): those rotate to buy height, and this zone's left edge is the table's own 8px
+// padding, which is the geometry that clipped the Secret Santa label to a sliver. Flat costs ~16px of
+// strip height — absorbed automatically, since layoutTallStrip() measures the strip with a
+// ResizeObserver rather than from a constant.
+.ucs-round-label {
+    text-align: center;
+}
+
 // One horizontal row: the Fad display, then the Perfect Fit and Trendy Yarn faces. align-items:flex-end
 // lines up all the card faces along their bottoms — the Fad display carries a "Fads (claim…)" label on
 // top, so aligning bottoms keeps every card face level and lets that label float above its three cards.

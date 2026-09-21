@@ -674,7 +674,20 @@ export class Game {
      */
     private renderGameplay() {
         const zone = document.getElementById('ucs-gameplay')!;
-        zone.innerHTML = ''; // no zone label: each parameter carries its own (Perfect Fit / Trendy Yarn / Fads)
+        // Each parameter carries its own caption (Perfect Fit / Trendy Yarn / Fads), so the zone's one
+        // label is the round counter. It belongs here because this strip IS the round's parameters —
+        // the cards that change when the round does. Until this existed the only way to tell which
+        // round you were in was the end-of-round scoring sheet or the log.
+        //
+        // Casual/Avid only. Express is one round by definition, and its 1-12 Round Tracker already uses
+        // "round" for a trick — a "Round 1/1" beside a tracker glowing on wreath 5 is two meanings of
+        // the word side by side.
+        zone.innerHTML = this.gamedatas.express ? '' : `<div class="ucs-zone-label ucs-round-label">`
+            + this.bga.gameui.format_string(_('Round ${round}/${total}'), {
+                round: String(this.gamedatas.roundNo),
+                total: String(this.gamedatas.totalRounds),
+            })
+            + `</div>`;
         const row = document.createElement('div');
         row.className = 'ucs-gameplay-row';
         const gp = this.gamedatas.gameplay;
