@@ -487,8 +487,24 @@ html[data-theme="dark"] {
 // padding, which is the geometry that clipped the Secret Santa label to a sliver. Flat costs ~16px of
 // strip height — absorbed automatically, since layoutTallStrip() measures the strip with a
 // ResizeObserver rather than from a constant.
+//
+// Styled as a badge rather than a plain zone caption: the round number is game state a player checks
+// mid-trick, and at 12px/0.8 opacity it read as just another section heading. The opaque pill also
+// takes it off the textured felt, so its contrast no longer depends on the 0.8 floor noted above.
 .ucs-round-label {
-    text-align: center;
+    width: fit-content;
+    margin: 0 auto 8px;
+    padding: 4px 16px;
+    font-size: 18px;
+    letter-spacing: 0.08em;
+    line-height: 1.2;
+    opacity: 1;
+    color: #fff8e7;
+    background: #a51f1f;
+    border: 2px solid #e2b93b;
+    border-radius: 999px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+    text-shadow: 0 1px 1px rgba(0, 0, 0, 0.35);
 }
 
 // One horizontal row: the Fad display, then the Perfect Fit and Trendy Yarn faces. align-items:flex-end
