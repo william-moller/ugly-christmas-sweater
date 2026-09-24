@@ -32,6 +32,8 @@ class ScoreRound extends GameState
         // `scorepad` global itself, so the review screen survives a page refresh (re-served via
         // RoundReview::getArgs); the returned payload is sent now for the immediate render + log line.
         $detail = $this->game->roundScorepad();
+        // Not part of the persisted scorepad: the panels' tie-break totals, now including this round.
+        $detail['tieBreak'] = $this->game->tieBreakState();
 
         $this->notify->all('roundScored', clienttranslate('Round ${round} scored'), $detail);
 

@@ -38,6 +38,8 @@ class NewRound extends GameState
             // Outside Avid setupRound just dropped last round's reveal; send the (now empty) map so the
             // opponents' areas clear instead of keeping headshots for cards that have been discarded.
             'santaReveal' => $this->game->secretSantaReveal(),
+            // Fresh knitting, so the panels' tie-break totals go back to banked + live.
+            'tieBreak'    => $this->game->tieBreakState(),
         ]);
 
         foreach (array_keys($this->game->loadPlayersBasicInfos()) as $pid) {

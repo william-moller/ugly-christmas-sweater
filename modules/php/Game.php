@@ -461,6 +461,8 @@ class Game extends \Bga\GameFramework\Table
         // re-dealt card this round (e.g. a fresh floating patch inheriting a stale wild value). Rows are
         // re-created via setCardMeta as cards are played/placed. Carried pool cards need no meta.
         static::DbQuery('DELETE FROM `card_meta`');
+        // The knitting on the table is now this round's, and nothing of it is banked yet (see tieBreakState).
+        $this->globals->set('knittingBanked', false);
 
         // 2) Seat the draft pool. Carry-over rounds re-seat the kept cards into slots 0..N; round 1 deals
         //    4 fresh face-up cards from the shuffled source.
@@ -681,6 +683,8 @@ class Game extends \Bga\GameFramework\Table
         $result["trick"]     = $this->getCardsWithExtras(self::LOC_TRICK);
         $result["knitting"]  = $this->getCardsWithExtras(self::LOC_KNITTING);
         $result["gameplay"] = $this->getGameplayState();
+        // Banked tie-breakers (unbuilt sweaters, Fad points) for the player panels — see tieBreakState.
+        $result["tieBreak"] = $this->tieBreakState();
         // Bonus / Special Ability cards (optional expansion): every player's revealed card ([] when Off).
         $result["bonus"] = $this->bonusEnabled() ? $this->bonusState() : [];
         // Every player's PUBLICLY revealed Secret Santas, with a done flag each (see secretSantaReveal
@@ -2022,6 +2026,31 @@ class Game extends \Bga\GameFramework\Table
         }
 
         $this->globals->set('appliedPublic', '[]');
+        // The round's knitting stays on the table (round review / end screen) but is now counted in the
+        // tie-break totals — tell the client not to add it a second time (see tieBreakState).
+        $this->globals->set('knittingBanked', true);
+    }
+
+    /**
+     * Public tie-break read-out for the player panels: per player, the two final tie-breakers as banked by
+     * scoreRound — #1 unbuilt sweaters (the sweaters_unbuilt stat, which is the same number scoreRound
+     * subtracts from player_score_aux, and unlike aux is not folded into a composite by EndScore) and
+     * #2 Fad points (player_fad_points). The client adds the live, not-yet-scored round on top from the
+     * knitting it already has — unless `banked` says the knitting on the table was already counted
+     * (between scoreRound and the next round's deal), which would otherwise double it.
+     */
+    public function tieBreakState(): array
+    {
+        $players = [];
+        $fad = $this->getCollectionFromDb("SELECT `player_id`, `player_fad_points` FROM `player`");
+        foreach (array_keys($this->loadPlayersBasicInfos()) as $pid) {
+            $pid = (int) $pid;
+            $players[$pid] = [
+                'unbuilt' => (int) $this->playerStats->get('sweaters_unbuilt', $pid),
+                'fad'     => (int) ($fad[$pid]['player_fad_points'] ?? 0),
+            ];
+        }
+        return ['banked' => (bool) $this->globals->get('knittingBanked'), 'players' => $players];
     }
 
     /** A player's revealed Secret Santa objectives: [['id'=>int,'name'=>str,'needs'=>[3 requirements]]]. */

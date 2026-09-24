@@ -1489,6 +1489,20 @@ html[data-theme=dark] {
   min-width: 0.8em;
 }
 
+.ucs-tally-unbuilt svg {
+  display: block;
+}
+
+.ucs-tally-fad {
+  display: inline-block;
+  width: 18px;
+  height: 28px;
+  border-radius: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.85);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+  flex: 0 0 auto;
+}
+
 .ucs-icon-candycane {
   filter: brightness(0.5) contrast(1.1);
 }
@@ -1731,7 +1745,8 @@ html[data-theme=dark] {
 
 /* Value/icon picker popover, anchored to the right of the patch's sweater (the build is position:
    relative). It floats over neighbouring zones via a high z-index — which is why only the patch
-   currently being assigned gets one (see Game.renderKnitting). */
+   currently being assigned gets one (see Game.renderKnitting). Where that would run off-screen (a
+   phone at Large), Game.watchAssignPicker overrides `left` inline to slide it back over the patch. */
 .ucs-assign-pop {
   position: absolute;
   top: 0;

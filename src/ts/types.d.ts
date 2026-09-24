@@ -62,6 +62,13 @@ interface UglyChristmasSweaterPlayer extends Player {
     fadPoints: number; // total Fad points scored (tie-break #2)
 }
 
+/** Game::tieBreakState — the two final tie-breakers as banked by round scoring. The panel adds the live,
+ *  unscored round on top from the knitting, unless `banked` says that knitting is already counted. */
+interface TieBreakState {
+    banked: boolean;
+    players: { [playerId: number]: { unbuilt: number; fad: number } };
+}
+
 /** One revealed gameplay card (Perfect Fit / Trendy Yarn / Fad). */
 interface GameplayCard {
     id: number | string;
@@ -116,6 +123,7 @@ interface UglyChristmasSweaterGamedatas extends Gamedatas<UglyChristmasSweaterPl
     trick: CardMap;                // cards played this trick
     knitting: CardMap;             // all players' knitting-area cards (location_arg = player id)
     gameplay: GameplayState;       // the three round-parameter decks (Perfect Fit / Trendy Yarn / Fad)
+    tieBreak: TieBreakState;       // banked unbuilt sweaters + Fad points, for the player-panel read-out
     bonus: BonusCardState[];       // each player's revealed Bonus card (optional expansion; [] when Off)
     santaReveal: RevealedSantas;   // every player's publicly revealed Secret Santas ({} until a round is scored)
     santaDone: number[];           // PRIVATE: which of MY Secret Santas my knitting currently satisfies
@@ -283,6 +291,7 @@ interface NotifNewRound {
     knitting: SweaterCard[];                             // all players' knitting — empty at round start
     leaderId: number;                                    // holder of the "1" card, leads the first trick
     santaReveal: RevealedSantas;                         // last round's reveal, now cleared (Avid: unchanged)
+    tieBreak: TieBreakState;                             // banked totals; the fresh knitting is live again
 }
 
 /** Private start-of-round deal: the receiving player's new hand + freshly dealt Secret Santa(s). */
@@ -322,7 +331,7 @@ interface NotifTinaResolved {
     bonus: BonusCardState[];
 }
 
-type NotifRoundScored = Scorepad;
+type NotifRoundScored = Scorepad & { tieBreak: TieBreakState }; // tieBreak rides the notif only, not the stored pad
 
 interface NotifFadClaimed {
     player_id: number;

@@ -1203,6 +1203,19 @@ $param-ratio: math.div($card-h, $card-w);  // the pool card's own ratio, so the 
 .ucs-tally-count {
     min-width: 0.8em;
 }
+// Tie-breaker row: the unravelled-sweater chip is an inline SVG that fills the whole chip, and the Fad chip
+// is the Fad card back itself (sized by inline --ucs-card-w/h — see renderPanelTally) with the swatch's
+// frame so the three kinds of chip read as one family.
+.ucs-tally-unbuilt svg { display: block; }
+.ucs-tally-fad {
+    display: inline-block;
+    width: 18px;
+    height: 28px;
+    border-radius: 4px;
+    border: 1px solid rgba(255, 255, 255, 0.85);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+    flex: 0 0 auto;
+}
 
 // The candy-cane art is near-white and washes out on the light chips these icons always sit on (panel
 // tally, wild-value badge, patch-assign picker); a straight brightness cut reads well. The bell and
@@ -1466,7 +1479,8 @@ $param-ratio: math.div($card-h, $card-w);  // the pool card's own ratio, so the 
 
 /* Value/icon picker popover, anchored to the right of the patch's sweater (the build is position:
    relative). It floats over neighbouring zones via a high z-index — which is why only the patch
-   currently being assigned gets one (see Game.renderKnitting). */
+   currently being assigned gets one (see Game.renderKnitting). Where that would run off-screen (a
+   phone at Large), Game.watchAssignPicker overrides `left` inline to slide it back over the patch. */
 .ucs-assign-pop {
     position: absolute;
     top: 0;

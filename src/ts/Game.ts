@@ -10,6 +10,18 @@ import { BgaAnimations, BgaCards, BgaHelp } from "./libs";
 
 type CardMapT = { [cardId: number]: SweaterCard };
 
+// Player-panel glyph for tie-breaker #1 (unfinished sweaters): a sweater whose ragged hem is unravelling
+// into a loose strand. Drawn for the 20x28 light tally chip; no art in the publisher's set fits.
+const UNRAVELLED_SWEATER_SVG =
+    '<svg viewBox="0 0 20 28" width="20" height="28" aria-hidden="true">'
+    + '<path d="M6 5 L8.6 4 Q10 6 11.4 4 L14 5 L18 9.2 L16.2 11.4 L14.5 10 L14.5 15.6 L13.4 17 L12.4 15.7'
+    + ' L11.4 17 L5.5 17 L5.5 10 L3.8 11.4 L2 9.2 Z" fill="#c0392b" stroke="#7b1d14" stroke-width="0.6"'
+    + ' stroke-linejoin="round"/>'
+    + '<path d="M5.8 12.3 H14.2" stroke="#f3ede1" stroke-width="1" stroke-dasharray="1 1"/>'
+    + '<path d="M12.4 16.2 q2.4 2 0.2 4 q-2.2 2 0 4 q1.2 1.1 3 0.6" fill="none" stroke="#c0392b"'
+    + ' stroke-width="0.9" stroke-linecap="round"/>'
+    + '</svg>';
+
 export class Game {
     public bga: Bga<UglyChristmasSweaterPlayer, UglyChristmasSweaterGamedatas>;
     private gamedatas: UglyChristmasSweaterGamedatas;
@@ -67,6 +79,8 @@ export class Game {
     private onFinishAssign: (() => void) | null = null;
     private assignPending: number[] = [];
     private assignSel: { [cardId: number]: { value: number | null; icon: string | null } } = {};
+    // Re-fits the live picker into the viewport when its build or the page resizes (see fitAssignPicker).
+    private assignPopRO: ResizeObserver | null = null;
 
     // The narrow/wide boundary, built once from wideLayoutFloor() — see narrowMq().
     private narrowMqCache: MediaQueryList | null = null;
@@ -1361,7 +1375,20 @@ export class Game {
                 + `<span class="ucs-tally-icon" aria-hidden="true"><span class="ucs-icon ucs-icon-${ic}"></span></span>`
                 + `<span class="ucs-tally-count" aria-hidden="true">${n}</span></span>`;
         }).join('');
-        box.innerHTML = `<div class="ucs-tally-row">${colorRow}</div><div class="ucs-tally-row">${iconRow}</div>`;
+        // Third row: the two final tie-breakers, live (see liveTieBreak).
+        const tb = this.liveTieBreak(playerId);
+        const unbuiltTitle = `${_('Unfinished sweaters')}: ${tb.unbuilt} (${_('tie-breaker 1: fewest wins')})`;
+        const fadTitle = `${_('Fad points')}: ${tb.fad} (${_('tie-breaker 2: most wins')})`;
+        const tbRow = `<span class="ucs-tally-chip" title="${unbuiltTitle}" role="img" aria-label="${unbuiltTitle}">`
+            + `<span class="ucs-tally-icon ucs-tally-unbuilt" aria-hidden="true">${UNRAVELLED_SWEATER_SVG}</span>`
+            + `<span class="ucs-tally-count" aria-hidden="true">${tb.unbuilt}</span></span>`
+            + `<span class="ucs-tally-chip" title="${fadTitle}" role="img" aria-label="${fadTitle}">`
+            // The real Fad card back, as a mini card. Sized inline: .ucs-art2 paints from --ucs-card-w/h and
+            // a player panel sits outside #ucs-table, where those are declared (see MISTAKES.md).
+            + `<span class="ucs-tally-fad ucs-art2 ucs-gp-fad-back" style="--ucs-card-w:18px;--ucs-card-h:28px" aria-hidden="true"></span>`
+            + `<span class="ucs-tally-count" aria-hidden="true">${tb.fad}</span></span>`;
+        box.innerHTML = `<div class="ucs-tally-row">${colorRow}</div><div class="ucs-tally-row">${iconRow}</div>`
+            + `<div class="ucs-tally-row">${tbRow}</div>`;
     }
 
     /**
@@ -1690,6 +1717,11 @@ export class Game {
      * unassigned patch (its run / Fad / icon bonuses land at round-end once the patch is assigned).
      */
     private buildPublicScore(cards: SweaterCard[], playerId: number, buildNo: number): number {
+        return this.buildScoreParts(cards, playerId, buildNo).vp;
+    }
+
+    /** buildPublicScore's total, plus the Fad share of it on its own (for the panel's tie-break #2). */
+    private buildScoreParts(cards: SweaterCard[], playerId: number, buildNo: number): { vp: number; fad: number } {
         const VP = this.material.vp; // straight from Material::VP_* — see getAllDatas
 
         const bySlot: { [slot: string]: SweaterCard } = {};
@@ -1702,13 +1734,13 @@ export class Game {
         const express = !!this.gamedatas.express;
         const banked = express ? this.bankedFadVpForBuild(playerId, buildNo) : 0;
 
-        if (!bySlot.L || !bySlot.R || !bySlot.B) return banked; // not a completed L+R+B sweater
+        if (!bySlot.L || !bySlot.R || !bySlot.B) return { vp: banked, fad: banked }; // not a completed L+R+B sweater
         const trio = [bySlot.L, bySlot.R, bySlot.B];
 
         // A completed sweater with an unresolved patch scores only the +2 build for now.
         for (const c of trio) {
             if (isPatch(c, this.material) && (wildValueOf(c) == null || wildIconOf(c) == null)) {
-                return VP.sweater + banked;
+                return { vp: VP.sweater + banked, fad: banked };
             }
         }
 
@@ -1743,10 +1775,44 @@ export class Game {
         }
         // Mirrors Game::expressFadVp: in Express the banked claim is a floor, but a sweater that has since
         // improved (its Patch finally assigned, adding the icon objective) scores the higher derived value.
-        vp += express ? Math.max(banked, derivedFad) : derivedFad;
+        const fad = express ? Math.max(banked, derivedFad) : derivedFad;
+        vp += fad;
         if (allSameColor && !colorIsFad) vp += VP.nonfad;
         if (allSameIcon && !iconIsFad) vp += VP.nonfad;
-        return vp;
+        return { vp, fad };
+    }
+
+    /**
+     * A player's two final tie-breakers, live: what earlier rounds banked (gamedatas.tieBreak) plus the
+     * round in progress read off their knitting — #1 unbuilt sweaters (started, not yet L+R+B; a lone
+     * floating patch counts) and #2 Fad points. Mirrors Game::scoreRound, which counts the same things
+     * when it banks them. Once the round is scored its knitting stays on the table (review / end screen)
+     * but is already in the banked figures, so it isn't added again.
+     */
+    private liveTieBreak(playerId: number): { unbuilt: number; fad: number } {
+        const tb = this.gamedatas.tieBreak;
+        const banked = tb?.players?.[playerId] ?? { unbuilt: 0, fad: 0 };
+        if (tb?.banked) return { unbuilt: Number(banked.unbuilt), fad: Number(banked.fad) };
+
+        const builds: { [buildNo: number]: SweaterCard[] } = {};
+        this.cardArray(this.gamedatas.knitting)
+            .filter((c) => Number(c.location_arg) === playerId)
+            .forEach((c) => { (builds[Number(c.buildNo ?? 0)] ||= []).push(c); });
+        let unbuilt = 0, fad = 0;
+        Object.keys(builds).map(Number).forEach((buildNo) => {
+            if (!this.isBuildComplete(builds[buildNo])) unbuilt++;
+            fad += this.buildScoreParts(builds[buildNo], playerId, buildNo).fad;
+        });
+        // Express: a claimed Fad stays banked even if Tina Can Tink broke its sweater up entirely — no build
+        // left to carry it above, so add those here (Game::expressFadVp keeps them the same way).
+        if (this.gamedatas.express) {
+            const claims = this.expressClaims();
+            Object.keys(claims).forEach((fadId) => {
+                const c = claims[Number(fadId)];
+                if (Number(c.playerId) === playerId && !builds[Number(c.buildNo)]) fad += Number(c.vp ?? 0);
+            });
+        }
+        return { unbuilt: Number(banked.unbuilt) + unbuilt, fad: Number(banked.fad) + fad };
     }
 
     /**
@@ -1762,6 +1828,7 @@ export class Game {
         const zone = targetEl ?? document.getElementById(`ucs-knitting-${playerId}`);
         if (!zone) return;
         zone.innerHTML = '';
+        if (!targetEl && playerId === this.myId) { this.assignPopRO?.disconnect(); this.assignPopRO = null; }
 
         const cards = this.cardArray(this.gamedatas.knitting).filter(
             (c) => Number(c.location_arg) === playerId
@@ -1809,6 +1876,7 @@ export class Game {
                 build.className = 'ucs-build';
                 build.id = `ucs-build-${playerId}-${buildNo}`;
                 build.dataset.buildNo = String(buildNo);
+                let assignPop: HTMLElement | null = null;
                 if (this.isBuildComplete(builds[buildNo])) build.classList.add('ucs-build-complete');
                 // Express: a sweater that has claimed a Fad is locked — it can't be altered, and every
                 // claimed Fad is shown on it (a sweater may claim more than one). Locked builds draw no
@@ -1897,10 +1965,12 @@ export class Game {
                         // stacking context, trapping the pop inside it — later sibling builds then paint
                         // over it (see .ucs-build-assigning).
                         build.classList.add('ucs-build-assigning');
-                        build.appendChild(this.makeAssignPicker(current));
+                        assignPop = this.makeAssignPicker(current);
+                        build.appendChild(assignPop);
                     }
                 }
                 zone.appendChild(build);
+                if (assignPop) this.watchAssignPicker(assignPop, build); // measure only once it's in the page
             });
 
         // "New sweater" target: a regular card shows its printed slot; a patch shows a slot-less float ghost.
@@ -3054,6 +3124,29 @@ export class Game {
         return pop;
     }
 
+    /**
+     * Keep the picker on screen. It sits to the right of its sweater, which on a phone at Large card
+     * size runs past the viewport edge and clips the right-hand buttons. When it would, slide it left —
+     * over the glowing patch if need be, which is fine: nothing on the patch's face is needed to choose
+     * except its colour, and enough of the card stays visible for that. Never past the left edge.
+     * Re-fitted on any resize of the build (the card-size preference is CSS-only, no re-render) or the
+     * page (rotation), so a stale offset can't linger.
+     */
+    private watchAssignPicker(pop: HTMLElement, build: HTMLElement) {
+        const margin = 8;
+        const fit = () => {
+            pop.style.left = '';
+            const r = pop.getBoundingClientRect();
+            const overflow = r.right - (document.documentElement.clientWidth - margin);
+            const shift = Math.min(overflow, r.left - margin);
+            if (shift > 0) pop.style.left = `calc(100% + 8px - ${Math.round(shift)}px)`;
+        };
+        fit();
+        this.assignPopRO = new ResizeObserver(fit);
+        this.assignPopRO.observe(build);
+        this.assignPopRO.observe(document.documentElement);
+    }
+
     // ===================================================================================
     //  Round review (between-round pause) — called by the RoundReview state handler
     // ===================================================================================
@@ -3663,6 +3756,7 @@ export class Game {
         // Last round's revealed Secret Santas: cleared server-side with the cards themselves outside Avid,
         // where they persist and stay revealed (Game.php::clearSecretSantaReveal).
         this.gamedatas.santaReveal = args.santaReveal ?? {};
+        if (args.tieBreak) this.gamedatas.tieBreak = args.tieBreak;
         this.poolRenderOrder = null; // carry-over pool: order by draft slot, not the last trick's layout
         this.showHandEndBanner(false);
         this.hideDraftOrder();
@@ -3750,6 +3844,11 @@ export class Game {
     async notif_roundScored(args: NotifRoundScored) {
         // The draft phase is over and we're moving on — the "last trick" banner is spent.
         this.showHandEndBanner(false);
+        // The round is banked: the panels' tie-break totals now include it (and stop adding it live).
+        if (args.tieBreak) {
+            this.gamedatas.tieBreak = args.tieBreak;
+            Object.values(this.gamedatas.players).forEach((p) => this.renderPanelTally(Number(p.id)));
+        }
         // The round's Secret Santas are now public — refresh every opponent's revealed row. Mine needs no
         // refresh: santaProgress has been ticking my own cards live all round.
         if (args.santaReveal) {
