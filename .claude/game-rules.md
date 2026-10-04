@@ -166,7 +166,10 @@ require Difficulty = Expert, so they're available in Express/Avid and in Casual-
   start** and persist all game. Satisfaction is tracked **cumulatively** across rounds; each satisfied
   Secret Santa still scores **+3 VP**, and each is **revealed publicly** in that player's area the round
   it is first completed. A player who has **not** satisfied all 3 by game end has their **final score
-  set to 0** (flagged with an asterisk + note on the scoring summary).
+  set to 0** (flagged with an asterisk + note on the scoring summary), and all such players **tie for
+  last** — the tie-breakers are not applied among them. If **nobody** satisfied all 3,
+  there is **no winner**: everyone loses, and the tie-breakers are **not** applied (all players end
+  tied on 0).
 
 ## Bonus Cards (optional Kickstarter expansion — the 4 "Special Ability" cards)
 

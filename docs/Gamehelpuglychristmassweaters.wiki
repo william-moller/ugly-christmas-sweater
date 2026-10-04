@@ -55,7 +55,7 @@ After the final round the highest total wins. Ties are broken by fewest unbuilt 
 ** Claiming '''locks''' that sweater. It can never be added to or placed over again, so a Fad is worth racing for but costs you the sweater as a work in progress.
 ** A wild patch has no icon yet, so a sweater finished with one can only claim on '''color'''. When that happens you are offered the chance to set the patch's value and icon '''immediately''', so you can take an icon Fad with it too. This is optional — skip it and you choose as normal at the end of the round, which is what you want if you would rather keep building over that sweater than lock it.
 ** Once claimed, a Fad's points are '''yours to keep''', even if ''Tina Can Tink'' later moves a piece out of that sweater. The sweater then scores nothing else, but the Fad still pays.
-* '''Avid''' — 3 rounds, but 3 Secret Santas are dealt once at the start and last all game, tracked across rounds and revealed as each is completed. Each still scores +3 VP, but '''a player who has not completed all three by the end of the game scores 0.'''
+* '''Avid''' — 3 rounds, but 3 Secret Santas are dealt once at the start and last all game, tracked across rounds and revealed as each is completed. Each still scores +3 VP, but '''a player who has not completed all three by the end of the game scores 0.''' Everyone who misses ties for last; the tie-breakers are not used between them. If nobody completes all three, there is no winner — everyone loses, and the tie-breakers are not used.
 
 '''Difficulty''' (Casual only) — Beginner reveals Fads only, Novice adds Trendy Yarn, Expert uses all three round parameters.
 

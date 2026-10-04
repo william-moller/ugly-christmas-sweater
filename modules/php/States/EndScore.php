@@ -27,13 +27,14 @@ class EndScore extends \Bga\GameFramework\States\GameState
     public function onEnteringState() {
         // Avid mode: a player who did not complete ALL 3 of their Secret Santas by game end does not
         // qualify — their FINAL score is set to 0 (the round scorepad already flagged them with an
-        // asterisk + note). scoreRound tracks cumulative completion in the 'avidSSDone' global. Do this
-        // BEFORE the tie-break fold below so zeroed players also sort to the bottom.
+        // asterisk + note). scoreRound tracks cumulative completion in the 'avidSSDone' global.
+        $disqualified = [];
         if ($this->game->isAvid()) {
             $ssDone = (array) $this->game->globals->get('avidSSDone');
             foreach (array_keys($this->game->loadPlayersBasicInfos()) as $pid) {
                 $pid = (int) $pid;
                 if (count((array) ($ssDone[$pid] ?? [])) < Game::AVID_SECRET_SANTAS) {
+                    $disqualified[] = $pid;
                     Game::DbQuery("UPDATE `player` SET `player_score` = 0 WHERE `player_id` = $pid");
                 }
             }
@@ -59,6 +60,16 @@ class EndScore extends \Bga\GameFramework\States\GameState
             "UPDATE `player` SET `player_score_aux` = `player_score_aux` * " . Game::TIEBREAK_K
             . " + CAST(`player_fad_points` AS SIGNED)"
         );
+
+        // Avid non-qualifiers tie for last: the tie-breakers must not rank them against each other. A
+        // qualifier always has >= 9 VP (3 Secret Santas x 3), so score alone keeps them above every
+        // zeroed player. If NOBODY qualified this leaves everyone on 0 / 0: no winner, everyone loses —
+        // a full tie is how BGA expresses that in a non-coop game.
+        if ($disqualified) {
+            Game::DbQuery(
+                "UPDATE `player` SET `player_score_aux` = 0 WHERE `player_id` IN (" . implode(',', $disqualified) . ")"
+            );
+        }
 
         // On Studio, stop instead of ending so the finished table stays open for inspection.
         if ($this->game->preventEndGame) {
